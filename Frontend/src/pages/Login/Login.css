@@ -1,0 +1,680 @@
+/* =====================================================
+   RESET
+===================================================== */
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:"Segoe UI",Tahoma,Geneva,Verdana,sans-serif;
+}
+
+body{
+
+    background:#ddd1fa;
+
+}
+
+/* =====================================================
+   LOGIN PAGE
+===================================================== */
+
+.login-page{
+
+    width:100%;
+
+    min-height:100vh;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    background:#ddd1fa;
+
+    padding:28px;
+
+}
+
+/* =====================================================
+   MAIN CONTAINER
+===================================================== */
+
+.login-container{
+
+    width:1120px;
+
+    height:680px;
+
+    display:flex;
+
+    overflow:hidden;
+
+    border-radius:10px;
+
+    background:#fff;
+
+    box-shadow:
+        0 15px 35px rgba(0,0,0,.15);
+
+}
+
+/* =====================================================
+   LEFT PANEL
+===================================================== */
+
+.left-panel{
+
+    width:50%;
+
+    position:relative;
+
+    overflow:hidden;
+
+    background:#fff;
+
+}
+
+/* =====================================================
+   SLIDESHOW IMAGE
+===================================================== */
+
+.banner-image{
+
+    width:100%;
+
+    height:100%;
+
+    object-fit:cover;
+
+    object-position:center;
+
+    transition:opacity .8s ease;
+
+    display:block;
+
+}
+
+/* =====================================================
+   LOGO
+===================================================== */
+
+.logo-box{
+
+    position:absolute;
+
+    top:0;
+
+    left:0;
+
+    width:210px;
+
+    background:white;
+
+    padding:10px;
+
+    border-bottom-right-radius:18px;
+
+    z-index:100;
+
+    box-shadow:
+
+        0 2px 8px rgba(0,0,0,.08);
+
+}
+
+.logo-box img{
+
+    width:100%;
+
+    height:auto;
+
+    display:block;
+
+}
+
+/* =====================================================
+   IMAGE FOOTER
+===================================================== */
+
+.image-footer{
+
+    position:absolute;
+
+    bottom:0;
+
+    left:0;
+
+    width:100%;
+
+    height:48px;
+
+    background:#81248b;
+
+    color:white;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    font-size:18px;
+
+    font-weight:600;
+
+    font-style:italic;
+
+    letter-spacing:.3px;
+
+    z-index:50;
+
+}
+
+/* =====================================================
+   RIGHT PANEL
+===================================================== */
+
+.right-panel{
+
+    width:50%;
+
+    background:white;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:flex-start;
+
+    padding-top:45px;
+
+}
+
+/* =====================================================
+   LOGIN CARD
+===================================================== */
+
+.login-card{
+
+    width:430px;
+
+}
+
+/* =====================================================
+   TITLE
+===================================================== */
+
+.login-title{
+
+    font-size:46px;
+
+    color:#222;
+
+    font-weight:700;
+
+    margin-bottom:5px;
+
+}
+
+/* =====================================================
+   SUBTITLE
+===================================================== */
+
+.login-subtitle{
+
+    color:#81248b;
+
+    font-size:18px;
+
+    font-weight:600;
+
+    margin-bottom:28px;
+
+}
+
+/* =====================================================
+   DIVIDER
+===================================================== */
+
+.login-card hr{
+
+    margin:22px 0;
+
+    border:none;
+
+    border-top:1px solid #e3e3e3;
+
+}
+/* =====================================================
+   SUCCESS ALERT
+===================================================== */
+
+.success{
+
+    background:#d8f0db;
+
+    color:#0b6b2b;
+
+    padding:14px 18px;
+
+    border-radius:6px;
+
+    margin-bottom:22px;
+
+    font-size:15px;
+
+    border:1px solid #b6e1bf;
+
+}
+
+/* =====================================================
+   LABELS
+===================================================== */
+
+.login-card label{
+
+    display:block;
+
+    margin-top:18px;
+
+    margin-bottom:8px;
+
+    font-size:16px;
+
+    font-weight:600;
+
+    color:#222;
+
+}
+
+.login-card label span{
+
+    color:#dc3545;
+
+}
+
+/* =====================================================
+   INPUTS
+===================================================== */
+
+.login-card input{
+
+    width:100%;
+
+    height:56px;
+
+    border:1px solid #d6d6d6;
+
+    border-radius:6px;
+
+    padding:0 18px;
+
+    font-size:16px;
+
+    outline:none;
+
+    transition:.25s;
+
+    background:#fff;
+
+}
+
+.login-card input:focus{
+
+    border-color:#81248b;
+
+    box-shadow:0 0 0 3px rgba(129,36,139,.12);
+
+}
+
+/* =====================================================
+   PASSWORD FIELD
+===================================================== */
+
+.password{
+
+    display:flex;
+
+    align-items:center;
+
+}
+
+.password input{
+
+    flex:1;
+
+    border-radius:6px 0 0 6px;
+
+    border-right:none;
+
+}
+
+.password-btn{
+
+    width:60px;
+
+    height:56px;
+
+    border:none;
+
+    background:#81248b;
+
+    color:#fff;
+
+    cursor:pointer;
+
+    border-radius:0 6px 6px 0;
+
+    transition:.3s;
+
+    font-size:18px;
+
+}
+
+.password-btn:hover{
+
+    background:#6f1f77;
+
+}
+
+/* =====================================================
+   CAPTCHA
+===================================================== */
+
+.captcha{
+
+    margin-top:24px;
+
+    margin-bottom:12px;
+
+}
+
+.captcha label{
+
+    margin:0;
+
+    font-size:16px;
+
+    font-weight:600;
+
+}
+
+.captcha strong{
+
+    margin-left:6px;
+
+    font-size:22px;
+
+    color:#000;
+
+}
+
+/* =====================================================
+   ERROR TEXT
+===================================================== */
+
+.error{
+
+    display:block;
+
+    margin-top:8px;
+
+    color:#dc3545;
+
+    font-size:14px;
+
+}
+
+/* =====================================================
+   LOGIN BUTTON
+===================================================== */
+
+.login-btn{
+
+    width:100%;
+
+    height:58px;
+
+    margin-top:28px;
+
+    background:#81248b;
+
+    color:#fff;
+
+    border:none;
+
+    border-radius:6px;
+
+    font-size:20px;
+
+    font-weight:600;
+
+    cursor:pointer;
+
+    transition:.3s;
+
+}
+
+.login-btn:hover{
+
+    background:#6f1f77;
+
+}
+
+/* =====================================================
+   FORGOT PASSWORD
+===================================================== */
+
+.forgot{
+
+    display:block;
+
+    text-align:center;
+
+    margin-top:30px;
+
+    margin-bottom:35px;
+
+    text-decoration:none;
+
+    color:#81248b;
+
+    font-size:18px;
+
+    font-weight:700;
+
+}
+
+.forgot:hover{
+
+    text-decoration:underline;
+
+}
+
+/* =====================================================
+   FOOTER
+===================================================== */
+
+.footer{
+
+    text-align:center;
+
+    font-size:15px;
+
+    color:#555;
+
+}
+
+.footer span{
+
+    color:#81248b;
+
+    font-weight:600;
+
+}
+
+.links{
+
+    margin-top:18px;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    gap:20px;
+
+}
+
+.links a{
+
+    color:#81248b;
+
+    text-decoration:none;
+
+    font-size:15px;
+
+}
+
+.links a:hover{
+
+    text-decoration:underline;
+
+}
+
+/* =====================================================
+   RESPONSIVE
+===================================================== */
+
+@media (max-width:1100px){
+
+    .login-container{
+
+        width:96%;
+
+        height:auto;
+
+    }
+
+}
+
+@media (max-width:992px){
+
+    .login-container{
+
+        flex-direction:column;
+
+    }
+
+    .left-panel{
+
+        width:100%;
+
+        height:340px;
+
+    }
+
+    .right-panel{
+
+        width:100%;
+
+        padding:40px 20px;
+
+    }
+
+    .login-card{
+
+        width:100%;
+
+        max-width:460px;
+
+    }
+
+}
+
+@media (max-width:768px){
+
+    .login-page{
+
+        padding:18px;
+
+    }
+
+    .left-panel{
+
+        height:280px;
+
+    }
+
+    .logo-box{
+
+        width:170px;
+
+    }
+
+    .image-footer{
+
+        font-size:16px;
+
+    }
+
+    .login-title{
+
+        font-size:38px;
+
+    }
+
+}
+
+@media (max-width:576px){
+
+    .left-panel{
+
+        display:none;
+
+    }
+
+    .login-container{
+
+        width:100%;
+
+    }
+
+    .right-panel{
+
+        width:100%;
+
+        padding:30px 20px;
+
+    }
+
+    .login-card{
+
+        width:100%;
+
+    }
+
+    .login-title{
+
+        font-size:32px;
+
+    }
+
+    .login-subtitle{
+
+        font-size:16px;
+
+    }
+
+    .login-btn{
+
+        height:54px;
+
+        font-size:18px;
+
+    }
+
+}
