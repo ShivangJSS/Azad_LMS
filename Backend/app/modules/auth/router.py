@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.modules.auth.captcha import generate_captcha
 
+
 from app.modules.auth.schema import (
     ForgotPasswordRequest,
     ForgotPasswordResponse,
@@ -11,6 +12,8 @@ from app.modules.auth.schema import (
     LogoutResponse,
     RefreshTokenRequest,
     RefreshTokenResponse,
+     ResetPasswordRequest,
+    ResetPasswordResponse,
 )
 from app.database.database import get_db
 
@@ -99,4 +102,20 @@ def forgot_password(
     return AuthService.forgot_password(
         db=db,
         request=request,
+    )
+
+@router.post(
+    "/reset-password",
+    response_model=ResetPasswordResponse,
+)
+def reset_password(
+    request: ResetPasswordRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    Reset password using a valid reset token.
+    """
+    return AuthService.reset_password(
+        db,
+        request,
     )

@@ -2,13 +2,17 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from jose import JWTError, jwt
+import os
+from dotenv import load_dotenv
 
 # ==========================================================
 # JWT Configuration
 # ==========================================================
+load_dotenv()
+SECRET_KEY = os.getenv("SECRET_KEY")
 
-SECRET_KEY = "CHANGE_THIS_TO_A_LONG_RANDOM_SECRET"
 
+                         
 ALGORITHM = "HS256"
 
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
@@ -92,7 +96,7 @@ def verify_token(token: str):
         return None
     
 
-    # ==========================================================
+# ==========================================================
 # Verify Refresh Token
 # ==========================================================
 
@@ -109,8 +113,9 @@ def verify_refresh_token(token: str):
     return payload
 
 
-
-
+# ==========================================================
+# Create Reset Password Token
+# ==========================================================
 
 def create_reset_password_token(email: str):
 
@@ -129,3 +134,20 @@ def create_reset_password_token(email: str):
         SECRET_KEY,
         algorithm=ALGORITHM,
     )
+
+
+# ==========================================================
+# Verify Reset Password Token
+# ==========================================================
+
+def verify_reset_password_token(token: str):
+
+    payload = verify_token(token)
+
+    if payload is None:
+        return None
+
+    if payload.get("type") != "reset_password":
+        return None
+
+    return payload

@@ -72,14 +72,29 @@ class LogoutResponse(BaseModel):
 
 
 
-    # -------------------------
+# -------------------------
 # Forgot Password
 # -------------------------
 
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr
+    recaptcha_token: str
 
 
 class ForgotPasswordResponse(BaseModel):
     message: str
     reset_token: str
+
+
+# -------------------------
+# Reset Password
+# -------------------------
+
+class ResetPasswordRequest(BaseModel):
+    reset_token: str
+    new_password: str
+    confirm_password: str
+
+
+class ResetPasswordResponse(BaseModel):
+    message: str

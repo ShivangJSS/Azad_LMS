@@ -5,9 +5,15 @@ from app.modules.auth.jwt_handler import (
     create_access_token,
     create_refresh_token,
     verify_refresh_token,
+    verify_reset_password_token,
 )
 
 
+
+
+
+
+from app.modules.auth.recaptcha import verify_recaptcha
 
 
 
@@ -15,6 +21,11 @@ from app.modules.auth.jwt_handler import create_reset_password_token
 from app.modules.auth.schema import (
     ForgotPasswordRequest,
     ForgotPasswordResponse,
+
+
+    ResetPasswordRequest,
+    ResetPasswordResponse,
+
 )
 
 
@@ -31,7 +42,10 @@ from app.modules.auth.schema import LogoutResponse
 from app.modules.auth.constants import ACTIVE
 from app.modules.auth.captcha import verify_captcha
 from app.modules.auth.repository import AuthRepository
-from app.modules.auth.security import verify_password
+from app.modules.auth.security import (
+    verify_password,
+    hash_password,
+)
 
 
 class AuthService:
@@ -165,40 +179,108 @@ class AuthService:
         Since JWT is stateless, the backend simply returns success.
         The frontend should delete the access token and refresh token.
         """
-
         return LogoutResponse(
             message="Logged out successfully"
         )
-    
 
     @staticmethod
     def forgot_password(
         db: Session,
         request: ForgotPasswordRequest,
     ) -> ForgotPasswordResponse:
+        """
+        Generate a password reset token after verifying
+        Google reCAPTCHA and validating the user's email.
+        """
 
-        try:
-            user = AuthRepository.get_user_by_email(
-                db,
-                request.email,
+        # Step 1: Verify Google reCAPTCHA
+        if not verify_recaptcha(request.recaptcha_token):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid Google reCAPTCHA",
             )
 
-            if user is None:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Email not registered",
-                )
+        # Step 2: Find user by email
+        user = AuthRepository.get_user_by_email(
+            db,
+            request.email,
+        )
 
-            reset_token = create_reset_password_token(
-                user.email,
+        # Step 3: Check if user exists
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User with this email does not exist.",
             )
 
-            return ForgotPasswordResponse(
-                message="Reset token generated successfully",
-                reset_token=reset_token,
+        # Step 4: Generate reset password token
+        reset_token = create_reset_password_token(user.email)
+
+            # Step 5: Return response
+        return ForgotPasswordResponse(
+            message="Reset token generated successfully.",
+            reset_token=reset_token,
+        )
+
+    @staticmethod
+    def reset_password(
+        db: Session,
+        request: ResetPasswordRequest,
+    ) -> ResetPasswordResponse:
+        """
+        Reset the user's password using a valid reset token.
+        """
+
+        # Step 1: Verify reset token
+        payload = verify_reset_password_token(request.reset_token)
+
+        if payload is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or expired reset token",
             )
 
-        except Exception:
-            import traceback
-            traceback.print_exc()
-            raise
+        # Step 2: Extract email
+        email = payload.get("sub")
+
+        if not email:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid reset token",
+            )
+
+        # Step 3: Find user
+        user = AuthRepository.get_user_by_email(
+            db,
+            email,
+        )
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found",
+            )
+
+        # Step 4: Check passwords match
+        if request.new_password != request.confirm_password:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Passwords do not match",
+            )
+
+        # Step 5: Hash new password
+        hashed_password = hash_password(
+            request.new_password,
+        )
+
+        # Step 6: Update password
+        AuthRepository.update_password(
+            db,
+            user,
+            hashed_password,
+        )
+
+        # Step 7: Return success
+        return ResetPasswordResponse(
+            message="Password reset successfully.",
+        )
