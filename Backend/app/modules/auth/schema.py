@@ -69,3 +69,17 @@ class TokenPayload(BaseModel):
 class LogoutResponse(BaseModel):
     message: str
     
+
+
+
+    # -------------------------
+# Forgot Password
+# -------------------------
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ForgotPasswordResponse(BaseModel):
+    message: str
+    reset_token: str

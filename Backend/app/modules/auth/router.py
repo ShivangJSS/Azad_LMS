@@ -4,6 +4,8 @@ from sqlalchemy.orm import Session
 from app.modules.auth.captcha import generate_captcha
 
 from app.modules.auth.schema import (
+    ForgotPasswordRequest,
+    ForgotPasswordResponse,
     LoginRequest,
     LoginResponse,
     LogoutResponse,
@@ -78,3 +80,23 @@ def logout():
     Frontend should remove stored JWT tokens.
     """
     return AuthService.logout()
+
+
+
+#==========================================================
+#forgot password router
+#=========================================================
+
+@router.post(
+    "/forgot-password",
+    response_model=ForgotPasswordResponse,
+    summary="Forgot Password",
+)
+def forgot_password(
+    request: ForgotPasswordRequest,
+    db: Session = Depends(get_db),
+):
+    return AuthService.forgot_password(
+        db=db,
+        request=request,
+    )

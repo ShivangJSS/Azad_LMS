@@ -7,6 +7,19 @@ from app.modules.auth.jwt_handler import (
     verify_refresh_token,
 )
 
+
+
+
+
+from app.modules.auth.jwt_handler import create_reset_password_token
+from app.modules.auth.schema import (
+    ForgotPasswordRequest,
+    ForgotPasswordResponse,
+)
+
+
+
+
 from app.modules.auth.schema import (
     LoginRequest,
     LoginResponse,
@@ -156,3 +169,36 @@ class AuthService:
         return LogoutResponse(
             message="Logged out successfully"
         )
+    
+
+    @staticmethod
+    def forgot_password(
+        db: Session,
+        request: ForgotPasswordRequest,
+    ) -> ForgotPasswordResponse:
+
+        try:
+            user = AuthRepository.get_user_by_email(
+                db,
+                request.email,
+            )
+
+            if user is None:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Email not registered",
+                )
+
+            reset_token = create_reset_password_token(
+                user.email,
+            )
+
+            return ForgotPasswordResponse(
+                message="Reset token generated successfully",
+                reset_token=reset_token,
+            )
+
+        except Exception:
+            import traceback
+            traceback.print_exc()
+            raise

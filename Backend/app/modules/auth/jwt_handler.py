@@ -15,6 +15,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 
+RESET_PASSWORD_EXPIRE_MINUTES = 15
 
 # ==========================================================
 # Create JWT Token
@@ -106,3 +107,25 @@ def verify_refresh_token(token: str):
         return None
 
     return payload
+
+
+
+
+
+def create_reset_password_token(email: str):
+
+    expire = datetime.now(timezone.utc) + timedelta(
+        minutes=RESET_PASSWORD_EXPIRE_MINUTES
+    )
+
+    payload = {
+        "sub": email,
+        "type": "reset_password",
+        "exp": expire,
+    }
+
+    return jwt.encode(
+        payload,
+        SECRET_KEY,
+        algorithm=ALGORITHM,
+    )
