@@ -14,6 +14,19 @@ class LoginRequest(BaseModel):
 
 
 # -------------------------
+# refresh Request
+# -------------------------
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
+
+
+class RefreshTokenResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str
+
+# -------------------------
 # User Information
 # -------------------------
 class UserResponse(BaseModel):
@@ -37,6 +50,7 @@ class UserResponse(BaseModel):
 class LoginResponse(BaseModel):
     access_token: str
     token_type: str = "Bearer"
+    refresh_token: str
     user: UserResponse
 
 
@@ -47,3 +61,11 @@ class TokenPayload(BaseModel):
     sub: str
     role: str
     exp: int
+
+# -------------------------
+# LOGOUT
+# -------------------------
+
+class LogoutResponse(BaseModel):
+    message: str
+    

@@ -3,9 +3,15 @@ from sqlalchemy.orm import Session
 
 from app.modules.auth.captcha import generate_captcha
 
-
+from app.modules.auth.schema import (
+    LoginRequest,
+    LoginResponse,
+    LogoutResponse,
+    RefreshTokenRequest,
+    RefreshTokenResponse,
+)
 from app.database.database import get_db
-from app.modules.auth.schema import LoginRequest, LoginResponse
+
 from app.modules.auth.service import AuthService
 
 router = APIRouter(
@@ -44,3 +50,31 @@ def login(
     )
 
 
+
+
+@router.post(
+    "/refresh",
+    response_model=RefreshTokenResponse,
+)
+def refresh_token(
+    request: RefreshTokenRequest,
+    db: Session = Depends(get_db),
+):
+    return AuthService.refresh_access_token(
+        db,
+        request.refresh_token,
+    )
+
+
+
+@router.post(
+    "/logout",
+    response_model=LogoutResponse,
+    summary="User Logout",
+)
+def logout():
+    """
+    Logout user.
+    Frontend should remove stored JWT tokens.
+    """
+    return AuthService.logout()
