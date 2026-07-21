@@ -1,0 +1,52 @@
+:root {
+    --falcon-primary: #732269;
+    --falcon-primary-dark: #6a1c6d;
+    --falcon-body-bg: #edf2f9;
+    --falcon-link-hover-color: #2dd4bf;
+    --falcon-navbar-bg: #7e2081;
+    --falcon-border-color: #d8e2ef;
+    --falcon-white: #fff;
+}
+
+/* Reduce base font size to make the overall UI more compact */
+html {
+    font-size: 17px;
+}
+
+body {
+    font-family: system-ui, -apple-system, "Segoe UI", Inter, Roboto, Arial,
+        sans-serif;
+    background-color: var(--falcon-body-bg) !important;
+}
+
+/* Override React-Bootstrap colors */
+.btn-primary {
+    background-color: var(--falcon-primary) !important;
+    border-color: var(--falcon-primary) !important;
+    color: var(--falcon-white) !important;
+}
+
+.btn-primary:hover {
+    background-color: var(--falcon-primary-dark) !important;
+    border-color: var(--falcon-primary-dark) !important;
+}
+
+.btn-outline-secondary:hover {
+    background-color: #f0e6f0 !important;
+}
+
+.text-primary {
+    color: var(--falcon-primary) !important;
+}
+
+.card-header {
+    background-color: var(--falcon-white) !important;
+    color: var(--falcon-primary) !important;
+    font-weight: 700;
+    border-bottom: 1px solid var(--falcon-border-color);
+}
+
+.data-table thead tr th {
+    background-color: var(--falcon-primary) !important;
+    color: var(--falcon-white) !important
+}

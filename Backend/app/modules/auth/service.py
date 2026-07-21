@@ -1,46 +1,27 @@
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.modules.auth.captcha import verify_captcha
+from app.modules.auth.constants import ACTIVE
 from app.modules.auth.jwt_handler import (
     create_access_token,
     create_refresh_token,
+    create_reset_password_token,
     verify_refresh_token,
     verify_reset_password_token,
 )
-
-
-
-
-
-
 from app.modules.auth.recaptcha import verify_recaptcha
-
-
-
-from app.modules.auth.jwt_handler import create_reset_password_token
 from app.modules.auth.schema import (
     ForgotPasswordRequest,
     ForgotPasswordResponse,
-
-
-    ResetPasswordRequest,
-    ResetPasswordResponse,
-
-)
-
-
-
-
-from app.modules.auth.schema import (
     LoginRequest,
     LoginResponse,
+    LogoutResponse,
     RefreshTokenResponse,
+    ResetPasswordRequest,
+    ResetPasswordResponse,
     UserResponse,
 )
-from app.modules.auth.schema import LogoutResponse
-
-from app.modules.auth.constants import ACTIVE
-from app.modules.auth.captcha import verify_captcha
 from app.modules.auth.repository import AuthRepository
 from app.modules.auth.security import (
     verify_password,

@@ -1,0 +1,25 @@
+.purple-bg {
+    background-color: var(--falcon-navbar-bg);
+}
+
+.purple-nav .nav-link {
+    color: white !important;
+    font-weight: 600;
+    font-size: 0.83333rem;
+    transition: color 0.2s ease-in-out;
+}
+
+.purple-nav .nav-link:hover,
+.purple-nav .nav-link.active {
+    color: var(--falcon-link-hover-color) !important;
+}
+
+/* 
+  react-bootstrap renders dropdown menus at the root of the body, 
+  so this style is global for dropdown-items.
+*/
+.dropdown-menu .dropdown-item:hover,
+.dropdown-menu .dropdown-item:focus {
+    color: #7e2081; /* Purple text on hover */
+    background-color: #f0e6f0; /* Light purple background on hover */
+}
