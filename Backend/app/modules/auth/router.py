@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
+
 from app.modules.auth.captcha import generate_captcha
 
 
@@ -15,7 +16,7 @@ from app.modules.auth.schema import (
      ResetPasswordRequest,
     ResetPasswordResponse,
 )
-from app.database.database import get_db
+from app.database.session import get_db
 
 from app.modules.auth.service import AuthService
 

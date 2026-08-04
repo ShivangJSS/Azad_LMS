@@ -1,20 +1,36 @@
-import React from 'react';
+import React from "react";
 
 export default function Footer() {
     return (
-        <footer className="relative py-3 mt-3" style={{ backgroundColor: '#732269' }}>
-            <div className="container-fluid mx-auto px-4">
-                <div className="flex flex-col sm:flex-row items-center justify-between text-sm">
-                    <div className="text-center sm:text-left mb-2 sm:mb-0">
-                        <p className="mb-0 text-white">© 2025 Azad Foundation. All Rights Reserved.</p>
-                    </div>
-                    <div className="text-center sm:text-right">
-                        <p className="mb-0 text-white">
-                            Powered by: <a href="https://www.indevconsultancy.com/" className="text-blue-300 hover:text-blue-200" target="_blank" rel="noopener noreferrer">Indev Consultancy Pvt. Ltd.</a>
-                        </p>
-                    </div>
+        <footer className="w-full bg-[#344050] mt-auto">
+
+            <div className="w-full px-[16px]">
+
+                <div className="h-[62px] flex flex-col sm:flex-row items-center justify-between">
+
+                    {/* LEFT */}
+                    <p className="m-0 text-[14px] leading-[21px] font-normal !text-white">
+                        © 2025 Azad Foundation. All Rights Reserved.
+                    </p>
+
+                    {/* RIGHT */}
+                    <p className="m-0 text-[14px] leading-[21px] font-normal !text-white">
+                        Powered by:{" "}
+
+                        <a
+                            href="https://www.indevconsultancy.com/"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-normal !text-[#00d4c7] !no-underline hover:!text-[#00d4c7]"
+                        >
+                            Indev Consultancy Pvt. Ltd.
+                        </a>
+                    </p>
+
                 </div>
+
             </div>
+
         </footer>
     );
 }

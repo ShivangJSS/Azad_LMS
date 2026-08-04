@@ -1,15 +1,19 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import App from "./App";
 import { BrowserRouter } from "react-router-dom";
+import { LoadingProvider } from "./components/common/LoadingContext";
+import App from "./App";
 import "./assets/styles/theme.css";
+import "../tailwind.config.js";
 
 import "./index.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
+    <LoadingProvider>
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </LoadingProvider>
   </React.StrictMode>
 );

@@ -1,7 +1,14 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict
 
-from app.common.enums import UserRole
+from app.common.enums import (
+    UserRole,
+    Status,
+)
 
+
+# ==========================================
+# Request Schemas
+# ==========================================
 
 class CreateUserRequest(BaseModel):
     name: str
@@ -10,11 +17,29 @@ class CreateUserRequest(BaseModel):
     role: UserRole
 
 
-class UserResponse(BaseModel):
+class UpdateUserRequest(BaseModel):
+    name: str | None = None
+    email: EmailStr | None = None
+    role: UserRole | None = None
+    status: Status | None = None
+
+
+# ==========================================
+# Response Schemas
+# ==========================================
+
+class UserBaseResponse(BaseModel):
     id: int
     name: str
-    email: str
+    email: EmailStr
     role: str
+    responsibility: str | None = None
+    status: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(
+        from_attributes=True
+    )
+
+
+class DeleteUserResponse(BaseModel):
+    message: str

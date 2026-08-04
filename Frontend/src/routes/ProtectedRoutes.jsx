@@ -1,15 +1,35 @@
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 
-export default function ProtectedRoute({ children }) {
+export default function ProtectedRoute({
+    children,
+    allowedRoles,
+}) {
+    const location = useLocation();
+
     const token = localStorage.getItem("access_token");
 
-    console.log("ProtectedRoute Token:", token);
-
     if (!token) {
-        console.log("Redirecting to Login...");
-        return <Navigate to="/Login" replace />;
+        return (
+            <Navigate
+                to="/login"
+                replace
+                state={{ from: location }}
+            />
+        );
     }
 
-    console.log("Access Granted");
+    // Permission check
+    if (allowedRoles) {
+        const userPermissions = JSON.parse(
+            localStorage.getItem("permissions") || "[]"
+        );
+
+        const hasPermission = userPermissions.includes(allowedRoles);
+
+        if (!hasPermission) {
+            return <Navigate to="/unauthorized" replace />;
+        }
+    }
+
     return children;
 }

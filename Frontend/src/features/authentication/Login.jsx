@@ -11,7 +11,7 @@ import slide2 from "../../assets/images/slide-banner-2.png";
 import slide3 from "../../assets/images/slide-banner-3.png";
 import forgotpassword from "./ForgotPassword";
 import NotFound from "./NotFound";
-import { getCaptcha, loginUser } from "../../config/AuthApi";
+import { getCaptcha, loginUser } from "../../api/AuthApi";
 import "swiper/css";
 
 export default function Login() {
@@ -76,6 +76,7 @@ export default function Login() {
             localStorage.setItem("access_token", response.access_token);
             localStorage.setItem("refresh_token", response.refresh_token);
             localStorage.setItem("user", JSON.stringify(response.user));
+            localStorage.setItem("userRole", response.user.role);
             // Redirect
             navigate("/dashboard");
 
@@ -83,7 +84,19 @@ export default function Login() {
         } catch (error) {
             console.log("Status:", error.response?.status);
             console.log("Response:", error.response?.data);
-            setMessage(error.response?.data?.detail || "Login Failed");
+
+            const detail = error.response?.data?.detail;
+            let errMsg = "Login Failed";
+
+            if (typeof detail === "string") {
+                errMsg = detail;
+            } else if (Array.isArray(detail) && detail.length > 0) {
+                errMsg = detail[0]?.msg || "Login Failed";
+            } else if (detail && typeof detail === "object") {
+                errMsg = JSON.stringify(detail);
+            }
+
+            setMessage(errMsg);
             await loadCaptcha();
         }
     };
@@ -95,7 +108,7 @@ export default function Login() {
 
                 <div className="w-full max-w-md lg:max-w-6xl bg-white rounded-lg shadow-2xl overflow-hidden border-grey-500 outline outline-[#81202022]">
 
-                    <div className="flex flex-col lg:flex-row">
+                    <div className="flex flex-col lg:flex-row lg:h-[602px]">
 
                         {/* Left */}
 
@@ -134,7 +147,7 @@ export default function Login() {
 
                         {/* Right */}
 
-                        <div className="w-full lg:w-1/2 flex items-center justify-center">
+                        <div className="w-full lg:w-1/2 flex items-center justify-center lg:overflow-y-auto">
 
                             <div className="grow p-6 sm:p-8 md:p-12 w-full">
 
@@ -152,23 +165,23 @@ export default function Login() {
 
                                     <hr className="my-6 border-gray-300" />
                                     {message && (
-                                        <div className="alert alert-danger">
+                                        <div className="bg-red-100 text-red-700 border border-red-300 rounded-md px-4 py-2 mb-4 text-sm">
                                             {message}
                                         </div>
                                     )}
 
                                     <form className="space-y-1" onSubmit={handleSubmit(onSubmit)}>
                                         <div className="mb-2">
-                                            <label htmlFor="username" class="form-label">Username <span class="text-danger">*</span></label>
-                                            <input type="text" className={`form-control ${errors.username ? 'border-red-500' : ''}`}
+                                            <label htmlFor="username" className="form-label">Username <span className="text-danger">*</span></label>
+                                            <input type="text" id="username" className={`form-control ${errors.username ? 'border-red-500' : ''}`}
                                                 {...register("username", { required: "Username is required" })}
                                                 autoFocus
                                                 placeholder="Enter username"
                                             />
                                         </div>
                                         <div className="mb-2">
-                                            <label htmlFor="password" class="form-label" for="password">Password <span class="text-danger">*</span></label>
-                                            <div class="input-group auth-pass-inputgroup">
+                                            <label htmlFor="pwd" className="form-label">Password <span className="text-danger">*</span></label>
+                                            <div className="input-group auth-pass-inputgroup">
                                                 <input type={showPassword ? "text" : "password"} className={`form-control border-end-0 ${errors.password ? 'border-red-500' : ''}`}
                                                     autoFocus
                                                     id="pwd"
@@ -177,13 +190,13 @@ export default function Login() {
                                                     aria-describedby="togglePassword"
                                                     {...register("password", { required: "Password is required" })}
                                                 />
-                                                <button class="btn btn-primary shadow-none ms-0  bg-[#7e2081] rounded-r-lg hover:bg-[#6a1c6d] focus:outline-none focus:ring-2 focus:ring-[#7e2081]" type="button" onClick={() => setShowPassword((prev) => !prev)} id="togglePassword">{showPassword ? <FaEyeSlash /> : <FaEye />}</button>
+                                                <button className="btn btn-primary shadow-none ms-0  bg-[#7e2081] rounded-r-lg hover:bg-[#6a1c6d] focus:outline-none focus:ring-2 focus:ring-[#7e2081]" type="button" onClick={() => setShowPassword((prev) => !prev)} id="togglePassword">{showPassword ? <FaEyeSlash /> : <FaEye />}</button>
                                             </div>
                                             {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>}
                                         </div>
 
                                         <div className="mb-2">
-                                            <label htmlFor="captcha" class="form-label">Solve: <strong>{captchaQuestion}</strong></label>
+                                            <label htmlFor="captcha" className="form-label">Solve: <strong>{captchaQuestion}</strong></label>
                                             <input
                                                 type="number"
                                                 id="captcha"
@@ -196,7 +209,7 @@ export default function Login() {
                                             />
                                         </div>
 
-                                        <button type="submit" class="btn btn-primary w-100 py-2  bg-[#7e2081] text-white font-medium rounded-lg hover:bg-[#6a1c6d] disabled:opacity-50 transition-all duration-300" id="loginBtn" disabled={isSubmitting}>
+                                        <button type="submit" className="btn btn-primary w-100 py-2  bg-[#7e2081] text-white font-medium rounded-lg hover:bg-[#6a1c6d] disabled:opacity-50 transition-all duration-300" id="loginBtn" disabled={isSubmitting}>
                                             {isSubmitting ? (
                                                 <div className="flex items-center justify-center">
                                                     <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -206,14 +219,14 @@ export default function Login() {
                                                     Please wait...
                                                 </div>
                                             ) : (
-                                                <span class="btn-text">Login</span>
+                                                <span className="btn-text">Login</span>
                                             )}
                                         </button>
-                                        <span class="spinner-border spinner-border-sm ms-2 d-none" role="status" aria-hidden="true"></span>
+                                        <span className="spinner-border spinner-border-sm ms-2 d-none" role="status" aria-hidden="true"></span>
 
-                                        <div class=" mt-3 text-center">
-                                            <p class="text-muted">
-                                                {/* <a href="/forgot-password" class="text-primary text-decoration-none fw-semibold">Forgot password?
+                                        <div className=" mt-3 text-center">
+                                            <p className="text-muted">
+                                                {/* <a href="/forgot-password" className="text-primary text-decoration-none fw-semibold">Forgot password?
                                                 </a> */}
                                                 {/* <Link to="/forgot-password" className="text-primary text-decoration-none fw-semibold">Forgot password?</Link>    */}
 
@@ -221,19 +234,19 @@ export default function Login() {
 
                                             </p>
                                         </div>
-                                        <div class=" text-center">
-                                            <small class="text-muted ">Technology Partner: <a href="https://www.indevconsultancy.com" target="_blank" class="text-primary text-decoration-none">Indev Consultancy Pvt Ltd.</a></small>
+                                        <div className=" text-center">
+                                            <small className="text-muted ">Technology Partner: <a href="https://www.indevconsultancy.com" target="_blank" className="text-primary text-decoration-none">Indev Consultancy Pvt Ltd.</a></small>
                                         </div>
-                                        <div class="text-center">
-                                            <ul class="mb-0 d-flex gap-4 flex-center p-0 text-500 justify-center list-unstyled">
+                                        <div className="text-center">
+                                            <ul className="mb-0 d-flex gap-4 flex-center p-0 text-500 justify-center list-unstyled">
                                                 <small>
-                                                    <a href="http://127.0.0.1:8000/disclaimer_Azad_LMS" target="_blank" class="text-decoration-none text-primary">
+                                                    <a href="http://127.0.0.1:8000/disclaimer_Azad_LMS" target="_blank" className="text-decoration-none text-primary">
                                                         Disclaimer
                                                     </a>
 
                                                 </small> |
 
-                                                <small><a href="http://127.0.0.1:8000/privacy_policy_azad_LMS" target="_blank" class="text-decoration-none text-primary">Privacy Policy</a></small>
+                                                <small><a href="http://127.0.0.1:8000/privacy_policy_azad_LMS" target="_blank" className="text-decoration-none text-primary">Privacy Policy</a></small>
                                             </ul>
                                         </div>
                                     </form>

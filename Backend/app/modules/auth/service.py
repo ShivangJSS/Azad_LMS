@@ -1,27 +1,35 @@
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.modules.auth.captcha import verify_captcha
-from app.modules.auth.constants import ACTIVE
+
 from app.modules.auth.jwt_handler import (
     create_access_token,
     create_refresh_token,
-    create_reset_password_token,
     verify_refresh_token,
     verify_reset_password_token,
 )
+
+
 from app.modules.auth.recaptcha import verify_recaptcha
+
+
+from app.modules.auth.jwt_handler import create_reset_password_token
 from app.modules.auth.schema import (
     ForgotPasswordRequest,
     ForgotPasswordResponse,
-    LoginRequest,
-    LoginResponse,
-    LogoutResponse,
-    RefreshTokenResponse,
     ResetPasswordRequest,
     ResetPasswordResponse,
+)
+
+
+from app.modules.auth.schema import (
+    LoginRequest,
+    LoginResponse,
+    RefreshTokenResponse,
     UserResponse,
 )
+from app.modules.auth.schema import LogoutResponse
+from app.modules.auth.captcha import verify_captcha
 from app.modules.auth.repository import AuthRepository
 from app.modules.auth.security import (
     verify_password,
@@ -62,7 +70,7 @@ class AuthService:
         # Step 3: Verify password
         if not verify_password(
             login_data.password,
-            user.password,
+            str(user.password),
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -73,11 +81,19 @@ class AuthService:
         access_token = create_access_token(
             {
                 "sub": str(user.id),
-                "email": user.email,
-                "role": str(user.role),
-                "state": user.state_lgd_code,
-                "district": user.district_lgd_code,
-                "centre": user.centre_id,
+                "email": str(user.email),
+                "role": str(user.role),  # Ensure role is string
+                "state": (
+                    str(user.state_lgd_code) if (user.state_lgd_code is not None) else ""
+                ),  # Convert to string if not None
+                "district": (
+                    str(user.district_lgd_code)
+                    if (user.district_lgd_code is not None)
+                    else ""
+                ),  # Convert to string if not None
+                "centre": (
+                    str(user.centre_id) if (user.centre_id is not None) else ""
+                ),  # Convert to string if not None
             }
         )
 
@@ -128,7 +144,7 @@ class AuthService:
             )
 
         # Step 4: Check status
-        if user.status != ACTIVE:
+        if str(user.status) != "1":
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="User account is inactive",
@@ -138,11 +154,19 @@ class AuthService:
         access_token = create_access_token(
             {
                 "sub": str(user.id),
-                "email": user.email,
+                "email": str(user.email),
                 "role": str(user.role),
-                "state": user.state_lgd_code,
-                "district": user.district_lgd_code,
-                "centre": user.centre_id,
+                "state": (
+                    str(user.state_lgd_code) if (user.state_lgd_code is not None) else ""
+                ),
+                "district": (
+                    str(user.district_lgd_code)
+                    if (user.district_lgd_code is not None)
+                    else ""
+                ),
+                "centre": (
+                    str(user.centre_id) if (user.centre_id is not None) else ""
+                ),
             }
         )
 
@@ -152,6 +176,7 @@ class AuthService:
             refresh_token=refresh_token,
             token_type="bearer",
         )
+
     @staticmethod
     def logout() -> LogoutResponse:
         """
@@ -160,9 +185,7 @@ class AuthService:
         Since JWT is stateless, the backend simply returns success.
         The frontend should delete the access token and refresh token.
         """
-        return LogoutResponse(
-            message="Logged out successfully"
-        )
+        return LogoutResponse(message="Logged out successfully")
 
     @staticmethod
     def forgot_password(
@@ -197,7 +220,7 @@ class AuthService:
         # Step 4: Generate reset password token
         reset_token = create_reset_password_token(user.email)
 
-            # Step 5: Return response
+        # Step 5: Return response
         return ForgotPasswordResponse(
             message="Reset token generated successfully.",
             reset_token=reset_token,

@@ -1,40 +1,98 @@
-from sqlalchemy import BigInteger, Column, DateTime, String
+from datetime import datetime
+
+from sqlalchemy import BigInteger, DateTime, String
+from sqlalchemy.orm import Mapped, mapped_column
+
 from app.database.database import Base
 
 
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(BigInteger, primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(
+        BigInteger,
+        primary_key=True,
+        index=True,
+    )
 
-    name = Column(String(255), nullable=False)
+    name: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
+    )
 
-    username = Column(String(255), nullable=True)
+    username: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
 
-    email = Column(String(255), unique=True, index=True, nullable=False)
+    email: Mapped[str] = mapped_column(
+        String(255),
+        unique=True,
+        index=True,
+        nullable=False,
+    )
 
-    email_verified_at = Column(DateTime, nullable=True)
+    email_verified_at: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        nullable=True,
+    )
 
-    password = Column(String(255), nullable=False)
+    password: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
+    )
 
-    remember_token = Column(String(100), nullable=True)
+    remember_token: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+    )
 
-    api_token = Column(String(255), nullable=True)
+    api_token: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
 
-    role = Column(String(50), nullable=False)
+    role: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+    )
 
-    responsibility = Column(String(50), nullable=True)
+    responsibility: Mapped[str | None] = mapped_column(
+        String(50),
+        nullable=True,
+    )
 
-    state_lgd_code = Column(BigInteger, nullable=True)
+    state_lgd_code: Mapped[int | None] = mapped_column(
+        BigInteger,
+        nullable=True,
+    )
 
-    district_lgd_code = Column(BigInteger, nullable=True)
+    district_lgd_code: Mapped[int | None] = mapped_column(
+        BigInteger,
+        nullable=True,
+    )
 
-    block_lgd_code = Column(BigInteger, nullable=True)
+    block_lgd_code: Mapped[int | None] = mapped_column(
+        BigInteger,
+        nullable=True,
+    )
 
-    centre_id = Column(BigInteger, nullable=True)
+    centre_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        nullable=True,
+    )
 
-    status = Column(String(1), nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(1),
+        nullable=False,
+    )
 
-    created_at = Column(DateTime)
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        nullable=True,
+    )
 
-    updated_at = Column(DateTime)
+    updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        nullable=True,
+    )

@@ -1,12 +1,22 @@
+import os
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-DATABASE_URL = "postgresql+psycopg2://postgres:1234@localhost:5432/azadlms_dev_db"
+DB_USER = os.getenv("DB_USER", "postgres")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "1234")
+DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_PORT = os.getenv("DB_PORT", "5432")
+DB_NAME = os.getenv("DB_NAME", "azadlms_dev_db")
+
+DATABASE_URL = (
+    f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}" f"@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+)
 
 engine = create_engine(
     DATABASE_URL,
-    pool_pre_ping=True,   # Checks connection before using it
-    echo=False            # Change to True while debugging SQL queries
+    pool_pre_ping=True,
+    echo=False,
 )
 
 SessionLocal = sessionmaker(

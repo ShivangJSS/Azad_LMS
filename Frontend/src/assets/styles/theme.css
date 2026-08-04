@@ -14,8 +14,6 @@ html {
 }
 
 body {
-    font-family: system-ui, -apple-system, "Segoe UI", Inter, Roboto, Arial,
-        sans-serif;
     background-color: var(--falcon-body-bg) !important;
 }
 
