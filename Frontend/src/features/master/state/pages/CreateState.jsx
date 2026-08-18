@@ -59,7 +59,7 @@ export default function CreateState() {
         [navigate]
     );
 
-    const handleCancel = useCallback(() => navigate("/statesList"), [navigate]);
+    const handleCancel = useCallback(() => navigate("/master/states"), [navigate]);
 
     return (
         <AppLayout>

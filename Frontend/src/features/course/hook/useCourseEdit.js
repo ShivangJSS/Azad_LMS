@@ -65,13 +65,10 @@ const useCourseEdit = (id, languageId = 1) => {
             if (values.image instanceof File) {
                 formData.append("course_image", values.image);
             }
-            console.log("===== FormData =====");
 
             for (const [key, value] of formData.entries()) {
-                console.log(key, value);
             }
 
-            console.log("====================");
             const response = await updateCourse(
                 id,
                 languageId,

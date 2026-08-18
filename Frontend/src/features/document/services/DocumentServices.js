@@ -57,3 +57,36 @@ export const exportDocuments = async (params = {}) => {
     });
     return response.data;
 };
+// =========================================
+// Translation APIs
+// =========================================
+
+export const getTranslationForm = async (documentId) => {
+    const response = await API.get(
+        `/documents/${documentId}/translation/form`
+    );
+
+    return response.data;
+};
+
+export const getTranslation = async (documentId, languageId) => {
+    const response = await API.get(
+        `/documents/${documentId}/translation/${languageId}`
+    );
+
+    return response.data;
+};
+
+export const saveTranslation = async (documentId, payload) => {
+    const response = await API.post(
+        `/documents/${documentId}/translation/save`,
+        payload,
+        {
+            headers: {
+                "Content-Type": "multipart/form-data",
+            },
+        }
+    );
+
+    return response.data;
+};

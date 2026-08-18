@@ -41,7 +41,6 @@ export default function EditUser() {
                 role: data.role
             };
 
-            console.log("Payload:", payload);
 
             await updateUser(id, payload);
 
@@ -49,8 +48,6 @@ export default function EditUser() {
             navigate("/users/userlist");
 
         } catch (error) {
-            console.log(error.response?.data);
-            console.log(error.response.data.detail[0]); 
         } finally {
             setLoading(false);
         }

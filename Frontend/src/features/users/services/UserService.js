@@ -26,3 +26,8 @@ export const deleteUser = async (userId) => {
     const { data } = await API.delete(`/users/${userId}`);
     return data;
 };
+
+export const getCreatableRoles = async () => {
+    const { data } = await API.get("/users/creatable-roles");
+    return data;
+};

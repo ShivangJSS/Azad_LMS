@@ -66,7 +66,6 @@ export default function BatchView({ batchId }) {
             const data = await getBatchParticipants(batchId);
 
             setParticipants(Array.isArray(data) ? data : []);
-            console.log("Participants data:", data);
 
         } finally {
 

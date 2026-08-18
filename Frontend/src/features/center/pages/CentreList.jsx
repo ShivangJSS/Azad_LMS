@@ -410,7 +410,7 @@ export default function CenterList() {
 
         <AppLayout>
 
-            <div className="w-full flex items-center justify-between mb-[20px] px-3">
+            <div className="w-full flex items-center justify-between mb-[20px] px-3 ">
 
                 <div className="text-[20px]  font-medium text-[#344050] font-[Poppins]">
                     Centre Masters
@@ -421,7 +421,6 @@ export default function CenterList() {
                 {/* ================= FILTER BAR ================= */}
 
                 <div className="flex flex-wrap items-center gap-[12px]">
-
 
                     {/* STATE */}
 
@@ -529,7 +528,7 @@ export default function CenterList() {
                         <button
                             type="button"
                             onClick={handleSearch}
-                            className="flex-1 lg:flex-none lg:w-[130px] h-[38px] bg-[#732269] border border-[#732269] rounded-sm !text-white text-[14px] font-medium hover:opacity-90"
+                            className="flex-1 lg:flex-none lg:w-[130px] h-[38px] bg-[#732269] border-2 border-[#732269] !rounded-sm !text-white text-[14px] font-medium hover:opacity-90"
                         >
                             Search
                         </button>
@@ -537,7 +536,7 @@ export default function CenterList() {
                         <button
                             type="button"
                             onClick={handleReset}
-                            className="flex-1 lg:flex-none lg:w-[120px] h-[38px] bg-white border border-[#344050] rounded-sm text-[#344050] text-[14px] font-medium hover:bg-gray-50"
+                            className="flex-1 lg:flex-none lg:w-[120px] h-[38px] bg-white border-1 border-[#000000] !rounded-sm text-[#344050] text-[14px] font-medium hover:bg-gray-50"
                         >
                             Reset
                         </button>
@@ -561,7 +560,7 @@ export default function CenterList() {
 
                     <Link
                         to="/centres/create"
-                        className="inline-flex items-center h-[38px] px-[20px] bg-white border border-[#344050] rounded-sm text-[14px] font-bold !text-[#344050] no-underline hover:bg-gray-50"
+                        className="inline-flex items-center h-[38px] px-[20px] bg-white border border-[#344050] rounded-sm text-[14px] font-bold !text-[#344050] !no-underline hover:bg-gray-50"
                     >
                         +Add centre
                     </Link>

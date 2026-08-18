@@ -40,7 +40,6 @@ export default function useTable({
             return 0;
         });
 
-        console.log("Sorted:", result);
 
         return result;
     }, [filteredData, sortField, sortDirection]);

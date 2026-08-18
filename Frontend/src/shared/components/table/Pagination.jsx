@@ -13,7 +13,7 @@ export default function Pagination({
     }
 
     return (
-        <div className="flex gap-2">
+        <div className="flex ">
 
             <button
                 onClick={() => onPageChange(currentPage - 1)}
@@ -28,8 +28,8 @@ export default function Pagination({
                     key={page}
                     onClick={() => onPageChange(page)}
                     className={`px-3 py-1 rounded-sm border ${currentPage === page
-                            ? "bg-[#7b216f] text-white"
-                            : "hover:bg-gray-100"
+                        ? "bg-[#7b216f] text-white"
+                        : "hover:bg-gray-100"
                         }`}
                 >
                     {page}

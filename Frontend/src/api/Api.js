@@ -1,5 +1,7 @@
 import axios from "axios";
 
+import { startLoading, stopLoading } from "./loadingBus";
+
 const BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
 const API = axios.create({
@@ -10,8 +12,6 @@ const API = axios.create({
     timeout: 30000,
 });
 
-// Endpoints that must never trigger a refresh attempt: a 401   from these
-// means bad credentials or a dead session, not an expired access token.
 const AUTH_PATHS = ["/auth/login", "/auth/refresh", "/auth/logout"];
 
 const isAuthRequest = (url = "") =>
@@ -46,6 +46,9 @@ const forceLogout = () => {
 
 API.interceptors.request.use(
     (config) => {
+        // Drive the global loading indicator for every request.
+        startLoading();
+
         // Let the browser add the multipart boundary when a request uploads files.
         // The API client's JSON default would otherwise make FastAPI treat all
         // multipart fields as missing and respond with 422.
@@ -67,9 +70,16 @@ API.interceptors.request.use(
 // ================= Response Interceptor =================
 
 API.interceptors.response.use(
-    (response) => response,
+    (response) => {
+        stopLoading();
+        return response;
+    },
 
     async (error) => {
+        // Balance the startLoading() from this request's request-interceptor.
+        // (A refresh-token retry is a fresh request with its own start/stop.)
+        stopLoading();
+
         const originalRequest = error.config;
 
         const shouldAttemptRefresh =

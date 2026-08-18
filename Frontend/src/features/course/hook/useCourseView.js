@@ -16,8 +16,6 @@ const useCourseView = (id, languageId) => {
             const response = await getCourseById(id, languageId);
 
             const courseData = response.data;
-            console.log("Course Data:", courseData);
-            console.log("Image URL:", getCourseImageUrl(courseData.course_image));
 
             setCourse({
                 ...courseData,

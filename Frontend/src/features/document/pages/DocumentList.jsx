@@ -4,11 +4,12 @@ import toast from "react-hot-toast";
 import AppLayout from "../../../components/layout/AppLayout";
 import Breadcrumbs from "../../../shared/components/breadcrumbs/Breadcrumbs";
 import Pagination from "../../../shared/components/table/Pagination";
+import LanguageTabs from "../../../shared/components/language/LanguageTabs";
 
 import DocumentFilters from "../components/DocumentFilters";
 import DocumentTable from "../components/DocumentTable";
-import ExportButton from "../components/ExportButton";
-import LanguageTabs from "../components/LanguageTabs";
+import ExportButton from "../../../shared/components/table/ExportButton";
+import { exportDocuments } from "../services/DocumentServices";
 
 import useDocuments from "../hook/useDocuments";
 
@@ -23,6 +24,7 @@ export default function DocumentList() {
 
     const {
         language,
+        languageKey,
         languages,
         docTypes,
         documents,
@@ -33,6 +35,7 @@ export default function DocumentList() {
         currentPage,
         loading,
         changeLanguage,
+        changeLanguageByKey,
         changeFilter,
         applyFilters,
         resetFilters,
@@ -71,9 +74,8 @@ export default function DocumentList() {
             </div>
 
             <LanguageTabs
-                languages={languages}
-                active={language}
-                onChange={changeLanguage}
+                activeTab={languageKey}
+                onChange={changeLanguageByKey}
             />
 
             <div className="w-full rounded-b-[8px] border border-t-0 border-[#D8E2EF] bg-white p-[20px]">
@@ -105,16 +107,23 @@ export default function DocumentList() {
                     loading={loading}
                     currentPage={currentPage}
                     onView={(doc) =>
-                        navigate(`/documents/${doc.doc_id}`)
+                        navigate(`/documents/${doc.doc_id}?tab=${languageKey}`)
                     }
                     onEdit={(doc) =>
-                        navigate(`/documents/edit/${doc.doc_id}`)
+                        navigate(`/documents/edit/${doc.doc_id}?tab=${languageKey}`)
                     }
                     onDelete={handleDelete}
                 />
 
                 <div className="mt-[20px] flex flex-wrap items-center justify-between gap-[12px]">
-                    <ExportButton params={{ language, ...appliedFilters }} />
+                    <ExportButton
+                        exportFunction={exportDocuments}
+                        params={{
+                            language,
+                            ...appliedFilters,
+                        }}
+                        filename="documents.xlsx"
+                    />
 
                     <Pagination
                         currentPage={currentPage}

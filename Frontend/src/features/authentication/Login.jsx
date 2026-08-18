@@ -28,16 +28,13 @@ export default function Login() {
 
     const loadCaptcha = async () => {
         try {
-            console.log("Loading Captcha...");
 
             const response = await getCaptcha();
 
-            console.log("Captcha Response:", response);
 
             setCaptchaQuestion(response.question);
             setCaptchaToken(response.captcha_token);
 
-            console.log("Token Saved:", response.captcha_token);
 
         } catch (error) {
             console.error(error);
@@ -45,7 +42,6 @@ export default function Login() {
     };
 
     useEffect(() => {
-        console.log("Component Mounted");
         loadCaptcha();
     }, []);
     const {
@@ -57,7 +53,6 @@ export default function Login() {
     } = useForm();
 
     const onSubmit = async (data) => {
-        console.log(data);
         let payload;
         try {
             payload = {
@@ -66,12 +61,9 @@ export default function Login() {
                 captcha_answer: Number(data.captcha),
                 captcha_token: captchaToken,
             };
-            console.log("Payload:", payload);
 
             const response = await loginUser(payload);
 
-            console.log("Response:", response);
-            console.log("Login Success:", response);
             // Save JWT
             localStorage.setItem("access_token", response.access_token);
             localStorage.setItem("refresh_token", response.refresh_token);
@@ -82,8 +74,6 @@ export default function Login() {
 
 
         } catch (error) {
-            console.log("Status:", error.response?.status);
-            console.log("Response:", error.response?.data);
 
             const detail = error.response?.data?.detail;
             let errMsg = "Login Failed";

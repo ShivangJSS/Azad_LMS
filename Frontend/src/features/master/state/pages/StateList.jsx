@@ -85,14 +85,12 @@ export default function StateList() {
     // DELETE STATE
     // =====================================================
     const performDelete = async (stateId) => {
-        console.log("Delete clicked:", stateId);
 
         const deleteToast = toast.loading("Deleting state...");
 
         try {
             const response = await deleteState(stateId);
 
-            console.log("Delete Response:", response);
 
             toast.success("State deleted successfully", {
                 id: deleteToast,
@@ -100,9 +98,6 @@ export default function StateList() {
 
             await fetchStates();
         } catch (error) {
-            console.log("Status:", error.response?.status);
-            console.log("Data:", error.response?.data);
-            console.log(error);
 
             toast.error(
                 error.response?.data?.detail ||
@@ -195,7 +190,7 @@ export default function StateList() {
                             type="text"
                             value={stateName}
                             onChange={(e) => setStateName(e.target.value)}
-                            placeholder="Search By State Name" 
+                            placeholder="Search By State Name"
                             className="w-full h-[38px] border border-gray-300 rounded-md px-4 text-[14px] text-gray-700 placeholder:text-gray-400  shadow-inner focus:outline-none focus:ring-1 focus:ring-[#7e2081]"
                         />
 
@@ -203,7 +198,7 @@ export default function StateList() {
 
                         <select
                             value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value)} 
+                            onChange={(e) => setStatusFilter(e.target.value)}
                             className="w-full h-[38px] border border-gray-300 rounded-md px-3 text-[14px] text-gray-700 bg-white focus:outline-none focus:ring-1 shadow-inner focus:ring-[#7e2081]"
                         >
                             <option value="">Select Status</option>
@@ -248,7 +243,7 @@ export default function StateList() {
                         <button
                             type="button"
                             onClick={() => navigate("/master/states/create")}
-                            className=" border border-gray-400 text-[14px] font-medium text-gray-700 rounded-sm px-4 py-1  hover:bg-gray-50 transition-colors"
+                            className="text-[14px] font-medium text-gray-700 !rounded-sm px-4 py-1  border-1 border-[#171616e3] hover:bg-gray-50 transition-colors"
                         >
                             + Add State
                         </button>
@@ -307,7 +302,7 @@ export default function StateList() {
                                 {/* ACTION */}
 
                                 <td className="border border-[#dee2e6] px-3 py-2">
-                                    <div className="flex items-center justify-center gap-2">
+                                    <div className="flex items-center justify-center gap-2 ">
                                         <button
                                             type="button"
                                             onClick={() =>
@@ -315,17 +310,17 @@ export default function StateList() {
                                                     `/master/states/edit/${state.state_lgd_code}`
                                                 )
                                             }
-                                            className="bg-[#732269] hover:bg-[#69186c] text-white text-[13px] font-semibold px-3 py-[5px] rounded-sm transition-colors"
+                                            className="bg-[#732269] hover:bg-[#69186c] text-white text-[13px] font-semibold px-4 py-1 !rounded-sm transition-colors"
                                         >
                                             Edit
                                         </button>
 
                                         <button
                                             type="button"
-                                            onClick={() => 
+                                            onClick={() =>
                                                 handleDelete(state.state_lgd_code)
                                             }
-                                            className="bg-[#dc3545] hover:bg-[#c82333] text-white text-[13px] font-semibold px-3 py-[5px] rounded-sm transition-colors"
+                                            className="bg-[#dc3545] hover:bg-[#c82333] text-white text-[13px] font-semibold px-3 py-1 !rounded-sm transition-colors"
                                         >
                                             Delete
                                         </button>

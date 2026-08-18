@@ -139,6 +139,7 @@ export default function StateForm({
                     <button
                         type="button"
                         onClick={onCancel}
+                        navigate="/master/states"
                         className="h-[38px] rounded-sm border border-[#D8E2EF] bg-white px-7 text-[14px] font-medium text-[#344050] hover:bg-gray-50"
                     >
                         Cancel

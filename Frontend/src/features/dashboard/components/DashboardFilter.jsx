@@ -1,47 +1,140 @@
-import React, { useState } from "react";
+import { useEffect, useState } from "react";
 import { FaSearch, FaRedo } from "react-icons/fa";
 
-const dummyStates = ["Delhi", "Rajasthan", "Tamil Nadu", "West Bengal"];
-const dummyDistricts = ["District 1", "District 2", "District 3"];
-const dummyCentres = ["Centre 1", "Centre 2", "Centre 3"];
+import {
+    getDashboardStates,
+    getDashboardDistricts,
+    getDashboardCentres,
+} from "../services/DashboardFilterService";
 
-export default function DashboardFilter() {
-    const [state, setState] = useState("");
-    const [district, setDistrict] = useState("");
-    const [centre, setCentre] = useState("");
+export default function DashboardFilter({
+    filters,
+    setFilters,
+}) {
+
+    const [states, setStates] = useState([]);
+    const [districts, setDistricts] = useState([]);
+    const [centres, setCentres] = useState([]);
+
+    const [stateId, setStateId] = useState("");
+    const [districtId, setDistrictId] = useState("");
+    const [centreId, setCentreId] = useState("");
+
     const [fromDate, setFromDate] = useState("");
     const [toDate, setToDate] = useState("");
 
+    useEffect(() => {
+        loadStates();
+    }, []);
+
+    useEffect(() => {
+
+        if (!stateId) {
+            setDistricts([]);
+            setCentres([]);
+            return;
+        }
+
+        loadDistricts();
+
+    }, [stateId]);
+
+    useEffect(() => {
+
+        if (!districtId) {
+            setCentres([]);
+            return;
+        }
+
+        loadCentres();
+
+    }, [districtId]);
+
+    const loadStates = async () => {
+        try {
+
+            const response = await getDashboardStates();
+
+            setStates(response);
+
+        } catch (error) {
+        }
+    };
+
+    const loadDistricts = async () => {
+
+        try {
+
+            const response =
+                await getDashboardDistricts(stateId);
+
+            setDistricts(response);
+
+        } catch (error) {
+        }
+
+    };
+
+    const loadCentres = async () => {
+
+        try {
+
+            const response =
+                await getDashboardCentres(
+                    stateId,
+                    districtId
+                );
+
+            setCentres(response);
+
+        } catch (error) {
+        }
+
+    };
+
     const handleSearch = () => {
-        console.log({ state, district, centre, fromDate, toDate });
+
+        setFilters({
+            state_id: stateId || undefined,
+            district_id: districtId || undefined,
+            centre_id: centreId || undefined,
+            from_date: fromDate || undefined,
+            to_date: toDate || undefined,
+        });
+
     };
 
     const handleReset = () => {
-        setState("");
-        setDistrict("");
-        setCentre("");
+
+        setStateId("");
+        setDistrictId("");
+        setCentreId("");
+
         setFromDate("");
         setToDate("");
+
+        setDistricts([]);
+        setCentres([]);
+
+        setFilters({});
+
     };
 
     const panelStyle = {
         width: "100%",
         backgroundColor: "#F9F7FB",
         border: "0.8px solid #EDE8F0",
-        borderRadius: "20px",
-        padding: "16px 15px",
+        borderRadius: "12px",
+        padding: "10px 12px",
         boxShadow:
             "0 1px 3px 0 rgba(107,45,91,0.06), 0 1px 2px 0 rgba(107,45,91,0.04)",
-
     };
 
-    // Bootstrap .form-control / .form-select equivalent
     const controlStyle = {
         width: "100%",
-        height: "38px",
-        padding: "0.375rem 0.75rem",
-        fontSize: "1rem",
-        lineHeight: "1.5",
+        height: "34px",
+        padding: "0 0.65rem",
+        fontSize: "0.78rem",
         color: "#2D2235",
         backgroundColor: "#fff",
         border: "1px solid #D8E2EF",
@@ -49,7 +142,6 @@ export default function DashboardFilter() {
         outline: "none",
     };
 
-    // .form-select = control + Bootstrap chevron + right padding
     const selectStyle = {
         ...controlStyle,
         paddingRight: "2.25rem",
@@ -62,18 +154,17 @@ export default function DashboardFilter() {
     };
 
     const btnBase = {
-        height: "38px",
+        height: "34px",
         display: "inline-flex",
         alignItems: "center",
         justifyContent: "center",
-        gap: "6px",
-        padding: "0 1.25rem",
-        fontSize: "0.875rem",
+        gap: "5px",
+        padding: "0 1rem",
+        fontSize: "0.75rem",
         fontWeight: 600,
         whiteSpace: "nowrap",
         borderRadius: "0.375rem",
         cursor: "pointer",
-        transition: "all .2s ease",
     };
 
     const searchStyle = {
@@ -85,90 +176,168 @@ export default function DashboardFilter() {
 
     const resetStyle = {
         ...btnBase,
-        backgroundColor: "transparent",
+        backgroundColor: "#fff",
         border: "1px solid #6B2D5B",
         color: "#6B2D5B",
     };
 
     return (
-        <div className="p-4 w-full">
-            <div className="w-full" style={panelStyle}>
-                <div className="flex flex-wrap items-center" style={{ gap: "16px" }}>
+        <div className="w-full px-4">
 
-                    <div className="flex-1 min-w-[150px]">
+            <div style={panelStyle}>
+
+                <div
+                    className="flex flex-wrap items-center gap-4"
+                >
+
+                    {/* State */}
+
+                    <div className="flex-1 min-w-[170px]">
+
                         <select
-                            value={state}
-                            onChange={(e) => setState(e.target.value)}
+                            value={stateId}
                             style={selectStyle}
+                            onChange={(e) => {
+
+                                setStateId(e.target.value);
+                                setDistrictId("");
+                                setCentreId("");
+
+                            }}
                         >
-                            <option value="">Select State</option>
-                            {dummyStates.map((item) => (
-                                <option key={item} value={item}>{item}</option>
+
+                            <option key="state-placeholder" value="">
+                                Select State
+                            </option>
+
+                            {states.map((state) => (
+                                <option
+                                    key={state.state_lgd_code}
+                                    value={state.state_lgd_code}
+                                >
+                                    {state.state_name}
+                                </option>
                             ))}
+
                         </select>
+
                     </div>
 
-                    <div className="flex-1 min-w-[150px]">
+                    {/* District */}
+
+                    <div className="flex-1 min-w-[170px]">
+
                         <select
-                            value={district}
-                            onChange={(e) => setDistrict(e.target.value)}
+                            value={districtId}
                             style={selectStyle}
+                            onChange={(e) => {
+
+                                setDistrictId(e.target.value);
+                                setCentreId("");
+
+                            }}
                         >
-                            <option value="">Select District</option>
-                            {dummyDistricts.map((item) => (
-                                <option key={item} value={item}>{item}</option>
+
+                            <option key="district-placeholder" value="">
+                                Select District
+                            </option>
+
+                            {districts.map((district) => (
+                                <option
+                                    key={district.district_lgd_code}
+                                    value={district.district_lgd_code}
+                                >
+                                    {district.district_name}
+                                </option>
                             ))}
+
                         </select>
+
                     </div>
 
-                    <div className="flex-1 min-w-[150px]">
+                    {/* Centre */}
+
+                    <div className="flex-1 min-w-[170px]">
+
                         <select
-                            value={centre}
-                            onChange={(e) => setCentre(e.target.value)}
+                            value={centreId}
                             style={selectStyle}
+                            onChange={(e) =>
+                                setCentreId(e.target.value)
+                            }
                         >
-                            <option value="">Select Centre</option>
-                            {dummyCentres.map((item) => (
-                                <option key={item} value={item}>{item}</option>
+
+                            <option key="centre-placeholder" value="">
+                                Select Centre
+                            </option>
+
+                            {centres.map((centre) => (
+                                <option
+                                    key={centre.centre_id}
+                                    value={centre.centre_id}
+                                >
+                                    {centre.centre_name}
+                                </option>
                             ))}
+
                         </select>
+
                     </div>
 
-                    <div className="flex-1 min-w-[150px]">
+                    {/* From Date */}
+
+                    <div className="flex-1 min-w-[160px]">
+
                         <input
                             type="date"
                             value={fromDate}
-                            onChange={(e) => setFromDate(e.target.value)}
                             style={controlStyle}
+                            onChange={(e) =>
+                                setFromDate(e.target.value)
+                            }
                         />
+
                     </div>
 
-                    <div className="flex-1 min-w-[150px]">
+                    {/* To Date */}
+
+                    <div className="flex-1 min-w-[160px]">
+
                         <input
                             type="date"
                             value={toDate}
-                            onChange={(e) => setToDate(e.target.value)}
                             style={controlStyle}
+                            onChange={(e) =>
+                                setToDate(e.target.value)
+                            }
                         />
+
                     </div>
 
-                    <div className="shrink-0">
-                        <button type="button" onClick={handleSearch} style={searchStyle}>
-                            <FaSearch size={12} />
-                            Search
-                        </button>
-                    </div>
+                    {/* Search */}
 
-                    <div className="shrink-0">
-                        <button type="button" onClick={handleReset} style={resetStyle}>
-                            <FaRedo size={11} />
-                            Reset
-                        </button>
-                    </div>
+                    <button
+                        style={searchStyle}
+                        onClick={handleSearch}
+                    >
+                        <FaSearch size={12} />
+                        Search
+                    </button>
+
+                    {/* Reset */}
+
+                    <button
+                        style={resetStyle}
+                        onClick={handleReset}
+                    >
+                        <FaRedo size={11} />
+                        Reset
+                    </button>
+
                 </div>
+
             </div>
+
         </div>
     );
 }
-
-

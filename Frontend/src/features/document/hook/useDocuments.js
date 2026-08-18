@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
     deleteDocument,
@@ -12,6 +12,11 @@ import {
     FALLBACK_LANGUAGES,
     PER_PAGE,   
 } from "./Documentconstants";
+import {
+    getLanguageById,
+    getLanguageByKey,
+    LANGUAGES,
+} from "../../../shared/constants/languageConstants";
 
 /**
  * Normalises whatever the API returns into a plain array.
@@ -123,6 +128,18 @@ export default function useDocuments() {
         setCurrentPage(1);
     }, []);
 
+    /** Convert a language key ("english") → numeric ID and call changeLanguage. */
+    const changeLanguageByKey = useCallback((key) => {
+        const lang = getLanguageByKey(key);
+        if (lang) changeLanguage(lang.id);
+    }, [changeLanguage]);
+
+    /** Derived key for LanguageTabs (e.g. "english"). */
+    const languageKey = useMemo(() => {
+        const lang = getLanguageById(language);
+        return lang?.key || LANGUAGES[0].key;
+    }, [language]);
+
     const changeFilter = useCallback((name, value) => {
         setFilters((prev) => ({ ...prev, [name]: value }));
     }, []);
@@ -152,6 +169,7 @@ export default function useDocuments() {
     return {
         // data
         language,
+        languageKey,
         languages,
         docTypes,
         documents,
@@ -166,6 +184,7 @@ export default function useDocuments() {
 
         // actions
         changeLanguage,
+        changeLanguageByKey,
         changeFilter,
         applyFilters,
         resetFilters,

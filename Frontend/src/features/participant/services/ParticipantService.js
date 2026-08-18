@@ -118,3 +118,65 @@ export const getParticipantReport = async (participantId) => {
         throw error;
     }
 };
+
+// ==========================================================
+// Manage Modules
+// ==========================================================
+
+export const getParticipantModules = async (participantId, languageId = 1) => {
+    const response = await API.get(
+        `/participants/${participantId}/modules`,
+        { params: { language_id: Number(languageId) } }
+    );
+    return response.data;
+};
+
+export const assignModule = async (participantId, moduleId) => {
+    const response = await API.post("/participants/assign", {
+        participant_id: participantId,
+        module_id: moduleId,
+    });
+    return response.data;
+};
+
+export const unassignModule = async (participantId, moduleId) => {
+    const response = await API.post("/participants/unassign", {
+        participant_id: participantId,
+        module_id: moduleId,
+    });
+    return response.data;
+};
+
+// ==========================================================
+// Credentials (key) + Time Spent
+// ==========================================================
+
+export const getParticipantKeyDetails = async (participantId) => {
+    const response = await API.get(
+        `/participants/${participantId}/key-details`
+    );
+    return response.data;
+};
+
+export const getParticipantTimeSpent = async (participantId) => {
+    const response = await API.get(
+        `/participants/${participantId}/time-spent`
+    );
+    return response.data;
+};
+
+// ==========================================================
+// Edit / Update participant
+// ==========================================================
+
+export const getParticipantEdit = async (participantId) => {
+    const response = await API.get(`/participants/${participantId}/edit`);
+    return response.data;
+};
+
+export const updateParticipant = async (participantId, formData) => {
+    const response = await API.put(`/participants/${participantId}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+};

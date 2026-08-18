@@ -167,7 +167,13 @@ export default function BatchList() {
     const handleEdit = (b) => navigate(`/batches/${b.batch_id}/edit`);
     const handleAddParticipants = (b) =>
         navigate('/participants/create', {
-            state: { batch_id: b.batch_id, centre_id: b.centre_id },
+            state: {
+                batch_id: b.batch_id,
+                centre_id: b.centre_id,
+                state_id: b.state_id,
+                district_id: b.district_id,
+                block_id: b.block_id,
+            },
         });
 
     const handleShowParticipants = (batchId) => {
@@ -206,7 +212,7 @@ export default function BatchList() {
                     <span>Batches List</span>
                 </nav>
             </div>
-            <div className="bg-gray-50 min-h-screen  p-4 ">
+            <div className="bg-white min-h-screen p-3">
                 {/* Filters (separate component) */}
                 <BatchFilter
                     filters={filters}
@@ -233,7 +239,7 @@ export default function BatchList() {
                                 setSearch(e.target.value);
                                 setPage(1);
                             }}
-                            className="border border-gray-300 rounded-md px-3 py-1.5 text-sm w-56"
+                            className="border border-gray-300 rounded-md px-2 py-1 !shadow-inner text-sm w-56"
                         />
                     </div>
                 </div>
@@ -245,8 +251,8 @@ export default function BatchList() {
                     sortField={sortConfig.key}
                     sortDirection={sortConfig.direction}
                     onSort={handleSort}
-                    renderRow={(b, index) => (
-                        <tr key={b.batch_id} className="hover:bg-[#fafafa]">
+                        renderRow={(b, index) => (
+                            <tr key={b.batch_id} className="hover:bg-[#fafafa]">
 
                             <td className={`${td} text-[#4d5969]`}>
                                 {startIndex + index + 1}

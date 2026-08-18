@@ -1,6 +1,16 @@
 import { KeyRound, Clock } from 'lucide-react';
 
+import { getParticipantImageUrl } from '../../../shared/utils/mediaUrl';
+
 const BRAND = '#732269';
+
+// Build the initials shown when a trainee has no photo (or it fails to load).
+const initialsOf = (name) => {
+    if (!name) return '?';
+    const parts = String(name).trim().split(/\s+/);
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return parts[0].slice(0, 2).toUpperCase();
+};
 const BRAND_DARK = '#571a4e';
 
 const STATUS_STYLES = {
@@ -8,7 +18,15 @@ const STATUS_STYLES = {
     Inactive: 'bg-gray-200 text-gray-600',
 };
 
-const th = "border border-white/20 px-3 py-[8px] text-[15px] font-semibold whitespace-nowrap text-white";
+
+const PERFORMANCE_STYLES = {
+    Good: { badge: 'bg-emerald-100 text-emerald-700', dot: 'bg-emerald-500' },
+    Average: { badge: 'bg-amber-100 text-amber-700', dot: 'bg-amber-500' },
+    Poor: { badge: 'bg-red-100 text-red-600', dot: 'bg-red-500' },
+    'Yet to Start': { badge: 'bg-gray-100 text-gray-600', dot: 'bg-gray-400' },
+};
+
+const th = "border border-white/40 px-3 py-[8px] text-[15px] font-semibold whitespace-nowrap text-white";
 const td = "border border-[#dee2e6] px-3 py-[8px] text-[15px]";
 
 export default function ParticipantTable({
@@ -67,7 +85,33 @@ export default function ParticipantTable({
                             <tr key={p.participant_id} className="hover:bg-gray-50">
                                 <td className={`${td} text-gray-500`}>{startIndex + i + 1}</td>
                                 <td className={`${td} font-medium`} style={{ color: BRAND }}>
-                                    {p.participant_name}
+                                    <div className="flex items-center gap-2">
+                                        {p.image ? (
+                                            <img
+                                                src={getParticipantImageUrl(p.image)}
+                                                alt={p.participant_name || 'Trainee'}
+                                                className="h-8 w-8 flex-shrink-0 rounded-full border border-gray-200 object-cover"
+                                                onError={(e) => {
+                                                    // Fall back to the initials avatar if the
+                                                    // image path is missing/broken.
+                                                    e.currentTarget.style.display = 'none';
+                                                    e.currentTarget.nextSibling?.style.removeProperty(
+                                                        'display'
+                                                    );
+                                                }}
+                                            />
+                                        ) : null}
+                                        <span
+                                            className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-[11px] font-semibold text-white"
+                                            style={{
+                                                backgroundColor: BRAND,
+                                                display: p.image ? 'none' : 'flex',
+                                            }}
+                                        >
+                                            {initialsOf(p.participant_name)}
+                                        </span>
+                                        <span>{p.participant_name}</span>
+                                    </div>
                                 </td>
                                 <td className={`${td} text-gray-600`}>{p.enrollment_no}</td>
                                 <td className={td}>
@@ -83,10 +127,23 @@ export default function ParticipantTable({
                                     <span className="text-xs text-gray-400">{p.course_progress ?? 0}%</span>
                                 </td>
                                 <td className={td}>
-                                    <span className="inline-flex items-center gap-1.5 bg-gray-100 text-gray-600 text-xs font-medium px-3 py-1 rounded-full">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
-                                        {p.performance_status ?? 'Yet to Start'}
-                                    </span>
+                                    {(() => {
+                                        const label =
+                                            p.performance_status ?? 'Yet to Start';
+                                        const s =
+                                            PERFORMANCE_STYLES[label] ??
+                                            PERFORMANCE_STYLES['Yet to Start'];
+                                        return (
+                                            <span
+                                                className={`inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1 rounded-full ${s.badge}`}
+                                            >
+                                                <span
+                                                    className={`w-1.5 h-1.5 rounded-full ${s.dot}`}
+                                                />
+                                                {label}
+                                            </span>
+                                        );
+                                    })()}
                                 </td>
                                 <td className={td}>
                                     <span

@@ -1,259 +1,666 @@
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import toast from "react-hot-toast";
 
 import AppLayout from "../../../components/layout/AppLayout";
 import Breadcrumbs from "../../../shared/components/breadcrumbs/Breadcrumbs";
+import LanguageTabs from "../../../shared/components/language/LanguageTabs";
+import {
+    getLanguageById,
+    getLanguageByKey,
+} from "../../../shared/constants/languageConstants";
+
 import { getDocument } from "../services/DocumentServices";
+import useTranslation from "../hook/useTranslation";
+
+import TranslationForm from "../components/TranslationForm";
+
 
 const MEDIA_URL = import.meta.env.VITE_API_URL;
 
+
 const breadcrumbItems = [
-    { label: "Home", path: "/dashboard" },
-    { label: "Documents", path: "/documents" },
-    { label: "View" },
+    {
+        label: "Home",
+        path: "/dashboard",
+    },
+    {
+        label: "Documents",
+        path: "/documents",
+    },
+    {
+        label: "View",
+    },
 ];
 
-const MEDIA_FOLDERS = {
-    VIDEO: "videos",
-    PDF: "pdfs",
-    PPT: "ppts",
-};
 
 export default function ViewDocument() {
     const { id } = useParams();
+    const [searchParams] = useSearchParams();
+
     const navigate = useNavigate();
 
+    // Open on the language tab the user came from in the list.
+    const initialLanguageId = getLanguageByKey(
+        (searchParams.get("tab") || "english").toLowerCase()
+    )?.id;
+
+
+    /* ================================================================
+       TRANSLATION
+    ================================================================ */
+
+    const {
+        languages,
+        activeLanguage,
+        activeLanguageId,
+        isSourceTab,
+        existing,
+        form,
+        loadingForm,
+        loadingTab,
+        saving,
+        changeTab,
+        changeField,
+        submit,
+    } = useTranslation(id, initialLanguageId);
+
+
+    /* ================================================================
+       DOCUMENT
+    ================================================================ */
+
     const [doc, setDoc] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState("");
 
-    const fetchDocument = useCallback(async () => {
-        setLoading(true);
-        setError("");
+    const [loadingDoc, setLoadingDoc] =
+        useState(true);
 
-        try {
-            const response = await getDocument(id);
+    const [error, setError] =
+        useState("");
 
-            // The endpoint returns the row directly; the fallbacks cover a
-            // wrapped shape in case the response model changes.
-            setDoc(response?.document ?? response?.data ?? response);
-        } catch (requestError) {
-            console.error("View failed:", requestError?.response?.data);
 
-            setError(
-                requestError?.response?.data?.detail ||
-                "Unable to load document.",
-            );
-            setDoc(null);
-        } finally {
-            setLoading(false);
-        }
-    }, [id]);
+    /* ================================================================
+       FETCH DOCUMENT
+    ================================================================ */
+
+    const fetchDocument = useCallback(
+        async () => {
+            if (!id) {
+                setDoc(null);
+                setLoadingDoc(false);
+                return;
+            }
+
+            setLoadingDoc(true);
+            setError("");
+
+            try {
+                const response =
+                    await getDocument(id);
+
+                const documentData =
+                    response?.document ??
+                    response?.data ??
+                    response ??
+                    null;
+
+                setDoc(documentData);
+
+            } catch (requestError) {
+                console.error(
+                    "VIEW DOCUMENT ERROR:",
+                    requestError?.response?.data ??
+                        requestError
+                );
+
+                setError(
+                    requestError?.response?.data
+                        ?.detail ||
+                        "Unable to load document."
+                );
+
+                setDoc(null);
+
+            } finally {
+                setLoadingDoc(false);
+            }
+        },
+        [id]
+    );
+
 
     useEffect(() => {
         fetchDocument();
     }, [fetchDocument]);
 
-    /* ==============================
+
+    /* ================================================================
+       LOADING
+    ================================================================ */
+
+    const pageLoading =
+        loadingDoc || loadingForm;
+
+
+    /* ================================================================
+       DOCUMENT TYPE
+    ================================================================ */
+
+    const docType =
+        String(
+            doc?.doc_type || ""
+        ).toUpperCase();
+
+
+    const fileLabel =
+        docType === "VIDEO"
+            ? "Video"
+            : docType === "PDF"
+                ? "PDF"
+                : "File";
+
+
+    /* ================================================================
        MEDIA URL
-       The API stores a bare filename, so the folder comes from the document
-       type and the backend's static mount is prefixed. A <video src> is a
-       browser attribute — it does not pass through axios, so it needs the
-       absolute URL that axios's baseURL would otherwise supply.
-    ============================== */
+    ================================================================ */
 
-    const docType = String(doc?.doc_type || "").toUpperCase();
-    const folder = MEDIA_FOLDERS[docType];
+    /* Handles both backend storage formats: a full path like
+       "/uploads/pdfs/x.pdf" and a bare filename like "x.pdf" (legacy
+       save_file) that lives under /uploads/<fallbackFolder>/. Leading
+       slashes are stripped so the host is never joined with a double
+       slash (which 404s as {"detail":"Not Found"}). */
+    const getFullMediaUrl = (
+        filePath,
+        fallbackFolder = ""
+    ) => {
+        if (
+            !filePath ||
+            typeof filePath !== "string"
+        ) {
+            return "";
+        }
 
+        if (
+            /^https?:\/\//i.test(
+                filePath
+            )
+        ) {
+            return filePath;
+        }
+
+        let clean = filePath
+            .replace(/^\/+/, "")
+            .replace(/^app\//, "");
+
+        if (
+            !clean.includes("/") &&
+            fallbackFolder
+        ) {
+            clean = `uploads/${fallbackFolder}/${clean}`;
+        }
+
+        return `${MEDIA_URL}/${clean}`;
+    };
+
+
+    /* ================================================================
+       MEDIA FILE
+    ================================================================ */
 
     const filePath =
         docType === "VIDEO"
-            ? doc?.video_url
+            ? existing?.video_url ||
+              doc?.video_url
             : docType === "PDF"
-                ? doc?.pdf_url
-                : doc?.ppt_url;
+                ? existing?.pdf_url ||
+                  doc?.pdf_url
+                : existing?.ppt_url ||
+                  doc?.ppt_url;
+
+
+    const fileFolder =
+        docType === "VIDEO"
+            ? "videos"
+            : docType === "PDF"
+                ? "pdfs"
+                : "ppts";
+
 
     const fileUrl =
-        !filePath
-            ? null
-            : /^https?:\/\//i.test(filePath)
-                ? filePath
-                : `${MEDIA_URL}/${filePath.replace(/^app\//, "")}`;
-    const isActive = String(doc?.status) === "1";
+        getFullMediaUrl(
+            filePath,
+            fileFolder
+        );
 
-    console.log(doc?.pdf_url);
-    console.log(doc?.video_url);
+
+    /* ================================================================
+       IMAGE
+    ================================================================ */
+
+    const savedImagePath =
+        existing?.document_image_url ||
+        doc?.document_image ||
+        "";
+
+
+    const savedImageUrl =
+        getFullMediaUrl(
+            savedImagePath,
+            "documents"
+        );
+
+
+    const [
+        pickedImageUrl,
+        setPickedImageUrl,
+    ] = useState("");
+
+
+    useEffect(() => {
+        const file =
+            form?.document_image;
+
+
+        if (!(file instanceof File)) {
+            setPickedImageUrl("");
+            return undefined;
+        }
+
+
+        const objectUrl =
+            URL.createObjectURL(file);
+
+
+        setPickedImageUrl(
+            objectUrl
+        );
+
+
+        return () => {
+            URL.revokeObjectURL(
+                objectUrl
+            );
+        };
+    }, [form?.document_image]);
+
+
+    const imageUrl =
+        pickedImageUrl ||
+        savedImageUrl;
+
+
+    /* ================================================================
+       DERIVED
+    ================================================================ */
+
+    const sourceTitle =
+        doc?.doc_title ||
+        "Untitled";
+
+
+    const languageName =
+        activeLanguage?.name ||
+        activeLanguage?.label ||
+        "";
+
+
+    /* ================================================================
+       FIELD CHANGE
+    ================================================================ */
+
+    const handleChange = (
+        field,
+        value
+    ) => {
+        changeField(
+            field,
+            value
+        );
+    };
+
+
+    /* ================================================================
+       IMAGE CHANGE
+    ================================================================ */
+
+    const handleImageChange = (
+        file
+    ) => {
+        if (!file) {
+            handleChange(
+                "document_image",
+                null
+            );
+            return;
+        }
+
+
+        if (
+            file.size >
+            2 * 1024 * 1024
+        ) {
+            toast.error(
+                "Image size must be less than 2MB."
+            );
+            return;
+        }
+
+
+        const allowedTypes = [
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+        ];
+
+
+        if (
+            !allowedTypes.includes(
+                file.type
+            )
+        ) {
+            toast.error(
+                "Only JPG, PNG and WEBP images are allowed."
+            );
+            return;
+        }
+
+
+        handleChange(
+            "document_image",
+            file
+        );
+    };
+
+
+    /* ================================================================
+       MEDIA CHANGE
+    ================================================================ */
+
+    const handleMediaChange = (
+        file
+    ) => {
+        handleChange(
+            "media_file",
+            file
+        );
+    };
+
+
+    /* ================================================================
+       SUBMIT
+    ================================================================ */
+
+    const handleSubmit = async (
+        event
+    ) => {
+        event.preventDefault();
+
+
+        /* English/source cannot save */
+
+        if (isSourceTab) {
+            return;
+        }
+
+
+        /* Title validation */
+
+        if (
+            !form?.title?.trim()
+        ) {
+            toast.error(
+                "Document title is required."
+            );
+            return;
+        }
+
+
+        try {
+            await submit();
+
+            toast.success(
+                `${languageName} translation saved successfully.`
+            );
+
+            // Go back to the document list on success.
+            navigate("/documents");
+
+        } catch (
+            requestError
+        ) {
+            console.error(
+                "SAVE TRANSLATION ERROR:",
+                requestError?.response
+                    ?.data ??
+                    requestError
+            );
+
+            toast.error(
+                requestError?.response
+                    ?.data?.detail ||
+                    "Unable to save translation."
+            );
+        }
+    };
+
+
+    /* ================================================================
+       RENDER
+    ================================================================ */
 
     return (
         <AppLayout>
 
-            {/* ================= HEADER ================= */}
+            {/* ========================================================
+                HEADER
+            ======================================================== */}
 
-            <div className="mb-[16px] flex items-center justify-between px-3">
-                <h1 className="m-0 text-[20px] font-medium text-[#344050]">
+            <div
+                className="
+                    mb-3
+                    flex
+                    flex-col
+                    items-start
+                    gap-2
+                    sm:flex-row
+                    sm:items-center
+                    sm:justify-between
+                "
+            >
+                <span
+                    className="
+                        text-[22px]
+                        font-medium
+                        text-[#344050]
+                    "
+                >
                     View Document
-                </h1>
+                </span>
 
-                <Breadcrumbs items={breadcrumbItems} />
+                <Breadcrumbs
+                    items={breadcrumbItems}
+                />
             </div>
 
-            <div className="px-3">
 
-                {/* ================= LOADING ================= */}
+            {/* ========================================================
+                MAIN CARD
+            ======================================================== */}
 
-                {loading && (
-                    <div className="rounded-[8px] border border-[#D8E2EF] bg-white p-[20px] text-[14px] text-[#5E6E82]">
+            <div
+                className="
+                    rounded-[6px]
+                    border
+                    border-[#D8E2EF]
+                    bg-white
+                "
+            >
+
+                {/* ====================================================
+                    LOADING
+                ==================================================== */}
+
+                {pageLoading && (
+                    <div className="p-4 text-[12px] text-[#5E6E82]">
                         Loading document...
                     </div>
                 )}
 
-                {/* ================= ERROR ================= */}
 
-                {!loading && error && (
-                    <div className="rounded-[8px] border border-[#F5C2C7] bg-[#FDECEA] p-[16px] text-[14px] text-[#D74D43]">
-                        {error}
-                    </div>
-                )}
+                {/* ====================================================
+                    ERROR
+                ==================================================== */}
 
-                {/* ================= NOT FOUND ================= */}
-
-                {!loading && !error && !doc && (
-                    <div className="rounded-[8px] border border-[#D8E2EF] bg-white p-[20px] text-[14px] text-[#5E6E82]">
-                        Document not found.
-                    </div>
-                )}
-
-                {/* ================= CONTENT ================= */}
-
-                {!loading && !error && doc && (
-                    <div className="rounded-[8px] border border-[#D8E2EF] bg-white p-[20px]">
-
-                        {/* TITLE + STATUS */}
-
-                        <div className="mb-[20px] flex flex-wrap items-start justify-between gap-[16px] border-b border-[#E3E6ED] pb-[20px]">
-                            <div className="flex-1">
-                                <h2 className="m-0 text-[18px] font-semibold text-[#344050]">
-                                    {doc.doc_title || "Untitled"}
-                                </h2>
-
-                                <p className="mt-[8px] mb-0 whitespace-pre-wrap text-[14px] text-[#5E6E82]">
-                                    {doc.doc_description ||
-                                        "No description provided."}
-                                </p>
-                            </div>
-
-                            <span
-                                className={`rounded-[4px] px-[12px] py-[4px] text-[12px] font-semibold !text-white ${isActive ? "bg-[#00864E]" : "bg-[#E63757]"
-                                    }`}
+                {!pageLoading &&
+                    error && (
+                        <div className="p-3">
+                            <div
+                                className="
+                                    rounded-[4px]
+                                    border
+                                    border-[#F5C2C7]
+                                    bg-[#FDECEA]
+                                    p-3
+                                    text-[12px]
+                                    text-[#D74D43]
+                                "
                             >
-                                {isActive ? "Active" : "Inactive"}
-                            </span>
-                        </div>
-
-                        {/* META */}
-
-                        <div className="mb-[24px] grid grid-cols-1 gap-[20px] md:grid-cols-3">
-                            <div>
-                                <p className="m-0 mb-[6px] text-[13px] text-[#5E6E82]">
-                                    Document Type
-                                </p>
-
-                                <p className="m-0 text-[14px] font-medium text-[#344050]">
-                                    {doc.doc_type || "-"}
-                                </p>
-                            </div>
-
-                            <div>
-                                <p className="m-0 mb-[6px] text-[13px] text-[#5E6E82]">
-                                    Language
-                                </p>
-
-                                <p className="m-0 text-[14px] font-medium text-[#344050]">
-                                    {doc.language_name || "-"}
-                                </p>
-                            </div>
-
-                            <div>
-                                <p className="m-0 mb-[6px] text-[13px] text-[#5E6E82]">
-                                    Module
-                                </p>
-
-                                <p className="m-0 text-[14px] font-medium text-[#344050]">
-                                    {doc.module_name || "-"}
-                                </p>
+                                {error}
                             </div>
                         </div>
+                    )}
 
-                        {/* MEDIA */}
 
-                        <div>
-                            <p className="mb-[10px] text-[13px] text-[#5E6E82]">
-                                Document {doc.doc_type || "File"}
-                            </p>
+                {/* ====================================================
+                    NOT FOUND
+                ==================================================== */}
 
-                            {!fileUrl && (
-                                <p className="m-0 text-[14px] text-[#9DA9BB]">
-                                    No media file is attached.
-                                </p>
-                            )}
-
-                            {fileUrl && docType === "VIDEO" && (
-                                <video
-                                    controls
-                                    preload="metadata"
-                                    src={fileUrl}
-                                    className="w-full max-w-[640px] rounded-[6px] border border-[#D8E2EF] bg-black"
-                                >
-                                    Your browser does not support video playback.
-                                </video>
-                            )}
-
-                            {fileUrl && docType === "PDF" && (
-                                <iframe
-                                    src={fileUrl}
-                                    title={doc.doc_title || "Document PDF"}
-                                    className="h-[600px] w-full max-w-[860px] rounded-[6px] border border-[#D8E2EF]"
-                                />
-                            )}
-
-                            {/* PDFs get a fallback link; PPTs cannot render
-                                inline at all, so a download is the only option. */}
-                            {fileUrl && docType !== "VIDEO" && (
-                                <a
-                                    href={fileUrl}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="mt-[12px] inline-flex h-[36px] items-center rounded-[6px] bg-[#7b216f] px-[20px] text-[14px] font-medium !text-white no-underline hover:opacity-90"
-                                >
-                                    {docType === "PDF"
-                                        ? "Open in new tab"
-                                        : `Download ${docType}`}
-                                </a>
-                            )}
+                {!pageLoading &&
+                    !error &&
+                    !doc && (
+                        <div className="p-4 text-[12px] text-[#5E6E82]">
+                            Document not found.
                         </div>
+                    )}
 
-                        {/* ACTIONS */}
 
-                        <div className="mt-[26px] flex justify-end gap-[12px] border-t border-[#E3E6ED] pt-[20px]">
-                            <button
-                                type="button"
-                                onClick={() => navigate("/documents")}
-                                className="h-[38px] rounded-[6px] border border-[#D8E2EF] bg-white px-[24px] text-[14px] text-[#344050] hover:bg-gray-50"
+                {/* ====================================================
+                    DOCUMENT
+                ==================================================== */}
+
+                {!pageLoading &&
+                    !error &&
+                    doc && (
+                        <>
+
+                            {/* ==========================================
+                                LANGUAGE TABS
+                            ========================================== */}
+
+                            <LanguageTabs
+                                activeTab={
+                                    getLanguageById(
+                                        activeLanguageId
+                                    )?.key
+                                }
+                                onChange={(
+                                    key
+                                ) =>
+                                    changeTab(
+                                        getLanguageByKey(
+                                            key
+                                        ).id
+                                    )
+                                }
+                            />
+
+
+                            {/* ==========================================
+                                FORM
+                            ========================================== */}
+
+                            <div
+                                className="
+                                    border-t
+                                    border-[#E6D7E8]
+                                    bg-white
+                                    p-3
+                                "
                             >
-                                Back to Documents
-                            </button>
+                                {loadingTab ? (
+                                    <div
+                                        className="
+                                            rounded-md
+                                            border
+                                            border-[#E6D7E8]
+                                            bg-white
+                                            p-3
+                                            text-[12px]
+                                            text-[#5E6E82]
+                                        "
+                                    >
+                                        Loading{" "}
+                                        {languageName ||
+                                            "translation"}
+                                        ...
+                                    </div>
+                                ) : (
+                                    <TranslationForm
+                                        form={form}
+                                        readOnly={
+                                            isSourceTab
+                                        }
+                                        loading={
+                                            loadingTab
+                                        }
+                                        saving={
+                                            saving
+                                        }
+                                        languageName={
+                                            languageName
+                                        }
+                                        sourceTitle={
+                                            sourceTitle
+                                        }
+                                        documentDescription={
+                                            doc?.doc_description ||
+                                            ""
+                                        }
+                                        fileUrl={
+                                            fileUrl
+                                        }
+                                        docType={
+                                            docType
+                                        }
+                                        fileLabel={
+                                            fileLabel
+                                        }
+                                        onChange={
+                                            handleChange
+                                        }
+                                        onImageChange={
+                                            handleImageChange
+                                        }
+                                        onMediaChange={
+                                            handleMediaChange
+                                        }
+                                        onSubmit={
+                                            handleSubmit
+                                        }
+                                        onCancel={() =>
+                                            navigate(
+                                                "/documents"
+                                            )
+                                        }
+                                    />
+                                )}
+                            </div>
 
-                            <button
-                                type="button"
-                                onClick={() => navigate(`/documents/edit/${id}`)}
-                                className="h-[38px] rounded-[6px] bg-[#7b216f] px-[24px] text-[14px] font-medium !text-white hover:opacity-90"
-                            >
-                                Edit Document
-                            </button>
-                        </div>
-                    </div>
-                )}
+                        </>
+                    )}
+
             </div>
+
         </AppLayout>
     );
 }

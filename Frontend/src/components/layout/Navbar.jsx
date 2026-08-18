@@ -74,14 +74,19 @@ const menuItems = [
         dropdown: true,
         items: [
             { label: "Document Master", href: "/documents", allowedRoles: permissions.DocumentManagement },
+            // { label: "PDF Master", href: "/pdf-masters", allowedRoles: permissions.DocumentManagement },
+            // { label: "PPT Master", href: "/ppt-masters", allowedRoles: permissions.DocumentManagement },
+            // { label: "Video Master", href: "/video-masters", allowedRoles: permissions.DocumentManagement },
         ],
     },
     {
         label: "Assessment",
         dropdown: true,
         items: [
-            { label: "All Assessments", href: "/assessments", allowedRoles: permissions.Assessment },
-            { label: "Add Assessment", href: "/assessments/add", allowedRoles: permissions.Assessment },
+            { label: "MCQ Master", href: "/mcq-master", allowedRoles: permissions.Assessment },
+            { label: "SCQ Master", href: "/scq-master", allowedRoles: permissions.Assessment },
+            { label: "Drop Bucket Master", href: "/drop-bucket-master", allowedRoles: permissions.Assessment },
+            { label: "Match Making Master", href: "/match-making-master", allowedRoles: permissions.Assessment },
         ],
     },
 ];
@@ -102,6 +107,23 @@ const MOBILE_NAVBAR_TEXT_SIZE = "!text-[14px]";
 
 // Mobile submenu text
 const MOBILE_DROPDOWN_TEXT_SIZE = "!text-[13px]";
+
+const ROLE_LABELS = {
+    "1": "Super Admin",
+    "2": "Admin",
+    "3": "State Head",
+    "4": "District Head",
+    "5": "PI",
+};
+
+const getStoredUser = () => {
+    try {
+        const raw = localStorage.getItem("user");
+        return raw ? JSON.parse(raw) : null;
+    } catch {
+        return null;
+    }
+};
 
 // Height of the white top header
 const HEADER_HEIGHT = "h-[60px]";
@@ -126,6 +148,9 @@ export default function Navbar() {
 
     const { pathname } = useLocation();
     const role = localStorage.getItem("userRole");
+    const user = getStoredUser();
+    const displayName = user?.name || user?.username || "User";
+    const roleLabel = ROLE_LABELS[String(role ?? user?.role)] || "User";
     const visibleMenuItems = menuItems
         .map((item) => (
             item.dropdown
@@ -248,11 +273,11 @@ export default function Navbar() {
                             <div className="flex flex-col items-end justify-center text-right">
 
                                 <strong className="block text-[14px] leading-[17px] font-semibold text-[#5e6e82] whitespace-nowrap">
-                                    Super Admin
+                                    {displayName}
                                 </strong>
 
                                 <span className="block text-[10px] leading-[14px] font-normal text-[#5e6e82] whitespace-nowrap">
-                                    Super Admin
+                                    {roleLabel}
                                 </span>
 
                             </div>

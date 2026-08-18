@@ -6,8 +6,7 @@ import Breadcrumbs from "../../../shared/components/breadcrumbs/Breadcrumbs";
 
 import CourseTable from "../components/CourseTable";
 import useCourse from "../hook/useCourse";
-
-import { LANGUAGES, DEFAULT_LANGUAGE } from "../../../shared/constants/languageConstants";
+import LanguageTabs from "../../../shared/components/language/LanguageTabs";
 
 const PURPLE = "#732269";
 
@@ -63,37 +62,10 @@ export default function CourseList() {
 
                     {/* LANGUAGE TABS */}
 
-                    <div
-                        className="flex flex-wrap items-end"
-                        style={{ borderBottom: "1px solid #dee2e6" }}
-                    >
-
-                        {LANGUAGES.map((language, index) => {
-                            const isActive = language.key === activeTab;
-
-                            return (
-                                <button
-                                    key={language.id}
-                                    type="button"
-                                    onClick={() => handleTabChange(language.key)}
-                                    className={`relative px-[15px] py-[5px] text-[14px] font-medium transition-colors ${index === 0 ? "rounded-tl-[4px]" : ""
-                                        } ${isActive
-                                            ? "bg-[#732269] text-white"
-                                            : "bg-white text-[#4d5969] border-r border-[#e3e6ed] hover:bg-[#f7f8fa]"
-                                        }`}
-                                >
-                                    {language.label}
-
-                                    {isActive && (
-                                        <span
-                                            className="absolute left-1/2 -bottom-[4px] h-[8px] w-[8px] -translate-x-1/2 rotate-45"
-                                            style={{ backgroundColor: PURPLE }}
-                                        />
-                                    )}
-                                </button>
-                            );
-                        })}
-                    </div>
+                    <LanguageTabs
+                        activeTab={activeTab}
+                        onChange={handleTabChange}
+                    />
 
                     {/* SEARCH */}
 
@@ -143,6 +115,7 @@ export default function CourseList() {
                         <CourseTable
                             loading={loading}
                             courses={filteredCourses}
+                            activeTab={activeTab}
                         />
 
                         <button

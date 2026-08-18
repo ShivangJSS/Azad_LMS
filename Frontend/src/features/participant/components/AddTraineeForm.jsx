@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { Eye, EyeOff, RefreshCw, Loader2 } from 'lucide-react';
+import { getParticipantImageUrl } from '../../../shared/utils/mediaUrl';
 import {
   getStates,
   getDistricts,
@@ -9,6 +11,7 @@ import {
   getBatches,
   getEnrollment,
   createParticipant,
+  updateParticipant,
 } from '../services/ParticipantService';
 
 const BRAND = '#732269';
@@ -24,12 +27,6 @@ function Label({ children, required }) {
   );
 }
 
-// Derives a short code from a name, e.g. "Tamil Nadu" -> "TN",
-// "Chennai" -> "CH". Used to build the enrollment number when the
-// backend doesn't expose a dedicated state/district/centre "code" field.
-// If your master data actually has a real code column (state_code,
-// district_code, centre_code) instead, swap this out for that field -
-// it'll be more reliable than a derived guess.
 function shortCode(name) {
   if (!name) return '';
   const words = name.trim().split(/\s+/);
@@ -46,14 +43,6 @@ function shortFy(fyYear) {
   return `${start.slice(-2)}-${end}`;
 }
 
-// FastAPI's 422 `detail` can arrive as several different shapes depending
-// on the exception path: a plain string, a list of Pydantic error objects
-// ({type, loc, msg, input, ...}), or - as seen here - a single error
-// object (not wrapped in a list). Whatever shape it is, this always
-// returns a plain string safe to render, so React never gets handed a raw
-// object/array as a child again.
-// Friendly labels for the form fields, shown in the Review & Edit modal.
-// Anything not listed falls back to its raw key.
 const FIELD_LABELS = {
   state_id: 'State',
   district_id: 'District',
@@ -101,28 +90,29 @@ function extractErrorMessage(err) {
   return String(detail);
 }
 
-export default function AddTraineeForm() {
+export default function AddTraineeForm({ mode = 'create', initialData = null, participantId = null }) {
   const navigate = useNavigate();
+  const isEdit = mode === 'edit';
 
-  const [form, setForm] = useState({
-    state_id: '',
-    district_id: '',
-    block_id: '',
-    centre_id: '',
-    batch_id: '',
-    participant_name: '',
-    enrollment_no: '',
-    gender: '',
-    age: '',
-    email: '',
-    username: '',
+  const [form, setForm] = useState(() => ({
+    state_id: initialData?.state_id ?? '',
+    district_id: initialData?.district_id ?? '',
+    block_id: initialData?.block_id ?? '',
+    centre_id: initialData?.centre_id ?? '',
+    batch_id: initialData?.batch_id ?? '',
+    participant_name: initialData?.participant_name ?? '',
+    enrollment_no: initialData?.enrollment_no ?? '',
+    gender: initialData?.gender ?? '',
+    age: initialData?.age ?? '',
+    email: initialData?.email ?? '',
+    username: initialData?.username ?? '',
     password: '',
-    mobile_no: '',
-    pin: '',
-    aadhaar_number: '',
-    location: '',
-    address: '',
-  });
+    mobile_no: initialData?.mobile_no ?? '',
+    pin: initialData?.pin ?? '',
+    aadhaar_number: initialData?.aadhaar_number ?? '',
+    location: initialData?.location ?? '',
+    address: initialData?.address ?? '',
+  }));
 
   const [states, setStates] = useState([]);
   const [districts, setDistricts] = useState([]);
@@ -132,13 +122,21 @@ export default function AddTraineeForm() {
 
   const [imageFile, setImageFile] = useState(null);
   const [imageName, setImageName] = useState('');
+  // Blob URL for instant preview of a freshly chosen file.
+  const [imagePreview, setImagePreview] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+
+  // Preview priority: a just-picked file, else the trainee's existing photo
+  // (edit mode). Falls back to an initials avatar when neither exists.
+  const existingImageUrl = getParticipantImageUrl(initialData?.image);
+  const previewSrc = imagePreview || existingImageUrl;
 
   const [refreshingEnrollment, setRefreshingEnrollment] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [showReview, setShowReview] = useState(false);
+  const topRef = useRef(null);
 
   // ---- load states once ----
   useEffect(() => {
@@ -181,6 +179,7 @@ export default function AddTraineeForm() {
   // ---- auto-build enrollment number once state/district/centre/batch are
   // all selected: WWW/<state>/<district>/<fy>/<centre>/<batch name>/<seq> ----
   useEffect(() => {
+    if (isEdit) return; // enrollment is fixed when editing
     if (!form.state_id || !form.district_id || !form.centre_id || !form.batch_id) {
       return;
     }
@@ -284,8 +283,79 @@ export default function AddTraineeForm() {
 
   const handleSubmit = async () => {
     setError(null);
+
+    // Client-side required-field check so a blank/incomplete form shows a clear
+    // message instead of firing the request and getting a 422 from the server.
+    const requiredFields = isEdit
+      ? [
+          ['participant_name', 'Participant Name'],
+          ['gender', 'Gender'],
+          ['age', 'Age'],
+          ['pin', 'PIN'],
+          ['location', 'Location'],
+          ['address', 'Address'],
+        ]
+      : [
+          ['state_id', 'State'],
+          ['district_id', 'District'],
+          ['block_id', 'Block'],
+          ['centre_id', 'Centre'],
+          ['batch_id', 'Batch'],
+          ['participant_name', 'Participant Name'],
+          ['enrollment_no', 'Enrollment No'],
+          ['username', 'Username'],
+          ['password', 'Password'],
+          ['gender', 'Gender'],
+          ['age', 'Age'],
+          ['pin', 'PIN'],
+          ['location', 'Location'],
+          ['address', 'Address'],
+        ];
+
+    const missing = requiredFields.filter(([key]) => {
+      const value = form[key];
+      return value === undefined || value === null || String(value).trim() === '';
+    });
+
+    if (missing.length > 0) {
+      const message = `Please fill all required fields: ${missing
+        .map(([, label]) => label)
+        .join(', ')}.`;
+
+      setError(message);
+      toast.error('Please fill all required fields.');
+
+      // Scroll up to the message so the user sees it.
+      if (topRef.current) {
+        topRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      return;
+    }
+
     setSubmitting(true);
     try {
+      if (isEdit) {
+        const efd = new FormData();
+        efd.append('participant_name', form.participant_name);
+        efd.append('age', form.age);
+        efd.append('gender', form.gender);
+        if (form.email) efd.append('email', form.email);
+        if (form.mobile_no) efd.append('mobile_no', form.mobile_no);
+        efd.append('pin', form.pin);
+        if (form.aadhaar_number) efd.append('aadhaar_number', form.aadhaar_number);
+        efd.append('location', form.location);
+        efd.append('address', form.address);
+        if (form.state_id) efd.append('state_id', form.state_id);
+        if (form.district_id) efd.append('district_id', form.district_id);
+        if (form.block_id) efd.append('block_id', form.block_id);
+        if (imageFile) efd.append('image', imageFile);
+        await updateParticipant(participantId, efd);
+        navigate('/participants/list');
+        return;
+      }
       const fd = new FormData();
       fd.append('state_id', form.state_id);
       fd.append('district_id', form.district_id);
@@ -311,7 +381,6 @@ export default function AddTraineeForm() {
       // and staying on this form.
       navigate('/participants/list');
     } catch (err) {
-      console.log('422 ERROR =>', err?.response?.data);
       setError(extractErrorMessage(err));
     } finally {
       setSubmitting(false);
@@ -322,7 +391,7 @@ export default function AddTraineeForm() {
 
   return (
     <>
-      <div className="p-6">
+      <div className="p-6" ref={topRef}>
         {error && (
           <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600">
             {error}
@@ -446,16 +515,23 @@ export default function AddTraineeForm() {
                 value={form.enrollment_no}
                 readOnly
               />
-              <button
-                type="button"
-                onClick={() => setRefreshKey((k) => k + 1)}
-                disabled={!form.batch_id || refreshingEnrollment}
-                className="flex items-center gap-1.5 border border-gray-300 text-gray-700 text-sm font-medium px-3 py-2 rounded-md hover:bg-gray-50 whitespace-nowrap disabled:opacity-50"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${refreshingEnrollment ? 'animate-spin' : ''}`} />
-                Refresh
-              </button>
+              {!isEdit && (
+                <button
+                  type="button"
+                  onClick={() => setRefreshKey((k) => k + 1)}
+                  disabled={!form.batch_id || refreshingEnrollment}
+                  className="flex items-center gap-1.5 border border-gray-300 text-gray-700 text-sm font-medium px-3 py-2 rounded-md hover:bg-gray-50 whitespace-nowrap disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${refreshingEnrollment ? 'animate-spin' : ''}`} />
+                  Refresh
+                </button>
+              )}
             </div>
+            {isEdit && (
+              <p className="text-xs text-gray-400 mt-1">
+                Enrollment number cannot be changed after creation.
+              </p>
+            )}
           </div>
 
           {/* Row 4: Age / Gender / Email */}
@@ -505,9 +581,13 @@ export default function AddTraineeForm() {
               style={focusStyle}
               value={form.username}
               onChange={handleChange('username')}
+              readOnly={isEdit}
+              disabled={isEdit}
             />
             <p className="text-xs text-gray-400 mt-1">
-              3-255 characters. Letters / digits / . _ -. No spaces.
+              {isEdit
+                ? 'Username cannot be changed after creation.'
+                : '3-255 characters. Letters / digits / . _ -. No spaces.'}
             </p>
           </div>
 
@@ -520,6 +600,9 @@ export default function AddTraineeForm() {
                 style={focusStyle}
                 value={form.password}
                 onChange={handleChange('password')}
+                readOnly={isEdit}
+                disabled={isEdit}
+                placeholder={isEdit ? '••••••••' : ''}
               />
               <button
                 type="button"
@@ -530,7 +613,9 @@ export default function AddTraineeForm() {
               </button>
             </div>
             <p className="text-xs text-gray-400 mt-1">
-              Min 8 chars. Must include uppercase, lowercase, digit &amp; special character.
+              {isEdit
+                ? 'Password cannot be changed from this screen.'
+                : 'Min 8 chars. Must include uppercase, lowercase, digit & special character.'}
             </p>
           </div>
 
@@ -595,6 +680,21 @@ export default function AddTraineeForm() {
           <div className="col-span-2">
             <Label>Profile Image</Label>
             <div className="flex items-center gap-3">
+              {previewSrc ? (
+                <img
+                  src={previewSrc}
+                  alt="Profile preview"
+                  className="h-14 w-14 flex-shrink-0 rounded-md border border-gray-200 object-cover"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              ) : (
+                <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-md border border-dashed border-gray-300 bg-gray-50 text-[10px] text-gray-400">
+                  No image
+                </div>
+              )}
+
               <label className="cursor-pointer bg-gray-800 hover:bg-gray-900 text-white text-sm font-medium px-4 py-2 rounded-md">
                 Choose File
                 <input
@@ -605,11 +705,23 @@ export default function AddTraineeForm() {
                     const file = e.target.files?.[0] || null;
                     setImageFile(file);
                     setImageName(file?.name || '');
+                    setImagePreview((prev) => {
+                      if (prev?.startsWith('blob:')) {
+                        URL.revokeObjectURL(prev);
+                      }
+                      return file ? URL.createObjectURL(file) : '';
+                    });
                   }}
                 />
               </label>
               <span className="text-sm text-gray-500">{imageName || 'No file chosen'}</span>
             </div>
+
+            {isEdit && !imageFile && existingImageUrl && (
+              <p className="mt-1 text-xs text-gray-400">
+                Current photo shown. Choose a file to replace it.
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -623,14 +735,16 @@ export default function AddTraineeForm() {
         >
           Cancel
         </button>
-        <button
-          type="button"
-          onClick={() => setShowReview(true)}
-          style={{ borderColor: BRAND, color: BRAND }}
-          className="border bg-white text-sm font-medium px-5 py-2 rounded-md hover:bg-purple-50"
-        >
-          Review &amp; Edit
-        </button>
+        {!isEdit && (
+          <button
+            type="button"
+            onClick={() => setShowReview(true)}
+            style={{ borderColor: BRAND, color: BRAND }}
+            className="border bg-white text-sm font-medium px-5 py-2 rounded-md hover:bg-purple-50"
+          >
+            Review &amp; Edit
+          </button>
+        )}
         <button
           type="button"
           onClick={handleSubmit}
@@ -639,7 +753,7 @@ export default function AddTraineeForm() {
           className="flex items-center gap-2 text-white text-sm font-medium px-5 py-2 rounded-md hover:opacity-90 transition-opacity disabled:opacity-60"
         >
           {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
-          Create Trainee
+          {isEdit ? 'Update Trainee' : 'Create Trainee'}
         </button>
       </div>
 
@@ -671,7 +785,7 @@ export default function AddTraineeForm() {
             </div>
 
             <div className="overflow-y-auto px-5 py-4">
-              <table className="w-full text-sm border-collapse">
+              <div className="overflow-x-auto"><table className="w-full text-sm border-collapse">
                 <tbody>
                   {REVIEW_FIELD_ORDER.map((key) => {
                     const value = getReviewValue(key);
@@ -691,7 +805,7 @@ export default function AddTraineeForm() {
                     <td className="py-2 text-gray-600 align-top">{imageName || '(no file)'}</td>
                   </tr>
                 </tbody>
-              </table>
+              </table></div>
             </div>
 
             <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-gray-100">

@@ -6,7 +6,7 @@ const th =
 const td =
     "border border-[#dee2e6] px-3 py-[8px] text-[15px]";
 
-const CourseTable = ({ loading, courses }) => {
+const CourseTable = ({ loading, courses, activeTab = "english" }) => {
 
     const navigate = useNavigate();
 
@@ -112,7 +112,7 @@ const CourseTable = ({ loading, courses }) => {
                                         <button
                                             type="button"
                                             onClick={() =>
-                                                navigate(`/courses/view/${course.course_id}`)
+                                                navigate(`/courses/view/${course.course_id}?tab=${activeTab}`)
                                             }
                                             className="px-4 py-1 text-[12px] font-medium text-[#67205e  ] bg-white border-2 border-[#67205e] rounded-sm! hover:bg-[#f7f8fa]"
                                         >
@@ -122,7 +122,7 @@ const CourseTable = ({ loading, courses }) => {
                                         <button
                                             type="button"
                                             onClick={() =>
-                                                navigate(`/courses/edit/${course.course_id}`)
+                                                navigate(`/courses/edit/${course.course_id}?tab=${activeTab}`)
                                             }
                                             className="px-4 py-1 text-[12px] font-medium text-white bg-[#732269]
                                              rounded-sm! hover:bg-[#67205e]"

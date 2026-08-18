@@ -1,5 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
+
+import { getCreatableRoles } from "../services/UserService";
 
 export default function UserForm({
     mode = "create",
@@ -20,6 +22,15 @@ export default function UserForm({
             reset(defaultValues);
         }
     }, [mode, defaultValues, reset]);
+
+    // Only the roles the current user is allowed to create/assign.
+    const [roleOptions, setRoleOptions] = useState([]);
+
+    useEffect(() => {
+        getCreatableRoles()
+            .then((data) => setRoleOptions(Array.isArray(data) ? data : []))
+            .catch(() => setRoleOptions([]));
+    }, []);
 
     return (
         <form
@@ -84,11 +95,11 @@ export default function UserForm({
                         className="w-full h-8 border shadow-inner border-gray-300 rounded px-3 focus:outline-none focus:ring-2 focus:ring-purple-500"
                     >
                         <option value="">Please select a Role</option>
-                        <option value="1">Super Admin</option>
-                        <option value="2">Admin</option>
-                        <option value="3">State Head</option>
-                        <option value="4">District Head</option>
-                        <option value="5">PI</option>
+                        {roleOptions.map((role) => (
+                            <option key={role.id} value={role.id}>
+                                {role.name}
+                            </option>
+                        ))}
                     </select>
 
                     {errors.role && (
@@ -119,8 +130,8 @@ export default function UserForm({
                                 ? {
                                     required: "Password is required",
                                     minLength: {
-                                        value: 6,
-                                        message: "Minimum 6 characters",
+                                        value: 8,
+                                        message: "Minimum 8 characters",
                                     },
                                 }
                                 : {}),

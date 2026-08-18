@@ -1,15 +1,22 @@
 import { useState } from "react";
 
-import { exportDocuments } from "../services/DocumentServices";
+import { exportDocuments } from "../../../features/document/services/DocumentServices";
 
-export default function ExportButton({ params = {}, filename = "documents.xlsx" }) {
+export default function ExportButton({
+    exportFunction,
+    params = {},
+    filename = "documents.xlsx",
+}) {
     const [busy, setBusy] = useState(false);
 
     const handleExport = async () => {
         setBusy(true);
 
         try {
-            const blob = await exportDocuments(params);
+            // Use the caller-provided export function when given, otherwise
+            // fall back to the document export (preserves existing usage).
+            const runExport = exportFunction || exportDocuments;
+            const blob = await runExport(params);
 
             // Create a temporary object URL, click it, then release it —
             // leaving the URL alive holds the whole blob in memory.
@@ -25,7 +32,7 @@ export default function ExportButton({ params = {}, filename = "documents.xlsx" 
             window.URL.revokeObjectURL(url);
         } catch (error) {
             console.error("Export Error:", error?.response?.data ?? error);
-            alert("Unable to export documents.");
+            alert("Unable to export data.");
         } finally {
             setBusy(false);
         }

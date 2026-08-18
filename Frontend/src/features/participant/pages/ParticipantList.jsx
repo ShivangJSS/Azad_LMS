@@ -11,6 +11,10 @@ import ParticipantTable, { BRAND } from '../components/ParticipantTable';
 import ParticipantFilter from '../components/ParticipantFilter';
 import AppLayout from '../../../components/layout/AppLayout';
 import Pagination from '../../../shared/components/table/Pagination';
+import ManageModuleModal from '../components/ManageModuleModal';
+import TimeSpentModal from '../components/TimeSpentModal';
+import CredentialsModal from '../components/CredentialsModal';
+import Breadcrumbs from '../../../shared/components/breadcrumbs/Breadcrumbs';
 import { useNavigate } from "react-router-dom";
 
 const PAGE_SIZE = 10;
@@ -38,6 +42,10 @@ export default function ParticipantList() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [page, setPage] = useState(1);
+
+    // Row-action modals
+    const [activeModal, setActiveModal] = useState(null); // 'modules' | 'time' | 'creds'
+    const [activeParticipant, setActiveParticipant] = useState(null);
 
     // ---- load dropdown data ----
 
@@ -126,17 +134,33 @@ export default function ParticipantList() {
         URL.revokeObjectURL(url);
     };
 
-    const handleAddTrainee = () => console.log('Add trainee');
+    const handleAddTrainee = () => {};
 
     // ---- action handlers passed down to the table (wire these to real routes) ----
 
-    const handleEdit = (p) => console.log('Edit', p.participant_id);
+    const handleEdit = (p) => {
+        navigate(`/participants/${p.participant_id}/edit`);
+    };
     const handleViewReport = (p) => {
         navigate(`/participants/view/${p.participant_id}`);
     };
-    const handleManageModules = (p) => console.log('Manage modules', p.participant_id);
-    const handleTimeSpent = (p) => console.log('Time spent', p.participant_id);
-    const handleResetPassword = (p) => console.log('Reset password', p.participant_id);
+    const handleManageModules = (p) => {
+        setActiveParticipant(p);
+        setActiveModal('modules');
+    };
+    const handleTimeSpent = (p) => {
+        setActiveParticipant(p);
+        setActiveModal('time');
+    };
+    const handleResetPassword = (p) => {
+        setActiveParticipant(p);
+        setActiveModal('creds');
+    };
+
+    const closeModal = () => {
+        setActiveModal(null);
+        setActiveParticipant(null);
+    };
 
     // ---- client-side pagination (backend doesn't paginate yet) ----
 
@@ -153,11 +177,13 @@ export default function ParticipantList() {
 
             <div className="flex items-center justify-between mb-4">
                 <span className="text-lg font-semibold text-[#1a1e22]">Trainees List</span>
-                <nav className="text-sm" style={{ color: BRAND }}>
-                    Home <span className="text-gray-400 mx-1">/</span> Trainees{' '}
-                    <span className="text-gray-400 mx-1">/</span>
-                    <span className="text-gray-500">Trainees List</span>
-                </nav>
+                <Breadcrumbs
+                    items={[
+                        { label: 'Home', path: '/dashboard' },
+                        { label: 'Trainees', path: '/participants/list' },
+                        { label: 'Trainees List' },
+                    ]}
+                />
             </div>
             <div className="bg-gray-50 min-h-screen">
 
@@ -200,6 +226,30 @@ export default function ParticipantList() {
                     <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
                 </div>
             </div>
+
+            {activeModal === 'modules' && activeParticipant && (
+                <ManageModuleModal
+                    participantId={activeParticipant.participant_id}
+                    participantName={activeParticipant.participant_name}
+                    onClose={closeModal}
+                />
+            )}
+
+            {activeModal === 'time' && activeParticipant && (
+                <TimeSpentModal
+                    participantId={activeParticipant.participant_id}
+                    participantName={activeParticipant.participant_name}
+                    onClose={closeModal}
+                />
+            )}
+
+            {activeModal === 'creds' && activeParticipant && (
+                <CredentialsModal
+                    participantId={activeParticipant.participant_id}
+                    participantName={activeParticipant.participant_name}
+                    onClose={closeModal}
+                />
+            )}
         </AppLayout>
     );
 }

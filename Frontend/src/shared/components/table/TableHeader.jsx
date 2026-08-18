@@ -25,7 +25,6 @@ export default function TableHeader({
                     placeholder="Search..." 
                     className="w-44 h-8 border border-gray-300 rounded-sm px-2 shadow-inner focus:outline-none focus:ring-2 focus:ring-purple-600"
                 />
-
             </div>
 
         </div>

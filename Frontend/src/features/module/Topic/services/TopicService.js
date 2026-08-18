@@ -1,4 +1,4 @@
-import API from "../../../api/API";
+import API from "../../../../api/Api";
 
 export const getTopics = async (params) => {
     try {
@@ -48,6 +48,38 @@ export const deleteTopic = async (topicId) => {
         return response.data;
     } catch (error) {
         console.error('Error deleting topic:', error);
+        throw error;
+    }
+};
+
+
+// =============================
+// Topic Translation
+// =============================
+
+export const getTopicTranslation = async (topicId, languageId) => {
+    try {
+        const response = await API.get(
+            `/topics/${topicId}/translation/${languageId}`
+        );
+
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching topic translation:", error);
+        throw error;
+    }
+};
+
+export const saveTopicTranslation = async (topicId, payload) => {
+    try {
+        const response = await API.post(
+            `/topics/${topicId}/translation`,
+            payload
+        );
+
+        return response.data;
+    } catch (error) {
+        console.error("Error saving topic translation:", error);
         throw error;
     }
 };

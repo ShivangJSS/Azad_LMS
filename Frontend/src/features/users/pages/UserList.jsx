@@ -67,8 +67,6 @@ export default function UserList() {
     try {
       setLoading(true);
       const response = await getAllUsers();
-      console.log("Response:", response);
-      console.log("Total Users:", response.length);
       setUsers(response);
     } catch (error) {
       console.error("Error fetching users:", error);
@@ -119,7 +117,7 @@ export default function UserList() {
 
         </div>
 
-        <div className="bg-white rounded shadow-sm border p-3">
+        <div className="bg-white rounded shadow-sm border p-3 border-collapse border-[#D8E2EF]">
 
           <TableHeader
             totalEntries={table.totalEntries}

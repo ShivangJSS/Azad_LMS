@@ -5,7 +5,7 @@ import toast from "react-hot-toast";
 import AppLayout from "../../../components/layout/AppLayout";
 import Breadcrumbs from "../../../shared/components/breadcrumbs/Breadcrumbs";
 
-import DocumentForm from "../components/DocumentForm";
+import DocumentForm from "../components/Documentform";
 import {createDocument,getDocumentCategories,getLanguages} from "../services/DocumentServices";
 
 const breadcrumbItems = [

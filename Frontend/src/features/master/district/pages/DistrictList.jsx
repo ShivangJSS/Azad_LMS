@@ -52,7 +52,6 @@ export default function DistrictList() {
 
             const response = await getAllDistricts(params);
 
-            console.log("District API Response:", response);
 
             setDistricts(response.data || []);
             setTotalEntries(response.total || 0);

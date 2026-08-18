@@ -65,7 +65,7 @@ export default function DocumentTable({
 
                                 <td className={cellClass}>{doc.doc_type || "-"}</td>
 
-                                <td className={cellClass}>{doc.module_name || "-"}</td>
+                                <td className={cellClass}>{doc.category_name || "-"}</td>
 
                                 <td className={cellClass}>{doc.language_name || "-"}</td>
 

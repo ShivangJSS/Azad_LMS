@@ -17,7 +17,6 @@ export const getBatches = async ({ stateId, districtId, search } = {}) => {
                 ...(search ? { search } : {}),
             },
         });
-        console.log(response.data); // Log the response data
         return response.data;
     } catch (error) {
         console.error('Error fetching batches:', error);

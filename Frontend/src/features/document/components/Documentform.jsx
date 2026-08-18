@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 
+import PptViewer from "../../../shared/components/PptViewer";
+
 const DOC_TYPES = ["PDF", "PPT", "Video"];
+
 
 const MEDIA_ACCEPT = {
     PDF: ".pdf,application/pdf",
@@ -22,7 +25,7 @@ const labelClass = "mb-[8px] block text-[14px] font-medium text-[#4d3b45]";
 const controlClass =
     "h-[44px] w-full rounded-sm border border-[#EBD3E7] bg-white px-[14px] text-[14px] text-[#5E6E82] placeholder:text-[#9DA9BB] outline-none focus:border-[#7b216f] shadow-inner";
 
-const selectClass = `${controlClass} cursor-pointer appearance-none bg-[length:14px_11px] bg-no-repeat bg-[right_14px_center] bg-[url('data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Cpath fill=%22none%22 stroke=%22%235E6E82%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22 stroke-width=%221.6%22 d=%22m2 5 6 6 6-6%22/%3E%3C/svg%3E')]`;
+const selectClass = `${controlClass} cursor-pointer appearance-none pr-[38px]`;
 const fileClass =
     "w-full rounded-sm border border-[#EBD3E7] bg-white text-[14px] text-[#5E6E82] outline-none file:mr-[14px] file:h-[42px] file:cursor-pointer file:rounded-l-sm file:border-0 file:bg-[#4A5568] file:px-[16px] file:text-[14px] file:text-white hover:file:bg-[#3c4655] shadow-inner";
 
@@ -35,6 +38,42 @@ function Field({ label, required = false, htmlFor, children }) {
             </label>
 
             {children}
+        </div>
+    );
+}
+
+/* Native <select> with a visible dropdown caret so it's obvious the field
+   is a menu. The native arrow is removed (appearance-none) and replaced with
+   an inline chevron that never intercepts clicks. */
+function SelectBox({ className = "", children, ...props }) {
+    return (
+        <div style={{ position: "relative" }}>
+            <select {...props} className={`${selectClass} ${className}`}>
+                {children}
+            </select>
+
+            {/* Inline SVG + inline styles so the caret renders regardless of
+                Tailwind class generation or icon-library bundling. */}
+            <svg
+                width="14"
+                height="14"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="#5E6E82"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+                style={{
+                    position: "absolute",
+                    right: "14px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    pointerEvents: "none",
+                }}
+            >
+                <path d="M4 6l4 4 4-4" />
+            </svg>
         </div>
     );
 }
@@ -62,6 +101,8 @@ export default function DocumentForm({
     languages = [],
     categories = [],
     submitting = false,
+    existingFileUrl = "",
+    existingDocType = "",
     onLanguageChange,
     onSubmit,
     onCancel,
@@ -144,38 +185,38 @@ export default function DocumentForm({
                 <div className="grid grid-cols-1 gap-x-[24px] gap-y-[20px] md:grid-cols-3">
 
                     <Field label="Document Type" required htmlFor="doc_type">
-                        <select id="doc_type" name="doc_type" value={form.doc_type} onChange={update} required className={selectClass}>
+                        <SelectBox id="doc_type" name="doc_type" value={form.doc_type} onChange={update} required>
                             <option value="">Select Document Type</option>
                             {DOC_TYPES.map((type) => (
                                 <option key={type} value={type}>{type}</option>
                             ))}
-                        </select>
+                        </SelectBox>
                     </Field>
 
                     <Field label="Category" required htmlFor="doc_category_id">
-                        <select id="doc_category_id" name="doc_category_id" value={form.doc_category_id} onChange={update} required className={selectClass}>
+                        <SelectBox id="doc_category_id" name="doc_category_id" value={form.doc_category_id} onChange={update} required>
                             <option value="">Select Category</option>
                             {categories.map((category) => (
                                 <option key={category.id} value={category.id}>{category.name}</option>
                             ))}
-                        </select>
+                        </SelectBox>
                     </Field>
 
                     <Field label="Status" required htmlFor="status">
-                        <select id="status" name="status" value={form.status} onChange={update} required className={selectClass}>
+                        <SelectBox id="status" name="status" value={form.status} onChange={update} required>
                             <option value="">Please select a Status</option>
                             <option value="1">Active</option>
                             <option value="0">Inactive</option>
-                        </select>
+                        </SelectBox>
                     </Field>
 
                     <Field label="Language" required htmlFor="language_id">
-                        <select id="language_id" name="language_id" value={form.language_id} onChange={update} required className={`${selectClass} bg-[#F5F7FA]`}>
+                        <SelectBox id="language_id" name="language_id" value={form.language_id} onChange={update} required className="bg-[#F5F7FA]">
                             <option value="">Select Language</option>
                             {languages.map((language) => (
                                 <option key={language.id} value={language.id}>{language.name}</option>
                             ))}
-                        </select>
+                        </SelectBox>
                     </Field>
                 </div>
             </Section>
@@ -205,6 +246,51 @@ export default function DocumentForm({
                                 Please select a Document Type first to enable file upload.
                             </p>
                         )}
+
+                        {/* Current file preview (edit mode). Shows the stored
+                            file inline so the admin sees exactly what is saved;
+                            it stays until a replacement file is picked. */}
+                        {mode === "edit" && existingFileUrl && !mediaFile && (
+                            <div className="mt-[14px]">
+                                <p className="mb-[6px] text-[13px] font-medium text-[#4d3b45]">
+                                    Current File
+                                </p>
+
+                                {existingDocType === "VIDEO" ? (
+                                    <video
+                                        src={existingFileUrl}
+                                        controls
+                                        className="h-[320px] w-full max-w-[640px] rounded-[4px] border border-[#EBD3E7] bg-black"
+                                    />
+                                ) : existingDocType === "PDF" ? (
+                                    <iframe
+                                        title="Current PDF"
+                                        src={existingFileUrl}
+                                        className="h-[440px] w-full max-w-[760px] rounded-[4px] border border-[#EBD3E7]"
+                                    />
+                                ) : (
+                                    <div className="max-w-[760px]">
+                                        <PptViewer
+                                            fileUrl={existingFileUrl}
+                                            height={440}
+                                        />
+                                    </div>
+                                )}
+
+                                <a
+                                    href={existingFileUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="mt-[8px] inline-block text-[12px] text-[#7b216f] hover:underline"
+                                >
+                                    Open current file in new tab
+                                </a>
+
+                                <p className="mt-[4px] text-[12px] text-[#9DA9BB]">
+                                    Choose a file above only to replace it.
+                                </p>
+                            </div>
+                        )}
                     </Field>
 
                     {error && <p className="m-0 text-[13px] text-[#E63757]">{error}</p>}
@@ -222,7 +308,7 @@ export default function DocumentForm({
 
                 <button
                     type="button"
-                    onClick={onCancel} 
+                    onClick={onCancel}
                     className="h-[38px] rounded-sm border border-[#D8E2EF] bg-white px-[28px] text-[14px] text-[#344050] hover:bg-gray-50"
                 >
                     Cancel

@@ -1,6 +1,6 @@
-import { Search, Plus } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { BRAND } from './ParticipantTable';
+import { Search, Plus } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { BRAND } from "./ParticipantTable";
 
 export default function ParticipantFilter({
     filters,
@@ -18,17 +18,16 @@ export default function ParticipantFilter({
 
     const handleAddTrainee = () => {
         onAddTrainee?.();
-        navigate('/participants/create');
+        navigate("/participants/create");
     };
 
     return (
-        <div>
-            {/* Filters */}
-            <div className="bg-white rounded-lg  p-4 flex flex-wrap items-center gap-3">
+        <div className="bg-white rounded-lg border border-[#d9dee7] p-4">
+            <div className="flex flex-wrap items-center gap-2">
                 <select
-                    className="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 min-w-[160px]"
+                    className="py-1 w-1/7 border border-[#d9e1ec] rounded-md px-4 text-[16px] text-[#253858] bg-white !shadow-inner focus:outline-none"
                     value={filters.state_id}
-                    onChange={onFilterChange('state_id')}
+                    onChange={onFilterChange("state_id")}
                 >
                     <option value="">Select State</option>
                     {states.map((s) => (
@@ -39,9 +38,9 @@ export default function ParticipantFilter({
                 </select>
 
                 <select
-                    className="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 min-w-[160px]"
+                    className="py-1 w-1/7 border border-[#d9e1ec] rounded-md px-4 text-[16px] text-[#253858] bg-white !shadow-inner focus:outline-none disabled:bg-[#edf2f8]"
                     value={filters.district_id}
-                    onChange={onFilterChange('district_id')}
+                    onChange={onFilterChange("district_id")}
                     disabled={!filters.state_id}
                 >
                     <option value="">Select District</option>
@@ -53,9 +52,9 @@ export default function ParticipantFilter({
                 </select>
 
                 <select
-                    className="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 min-w-[160px]"
+                    className="py-1 w-1/7 border border-[#d9e1ec] rounded-md px-4 text-[16px] text-[#253858] bg-white !shadow-inner focus:outline-none"
                     value={filters.centre_id}
-                    onChange={onFilterChange('centre_id')}
+                    onChange={onFilterChange("centre_id")}
                 >
                     <option value="">Select Centre</option>
                     {centres.map((c) => (
@@ -66,9 +65,9 @@ export default function ParticipantFilter({
                 </select>
 
                 <select
-                    className="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-600 min-w-[160px]"
+                    className="py-1 w-1/7 border border-[#d9e1ec] rounded-md px-4 text-[16px] text-[#253858] bg-white !shadow-inner focus:outline-none"
                     value={filters.batch_id}
-                    onChange={onFilterChange('batch_id')}
+                    onChange={onFilterChange("batch_id")}
                 >
                     <option value="">Select Batch</option>
                     {batches.map((b) => (
@@ -78,46 +77,62 @@ export default function ParticipantFilter({
                     ))}
                 </select>
 
-                <div className="relative flex-1 min-w-[200px]">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <div className="relative flex-1 min-w-50">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8b9bb2]" />
+
                     <input
                         type="text"
                         placeholder="Search By Trainee Name"
-                        className="w-full border border-gray-300 rounded-md pl-9 pr-3 py-2 text-sm"
+                        className="w-full py-1 border border-[#d9e1ec] rounded-md pl-9 pr-3 text-[16px] text-[#253858] !shadow-inner focus:outline-none"
                         value={filters.search}
-                        onChange={onFilterChange('search')}
-                        onKeyDown={(e) => e.key === 'Enter' && onSearch()}
+                        onChange={onFilterChange("search")}
+                        onKeyDown={(e) => e.key === "Enter" && onSearch()}
                     />
                 </div>
 
                 <button
+                    type="button"
                     onClick={onSearch}
                     style={{ backgroundColor: BRAND }}
-                    className="text-white text-sm font-medium px-5 py-2 rounded-md hover:opacity-90 transition-opacity"
+                    className=" text-white text-[15px] font-medium px-4 py-1 !rounded-md hover:opacity-90 transition-opacity"
                 >
                     Search
                 </button>
+
                 <button
+                    type="button"
                     onClick={onReset}
-                    className="border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-medium px-5 py-2 rounded-md transition-colors"
+                    className="border py-1 border-[#111827] bg-white hover:bg-gray-50 text-[#111827] text-[15px] font-medium px-4 !rounded-md transition-colors"
                 >
                     Reset
                 </button>
             </div>
 
-            <div className="border-t border-[#4FC3C3] my-[20px]" />
+            <div className="border-t border-[#4FC3C3] mt-5 mb-6" />
 
-            {/* Total + Add */}
-            <div className="flex items-center justify-between mb-3 px-3">
-                <p className="text-sm font-medium text-gray-700">
-                    Total Trainees: <span className="font-bold" style={{ color: BRAND }}>{totalCount}</span>
+            <div className="flex items-center justify-between px-1">
+                <p className="text-[16px] font-medium text-[#253858]">
+                    Total Trainees:{" "}
+                    <span
+                        className="font-bold"
+                        style={{ color: BRAND }}
+                    >
+                        {totalCount}
+                    </span>
                 </p>
+
                 <button
+                    type="button"
                     onClick={handleAddTrainee}
-                    style={{ backgroundColor: BRAND }}
-                    className="flex items-center gap-1 text-white text-sm font-medium px-4 py-2 rounded-md hover:opacity-90 transition-opacity"
+                    style={{
+                        backgroundColor: "white",
+                        color: "#111827",
+                        border: "1px solid #111827",
+                    }}
+                    className="py-1 flex items-center gap-2 px-4 text-[15px] font-medium !rounded-md hover:bg-gray-50 transition-colors"
                 >
-                    <Plus className="w-4 h-4" /> Add Trainee
+                    <Plus className="w-[18px] h-[18px]" />
+                    Add Trainee
                 </button>
             </div>
         </div>

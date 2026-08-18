@@ -21,12 +21,8 @@ export default function CreateUser() {
 
             toast.success("User Created Successfully");
 
-            navigate("/users/create");
-            reset();
-            window.location.reload();
+            navigate("/users/userlist");
         } catch (error) {
-            console.error(error);
-
             toast.error(
                 error.response?.data?.detail ||
                 error.response?.data?.message ||
@@ -55,7 +51,7 @@ export default function CreateUser() {
                         mode="create"
                         loading={loading}
                         onSubmit={handleCreate}
-                        onCancel={() => navigate("/users/create")}
+                        onCancel={() => navigate("/users/userlist")}
                     />
 
                 </div>
