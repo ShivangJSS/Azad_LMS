@@ -2,6 +2,7 @@ from sqlalchemy import (
     BigInteger,
     Column,
     DateTime,
+    ForeignKey,
     Integer,
     Numeric,
     String,
@@ -19,6 +20,7 @@ class AssessmentMaster(Base):
     parent_id = Column(Integer)
     assessment_name = Column(String)
     module_id = Column(Integer)
+    is_active = Column(Integer)
     created_at = Column(DateTime)
     updated_at = Column(DateTime)
 
@@ -48,9 +50,9 @@ class PostSessionAssessment(Base):
 class McqMaster(Base):
     __tablename__ = "mcq_master"
 
-    mcq_id = Column(BigInteger, primary_key=True)
+    mcq_id = Column(BigInteger, primary_key=True, autoincrement=True)
 
-    parent_id = Column(BigInteger)
+    parent_id = Column(BigInteger, nullable=True)
 
     mcq_question_title = Column(String(500))
 
@@ -58,14 +60,16 @@ class McqMaster(Base):
 
     image_url = Column(String(500))
 
-    status = Column(Integer)
+    status = Column(Integer, default=1)
 
     marks = Column(Numeric(6, 2))
+    created_at = Column(DateTime, server_default=text("CURRENT_TIMESTAMP"))
 
-    created_at = Column(DateTime)
-
-    updated_at = Column(DateTime)
-
+    updated_at = Column(
+    DateTime,
+    server_default=text("CURRENT_TIMESTAMP"),
+    onupdate=text("CURRENT_TIMESTAMP"),
+)
     deleted_at = Column(DateTime)
 
     language_id = Column(BigInteger)
@@ -74,9 +78,9 @@ class McqMaster(Base):
 class ScqMaster(Base):
     __tablename__ = "scq_master"
 
-    scq_id = Column(BigInteger, primary_key=True)
+    scq_id = Column(BigInteger, primary_key=True, autoincrement=True)
 
-    parent_id = Column(BigInteger)
+    parent_id = Column(BigInteger, nullable=True)
 
     scq_question_title = Column(String(500))
 
@@ -84,13 +88,17 @@ class ScqMaster(Base):
 
     image_url = Column(String(500))
 
-    status = Column(Integer)
+    status = Column(Integer, default=1)
 
     marks = Column(Numeric(6, 2))
 
-    created_at = Column(DateTime)
+    created_at = Column(DateTime, server_default=text("CURRENT_TIMESTAMP"))
 
-    updated_at = Column(DateTime)
+    updated_at = Column(
+        DateTime,
+        server_default=text("CURRENT_TIMESTAMP"),
+        onupdate=text("CURRENT_TIMESTAMP"),
+    )
 
     deleted_at = Column(DateTime)
 
@@ -99,7 +107,16 @@ class ScqMaster(Base):
 class MatchMakingMaster(Base):
     __tablename__ = "match_making_masters"
 
-    match_making_id = Column(BigInteger, primary_key=True)
+    match_making_id = Column(
+    BigInteger,
+    primary_key=True,
+    autoincrement=True,
+)
+
+    deleted_at = Column(
+      DateTime,
+      nullable=True,
+)
 
     parent_id = Column(BigInteger)
 
@@ -117,7 +134,7 @@ class MatchMakingMaster(Base):
 
     updated_at = Column(DateTime)
 
-    deleted_at = Column(DateTime)
+    
 
     language_id = Column(BigInteger)
 
@@ -126,7 +143,14 @@ class MatchMakingMaster(Base):
 class AssessmentMapping(Base):
     __tablename__ = "assessment_mapping"
 
-    assessmentmapping_id = Column(BigInteger, primary_key=True)
+    # Map to the real DB column name "assessment_mapping_id" (the attribute
+    # keeps its old name so existing code keeps working).
+    assessmentmapping_id = Column(
+        "assessment_mapping_id",
+        BigInteger,
+        primary_key=True,
+        autoincrement=True,
+    )
 
     assessment_id = Column(BigInteger, nullable=False)
 
@@ -150,21 +174,29 @@ class AssessmentMapping(Base):
 class McqQuestionOption(Base):
     __tablename__ = "mcq_question_options"
 
-    mcq_option_id = Column(Integer, primary_key=True)
+    mcq_option_id = Column(BigInteger, primary_key=True, autoincrement=True)
 
-    mcq_id = Column(BigInteger)
+    mcq_id = Column(
+        BigInteger,
+        ForeignKey("mcq_master.mcq_id"),
+        nullable=False,
+    )
 
     mcq_option_text = Column(String(500))
 
     is_mcq_option_correct = Column(Integer)
 
-    status = Column(Integer)
+    status = Column(Integer, default=1)
 
-    created_at = Column(DateTime)
+    created_at = Column(DateTime, server_default=text("CURRENT_TIMESTAMP"))
 
-    updated_at = Column(DateTime)
+    updated_at = Column(
+        DateTime,
+        server_default=text("CURRENT_TIMESTAMP"),
+        onupdate=text("CURRENT_TIMESTAMP"),
+    )
 
-    deleted_at = Column(DateTime)
+    deleted_at = Column(DateTime, nullable=True)
 
     language_id = Column(BigInteger)
 
@@ -172,21 +204,29 @@ class McqQuestionOption(Base):
 class ScqQuestionOption(Base):
     __tablename__ = "scq_question_options"
 
-    scq_option_id = Column(Integer, primary_key=True)
+    scq_option_id = Column(BigInteger, primary_key=True, autoincrement=True)
 
-    scq_id = Column(BigInteger)
+    scq_id = Column(
+        BigInteger,
+        ForeignKey("scq_master.scq_id"),
+        nullable=False,
+    )
 
     scq_option_text = Column(String(500))
 
     is_scq_option_correct = Column(Integer)
 
-    status = Column(Integer)
+    status = Column(Integer, default=1)
 
-    created_at = Column(DateTime)
+    created_at = Column(DateTime, server_default=text("CURRENT_TIMESTAMP"))
 
-    updated_at = Column(DateTime)
+    updated_at = Column(
+        DateTime,
+        server_default=text("CURRENT_TIMESTAMP"),
+        onupdate=text("CURRENT_TIMESTAMP"),
+    )
 
-    deleted_at = Column(DateTime)
+    deleted_at = Column(DateTime, nullable=True)
 
     language_id = Column(BigInteger)
 
@@ -194,13 +234,22 @@ class ScqQuestionOption(Base):
 class MatchLeftItem(Base):
     __tablename__ = "match_left_items"
 
-    match_left_id = Column(BigInteger, primary_key=True)
+    match_left_id = Column(BigInteger, primary_key=True,autoincrement=True)
 
-    match_making_id = Column(BigInteger)
+    match_making_id = Column(
+    BigInteger,
+    ForeignKey(
+        "match_making_masters.match_making_id"
+    ),
+)
 
     match_left_text = Column(String(500))
 
+
+
     sort_order = Column(String(50))
+
+
 
     created_at = Column(DateTime)
 
@@ -214,13 +263,20 @@ class MatchLeftItem(Base):
 class MatchRightItem(Base):
     __tablename__ = "match_right_items"
 
-    match_right_id = Column(BigInteger, primary_key=True)
+    match_right_id = Column(BigInteger, primary_key=True,autoincrement=True)
 
-    match_making_id = Column(BigInteger)
+    match_making_id = Column(
+    BigInteger,
+    ForeignKey(
+        "match_making_masters.match_making_id"
+    ),
+)
 
     match_right_text = Column(String(500))
 
     sort_order = Column(String(50))
+
+
 
     created_at = Column(DateTime)
 
@@ -234,16 +290,116 @@ class MatchRightItem(Base):
 class MatchCorrectAnswer(Base):
     __tablename__ = "match_correct_answers"
 
-    match_correct_answers_id = Column(BigInteger, primary_key=True)
+    match_correct_answers_id = Column(BigInteger, primary_key=True,autoincrement=True)
 
-    match_making_id = Column(BigInteger)
+    match_making_id = Column(
+    BigInteger,
+    ForeignKey(
+        "match_making_masters.match_making_id"
+    ),
+)
 
-    match_left_id = Column(BigInteger)
+    match_left_id = Column(
+     BigInteger,
+     ForeignKey(
+        "match_left_items.match_left_id"
+    ),
+)
 
-    match_right_id = Column(BigInteger)
+    match_right_id = Column(
+     BigInteger,
+     ForeignKey(
+        "match_right_items.match_right_id"
+    ),
+)
 
     created_at = Column(DateTime)
 
     updated_at = Column(DateTime)
 
-    deleted_at = Column(DateTime)
+    deleted_at = Column(
+     DateTime,
+     nullable=True,
+)
+
+
+
+
+class DropBucketMaster(Base):
+    __tablename__ = "drop_bucket_masters"
+
+    drop_bucket_id = Column(BigInteger, primary_key=True,autoincrement=True)
+
+    parent_id = Column(BigInteger)
+
+    drop_bucket_question_title = Column(String(500))
+
+    drop_bucket_question_description = Column(Text)
+
+    image_url = Column(String(500))
+
+    status = Column(Integer)
+
+    marks = Column(Numeric(6, 2))
+
+    created_at = Column(DateTime)
+
+    updated_at = Column(DateTime)
+
+    deleted_at = Column(DateTime,nullable=True)
+
+    language_id = Column(BigInteger)
+
+
+    
+class DropBucket(Base):
+    __tablename__ = "drop_buckets"
+
+    bucket_id = Column(BigInteger, primary_key=True,autoincrement=True)
+
+    drop_bucket_id = Column(
+    BigInteger,
+    ForeignKey("drop_bucket_masters.drop_bucket_id"),
+)
+
+
+  
+
+    bucket_name = Column(String(500))
+
+    bucket_image = Column(String(1000))
+
+    status = Column(Integer)
+
+    created_at = Column(DateTime)
+
+    updated_at = Column(DateTime)
+
+    deleted_at = Column(DateTime,nullable=True)
+
+    language_id = Column(BigInteger)
+
+
+class DropBucketItem(Base):
+    __tablename__ = "drop_bucket_items"
+
+    drop_bucket_item_id = Column(BigInteger, primary_key=True,autoincrement=True)
+
+    bucket_id = Column(
+    BigInteger,
+    ForeignKey("drop_buckets.bucket_id"),
+)
+
+    item_name = Column(String(500))
+
+    item_image = Column(String(1000))
+
+    status = Column(Integer)
+
+    created_at = Column(DateTime)
+
+    updated_at = Column(DateTime)
+
+    deleted_at = Column(DateTime,nullable=True)
+
+    language_id = Column(BigInteger)

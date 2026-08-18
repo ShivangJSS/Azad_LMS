@@ -4,9 +4,12 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
-from app.modules.dashboard.schema import DashboardCentreDetail, DashboardDocumentDetail, DashboardLoginDetail, DashboardModuleDetail, DashboardParticipantDetail, DashboardResponse, MonthlyLoginTrendItem
+from app.modules.dashboard.schema import DashboardCentreDetail, DashboardDocumentDetail, DashboardLoginDetail, DashboardModuleDetail, DashboardParticipantDetail, DashboardResponse, MonthlyLoginTrendItem, TraineeStatusDetail
 from app.modules.dashboard.service import DashboardService
 from app.shared.dependencies.module_access import Module, require_module_access
+from app.modules.auth.dependencies import get_current_user
+from app.modules.auth.model import User
+from app.modules.users.service import UserService
 
 router = APIRouter(
     prefix="/dashboard",
@@ -26,8 +29,11 @@ def get_dashboard(
     from_date: str | None = Query(None),
     to_date: str | None = Query(None),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-
+    state_id, district_id, centre_id = UserService.clamp_scope(
+        current_user, state_id, district_id, centre_id
+    )
     return DashboardService.get_dashboard_summary(
         db=db,
         state_id=state_id,
@@ -35,6 +41,28 @@ def get_dashboard(
         centre_id=centre_id,
         from_date=from_date,
         to_date=to_date,
+    )
+
+
+@router.get(
+    "/trainee-status/details",
+    response_model=list[TraineeStatusDetail],
+)
+def get_trainee_status_details(
+    state_id: int | None = None,
+    district_id: int | None = None,
+    centre_id: int | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    state_id, district_id, centre_id = UserService.clamp_scope(
+        current_user, state_id, district_id, centre_id
+    )
+    return DashboardService.get_trainee_status_details(
+        db=db,
+        state_id=state_id,
+        district_id=district_id,
+        centre_id=centre_id,
     )
 
 
@@ -50,7 +78,11 @@ def get_state_wise_participants(
     from_date: date | None = None,
     to_date: date | None = None,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
+    state_id, district_id, centre_id = UserService.clamp_scope(
+        current_user, state_id, district_id, centre_id
+    )
     return DashboardService.get_state_wise_participants(
         db=db,
         clicked_value=clicked_value,
@@ -73,7 +105,11 @@ def get_district_wise_participants(
     from_date: date | None = None,
     to_date: date | None = None,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
+    state_id, district_id, centre_id = UserService.clamp_scope(
+        current_user, state_id, district_id, centre_id
+    )
     return DashboardService.get_district_wise_participants(
         db=db,
         clicked_value=clicked_value,
@@ -97,7 +133,11 @@ def get_gender_distribution(
     from_date: date | None = None,
     to_date: date | None = None,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
+    state_id, district_id, centre_id = UserService.clamp_scope(
+        current_user, state_id, district_id, centre_id
+    )
     return DashboardService.get_gender_distribution(
         db=db,
         clicked_value=clicked_value,
@@ -121,7 +161,11 @@ def get_age_group_distribution(
     from_date: date | None = None,
     to_date: date | None = None,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
+    state_id, district_id, centre_id = UserService.clamp_scope(
+        current_user, state_id, district_id, centre_id
+    )
     return DashboardService.get_age_group_distribution(
         db=db,
         clicked_value=clicked_value,
@@ -145,7 +189,11 @@ def get_state_wise_centres(
     from_date: date | None = None,
     to_date: date | None = None,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
+    state_id, district_id, centre_id = UserService.clamp_scope(
+        current_user, state_id, district_id, centre_id
+    )
     return DashboardService.get_state_wise_centres(
         db=db,
         clicked_value=clicked_value,
@@ -169,7 +217,11 @@ def get_module_wise_performance(
     from_date: date | None = None,
     to_date: date | None = None,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
+    state_id, district_id, centre_id = UserService.clamp_scope(
+        current_user, state_id, district_id, centre_id
+    )
     return DashboardService.get_module_wise_performance_details(
         db=db,
         clicked_value=clicked_value,
@@ -205,7 +257,11 @@ def get_monthly_logins(
     from_date: date | None = None,
     to_date: date | None = None,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
+    state_id, district_id, centre_id = UserService.clamp_scope(
+        current_user, state_id, district_id, centre_id
+    )
     return DashboardService.get_monthly_logins(
         db=db,
         clicked_value=clicked_value,
@@ -230,7 +286,11 @@ def get_monthly_login_details(
     from_date: date | None = None,
     to_date: date | None = None,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
+    state_id, district_id, centre_id = UserService.clamp_scope(
+        current_user, state_id, district_id, centre_id
+    )
     return DashboardService.get_monthly_login_details(
         db=db,
         clicked_value=clicked_value,

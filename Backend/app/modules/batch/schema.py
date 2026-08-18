@@ -124,6 +124,12 @@ class BatchListResponse(BaseModel):
     # outerjoin fix in repository.py (a batch whose centre couldn't be
     # resolved still needs to appear in the list).
     centre_name: Optional[str] = None
+    # Location ids of the batch's centre — used to pre-select the cascade
+    # on the Add Trainee form when adding a participant to this batch.
+    centre_id: Optional[int] = None
+    state_id: Optional[int] = None
+    district_id: Optional[int] = None
+    block_id: Optional[int] = None
     fy_year: str
     created_by: Optional[str] = None
     status: int

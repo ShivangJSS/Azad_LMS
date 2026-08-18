@@ -1,7 +1,9 @@
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from app.modules.Topic.repository import TopicRepository
+from app.modules.module.Topic.repository import TopicRepository
+
+# Corrected import path
 
 
 class TopicService:
@@ -45,12 +47,10 @@ class TopicService:
         )
 
         if not rows:
-            raise HTTPException(
-                status_code=404,
-                detail="Topic not found."
-            )
+            raise HTTPException(status_code=404, detail="Topic not found.")
 
         return {
+            "module_id": rows[0].module_id,  
             "module_name": rows[0].module_name,
             "status": rows[0].status,
             "translations": [
@@ -75,10 +75,7 @@ class TopicService:
         )
 
         if not deleted:
-            raise HTTPException(
-                status_code=404,
-                detail="Topic not found."
-            )
+            raise HTTPException(status_code=404, detail="Topic not found.")
 
         return
 
@@ -93,60 +90,64 @@ class TopicService:
             topics=request.topics,
         )
 
-        return {
-            "topic_ids": [topic.topic_id for topic in topics]
-        }
+        return {"topic_ids": [topic.topic_id for topic in topics]}
 
     @staticmethod
     def save_translation(
-     db: Session,
-     topic_id: int,
-     request,
-):
-     topic = TopicRepository.save_translation(
-        db=db,
-        topic_id=topic_id,
-        language_id=request.language_id,
-        topic_name=request.topic_name,
-        is_active=request.is_active,
-    )
-
-     if not topic:
-        raise HTTPException(
-            status_code=404,
-            detail="Topic not found."
+        db: Session,
+        topic_id: int,
+        request,
+    ):
+        topic = TopicRepository.save_translation(
+            db=db,
+            topic_id=topic_id,
+            language_id=request.language_id,
+            topic_name=request.topic_name,
+            is_active=request.is_active,
         )
 
-     return {
-        "topic_id": topic.topic_id,
-        "parent_id": topic.parent_id,
-        "language_id": topic.language_id,
-        "topic_name": topic.topic_name,
-    }
+        if not topic:
+            raise HTTPException(status_code=404, detail="Topic not found.")
 
-
+        return {
+            "topic_id": topic.topic_id,
+            "parent_id": topic.parent_id,
+            "language_id": topic.language_id,
+            "topic_name": topic.topic_name,
+        }
 
     @staticmethod
     def update_topic(
-     db: Session,
-     topic_id: int,
-     request,
-):
-
-     topic = TopicRepository.update_topic(
-        db=db,
-        topic_id=topic_id,
-        module_id=request.module_id,
-        topic_name=request.topic_name,
-        is_active=request.is_active,
-    )
-
-     if not topic:
-        raise HTTPException(
-            status_code=404,
-            detail="Topic not found."
+        db: Session,
+        topic_id: int,
+        request,
+    ):
+        topic = TopicRepository.update_topic(
+            db=db,
+            topic_id=topic_id,
+            module_id=request.module_id,
+            topic_name=request.topic_name,
+            is_active=request.is_active,
         )
 
-     return {
-        "topic_id": topic.topic_id
-    }
+        if not topic:
+            raise HTTPException(status_code=404, detail="Topic not found.")
+
+        return {"topic_id": topic.topic_id}
+
+    @staticmethod
+    def get_topic_translation(
+        db: Session,
+        topic_id: int,
+        language_id: int,
+    ):
+        topic = TopicRepository.get_topic_translation(
+            db=db,
+            topic_id=topic_id,
+            language_id=language_id,
+        )
+
+        if not topic:
+            raise HTTPException(status_code=404, detail="Topic not found.")
+
+        return topic

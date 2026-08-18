@@ -5,7 +5,69 @@ from sqlalchemy.orm import Session
 from app.modules.dashboard.repository import DashboardRepository
 
 
+# Trainee performance categories, in display order. Keys match the frontend
+# donut colour map (DONUT_STATUS); labels come from get_participants.
+_TRAINEE_STATUS_ORDER = [
+    ("YetToStart", "Yet to Start"),
+    ("Poor", "Poor"),
+    ("Average", "Average"),
+    ("Good", "Good"),
+]
+
+
+def _trainee_status_rows(db, state_id=None, district_id=None, centre_id=None):
+    """Per-trainee list with the same performance category the participants
+    list uses (Yet to Start / Poor / Average / Good). Imported locally to
+    avoid a circular import with the users module."""
+    from app.modules.users.service import UserService
+
+    return UserService.get_participants(
+        db=db,
+        state_id=state_id,
+        district_id=district_id,
+        centre_id=centre_id,
+    )
+
+
+def _trainee_status_summary(rows):
+    counts = {label: 0 for _, label in _TRAINEE_STATUS_ORDER}
+    for r in rows:
+        label = r.get("performance_status") or "Yet to Start"
+        if label in counts:
+            counts[label] += 1
+    return [
+        {"status": key, "label": label, "total": counts[label]}
+        for key, label in _TRAINEE_STATUS_ORDER
+    ]
+
+
 class DashboardService:
+
+    @staticmethod
+    def get_trainee_status_details(
+        db: Session,
+        state_id=None,
+        district_id=None,
+        centre_id=None,
+    ):
+        """Individual trainees with their performance status (for the
+        Trainee Status chart's detail modal)."""
+        rows = _trainee_status_rows(db, state_id, district_id, centre_id)
+        return [
+            {
+                "participant_id": r.get("participant_id"),
+                "participant_name": r.get("participant_name"),
+                "mobile_no": r.get("mobile_no"),
+                "enrollment_no": r.get("enrollment_no"),
+                "age": r.get("age"),
+                "state_name": r.get("state_name"),
+                "district_name": r.get("district_name"),
+                "centre_name": r.get("centre_name"),
+                "course_progress": r.get("course_progress"),
+                "performance_status": r.get("performance_status"),
+            }
+            for r in rows
+        ]
 
     @staticmethod
     def get_dashboard_summary(
@@ -155,6 +217,10 @@ class DashboardService:
             )
         )
 
+        trainee_status = _trainee_status_summary(
+            _trainee_status_rows(db, state_id, district_id, centre_id)
+        )
+
         return {
             "summary": {
                 "total_centres": total_centres,
@@ -166,8 +232,9 @@ class DashboardService:
                 "total_documents": total_documents,
                 "total_assessments": total_assessments,
                 "completion_rate": completion_rate,
-               
+
             },
+            "trainee_status": trainee_status,
             "state_wise_participants": [
                 {
                     "state_id": row.state_id,

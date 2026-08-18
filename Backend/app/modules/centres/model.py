@@ -1,6 +1,7 @@
 from sqlalchemy import BigInteger, Column, DateTime, Integer, Numeric, SmallInteger, String, text
 
 from app.database.database import Base
+from app.modules.batch.model import BatchMaster, BatchParticipant
 
 
 class CentreMaster(Base):

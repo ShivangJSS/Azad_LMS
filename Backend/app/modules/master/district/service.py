@@ -222,8 +222,6 @@ def get_district_service(
 
     user_role = _get_user_role(current_user)
 
-    print(f"User Role: {user_role}, Current User: {current_user}")
-    print(f"District: {district}, District State Code: {district.state_lgd_code}, District Code: {district.district_lgd_code}")
 
     if user_role not in PRIVILEGED_ROLES:
 

@@ -1,14 +1,15 @@
 from datetime import datetime
 import os
 from uuid import uuid4
-from fastapi import UploadFile
+from fastapi import UploadFile, HTTPException, status
 from sqlalchemy import func, distinct
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 from app.modules.course.model import CourseMaster
 from app.modules.module.model import ModuleMaster
 from app.modules.document.model import LanguageMaster
 from app.modules.course.schema import CourseUpdateRequest
 from app.modules.dashboard.model import ParticipantModule
+from app.utils.file_upload import validate_upload, IMAGE_EXTENSIONS
 
 
 class CourseRepository:
@@ -21,12 +22,27 @@ class CourseRepository:
         page: int = 1,
         page_size: int = 10,
     ):
+        # The requested language tab (default English).
+        lang = language_id or 1
+
+        # Every tab lists the same set of courses (the English originals).
+        # For a non-English tab we LEFT JOIN that course's translation for the
+        # requested language and fall back to the English name/status when no
+        # translation exists — so a course is never missing from a tab.
+        Trans = aliased(CourseMaster)
+
+        name_col = func.coalesce(
+            Trans.course_name, CourseMaster.course_name
+        ).label("course_name")
+        status_col = func.coalesce(
+            Trans.status, CourseMaster.status
+        ).label("status")
+
         query = (
             db.query(
-                CourseMaster.course_id,
-                CourseMaster.course_name,
-                CourseMaster.status,
-                CourseMaster.language_id,
+                CourseMaster.course_id.label("course_id"),
+                name_col,
+                status_col,
                 LanguageMaster.language_name,
                 func.count(
                     distinct(ModuleMaster.module_id)
@@ -36,8 +52,14 @@ class CourseRepository:
                 ).label("users_enrolled"),
             )
             .outerjoin(
+                Trans,
+                (Trans.parent_id == CourseMaster.course_id)
+                & (Trans.language_id == lang)
+                & (Trans.deleted_at.is_(None)),
+            )
+            .outerjoin(
                 LanguageMaster,
-                LanguageMaster.language_id == CourseMaster.language_id,
+                LanguageMaster.language_id == lang,
             )
             .outerjoin(
                 ModuleMaster,
@@ -47,35 +69,29 @@ class CourseRepository:
                 ParticipantModule,
                 ParticipantModule.module_id == ModuleMaster.module_id,
             )
-            .filter(CourseMaster.deleted_at.is_(None))
+            .filter(
+                CourseMaster.deleted_at.is_(None),
+                # English originals only (parent points to itself).
+                CourseMaster.language_id == 1,
+                CourseMaster.parent_id == CourseMaster.course_id,
+            )
         )
 
-        # Search by course name
+        # Search against the effective (fallback) course name.
         if search:
             query = query.filter(
-                CourseMaster.course_name.ilike(f"%{search}%")
+                func.coalesce(
+                    Trans.course_name, CourseMaster.course_name
+                ).ilike(f"%{search}%")
             )
-
-        # Language filter
-        if language_id:
-
-            if language_id == 1:
-                # English tab
-                query = query.filter(
-                    CourseMaster.language_id == 1,
-                    CourseMaster.parent_id == CourseMaster.course_id,
-                )
-            else:
-                query = query.filter(
-                    CourseMaster.language_id == language_id
-                )
 
         query = (
             query.group_by(
                 CourseMaster.course_id,
+                Trans.course_name,
                 CourseMaster.course_name,
+                Trans.status,
                 CourseMaster.status,
-                CourseMaster.language_id,
                 LanguageMaster.language_name,
             )
             .order_by(CourseMaster.course_id.desc())
@@ -97,7 +113,7 @@ class CourseRepository:
             "course_id": row.course_id,
             "course_name": row.course_name,
             "status": row.status,
-            "language_id": row.language_id,
+            "language_id": lang,
             "language_name": row.language_name,
             "module_count": row.module_count,
             "users_enrolled": row.users_enrolled,
@@ -251,6 +267,23 @@ class CourseRepository:
      if not course:
         return None
 
+    # Reject a duplicate course name within the same language (exact match).
+     duplicate = (
+        db.query(CourseMaster)
+        .filter(
+            CourseMaster.course_name == request.course_name,
+            CourseMaster.language_id == language_id,
+            CourseMaster.deleted_at.is_(None),
+            CourseMaster.course_id != course.course_id,
+        )
+        .first()
+     )
+     if duplicate is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A course with this name already exists in this language.",
+        )
+
     # Update fields
      course.course_name = request.course_name
      course.course_description = request.course_description
@@ -270,7 +303,7 @@ class CourseRepository:
 
         os.makedirs(upload_dir, exist_ok=True)
 
-        extension = os.path.splitext(course_image.filename)[1]
+        extension = validate_upload(course_image, IMAGE_EXTENSIONS)
 
         filename = f"{uuid4().hex}{extension}"
 

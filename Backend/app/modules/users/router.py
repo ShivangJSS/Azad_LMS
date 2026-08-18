@@ -1,10 +1,13 @@
-from fastapi import APIRouter, Depends, File, Form, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.database.database import get_db
 from app.modules.auth.dependencies import get_current_user
+from app.shared.dependencies.module_access import Module, require_module_access
 from app.modules.auth.model import User
 from app.modules.users.service import UserService
+from app.modules.users.repository import UserRepository
+from app.modules.users.schema import ParticipantModuleActionRequest
 
 from app.modules.users.schema import (
     BatchResponse,
@@ -28,11 +31,13 @@ from app.modules.users.schema import (
 user_router = APIRouter(
     prefix="/users",
     tags=["Users"],
+    dependencies=[Depends(require_module_access(Module.CREATE_USER))],
 )
 
 participants_router = APIRouter(
     prefix="/participants",
     tags=["Participants"],
+    dependencies=[Depends(require_module_access(Module.CREATE_PARTICIPANT))],
 )
 
 
@@ -108,6 +113,7 @@ def delete_user(
     return UserService.delete_user(
         db=db,
         user_id=user_id,
+        current_user=current_user,
     )
 
 
@@ -212,25 +218,6 @@ async def create_participant(
 ):
 
     # 👇 YE YAHAN ADD KARO
-    print("========== API HIT ==========")
-    print("state_id:", state_id)
-    print("district_id:", district_id)
-    print("block_id:", block_id) 
-    print("centre_id:", centre_id)
-    print("batch_id:", batch_id)
-    print("participant_name:", participant_name)
-    print("enrollment_no:", enrollment_no)
-    print("username:", username)
-    print("gender:", gender)
-    print("age:", age)
-    print("email:", email) 
-    print("mobile_no:", mobile_no)
-    print("pin:", pin)
-    print("aadhaar_number:", aadhaar_number)
-    print("location:", location)
-    print("address:", address)
-    print("image:", image)
-    print("=============================")
 
     data = ParticipantCreateRequest(
         state_id=state_id,
@@ -292,7 +279,14 @@ def get_participants(
     batch_id: int | None = None,
     search: str | None = None,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
+    # Restrict scoped roles to their own jurisdiction (Super Admin/Admin
+    # keep the requested filter). Prevents a locally-scoped user from
+    # listing trainees nationwide by omitting/forging the filters.
+    state_id, district_id, centre_id = UserService.clamp_scope(
+        current_user, state_id, district_id, centre_id
+    )
     return UserService.get_participants(
         db=db,
         state_id=state_id,
@@ -307,12 +301,158 @@ def get_participants(
 def get_participant_report(
     participant_id: int,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
+    UserService.assert_participant_access(db, current_user, participant_id)
     return UserService.get_participant_report(
         db=db,
         participant_id=participant_id,
     )
 
+
+
+# ===========================
+# MANAGE MODULES
+# ===========================
+
+
+@participants_router.get("/{participant_id}/modules")
+def get_participant_modules(
+    participant_id: int,
+    language_id: int = 1,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    UserService.assert_participant_access(db, current_user, participant_id)
+    service = UserService(UserRepository(db))
+    return service.get_modules(
+        participant_id=participant_id,
+        language_id=language_id,
+    )
+
+
+@participants_router.post("/assign", response_model=MessageResponse)
+def assign_module(
+    request: ParticipantModuleActionRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    UserService.assert_participant_access(db, current_user, request.participant_id)
+    try:
+        service = UserService(UserRepository(db))
+        result = service.assign_module(
+            participant_id=request.participant_id,
+            module_id=request.module_id,
+        )
+        return MessageResponse(message=result["message"])
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error))
+
+
+@participants_router.post("/unassign", response_model=MessageResponse)
+def unassign_module(
+    request: ParticipantModuleActionRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    UserService.assert_participant_access(db, current_user, request.participant_id)
+    try:
+        service = UserService(UserRepository(db))
+        result = service.unassign_module(
+            participant_id=request.participant_id,
+            module_id=request.module_id,
+        )
+        return MessageResponse(message=result["message"])
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error))
+
+
+# ===========================
+# CREDENTIALS + TIME SPENT
+# ===========================
+
+
+@participants_router.get("/{participant_id}/key-details")
+def get_participant_key_details(
+    participant_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    UserService.assert_participant_access(db, current_user, participant_id)
+    return UserService.get_participant_key_details(
+        db=db,
+        participant_id=participant_id,
+    )
+
+
+@participants_router.get("/{participant_id}/time-spent")
+def get_participant_time_spent(
+    participant_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    UserService.assert_participant_access(db, current_user, participant_id)
+    return UserService.get_participant_time_spent(
+        db=db,
+        participant_id=participant_id,
+    )
+
+
+# ===========================
+# EDIT / UPDATE PARTICIPANT
+# ===========================
+
+
+@participants_router.get("/{participant_id}/edit")
+def get_participant_edit(
+    participant_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    UserService.assert_participant_access(db, current_user, participant_id)
+    return UserService.get_participant_edit(db=db, participant_id=participant_id)
+
+
+@participants_router.put("/{participant_id}")
+async def update_participant(
+    participant_id: int,
+    participant_name: str = Form(...),
+    age: int = Form(...),
+    gender: str = Form(...),
+    email: str | None = Form(None),
+    mobile_no: str | None = Form(None),
+    pin: str = Form(...),
+    aadhaar_number: str | None = Form(None),
+    location: str = Form(...),
+    address: str = Form(...),
+    state_id: int | None = Form(None),
+    district_id: int | None = Form(None),
+    block_id: int | None = Form(None),
+    image: UploadFile | None = File(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    UserService.assert_participant_access(db, current_user, participant_id)
+    data = {
+        "participant_name": participant_name,
+        "age": age,
+        "gender": gender,
+        "email": email,
+        "mobile_no": mobile_no,
+        "pin": pin,
+        "aadhaar_number": aadhaar_number,
+        "location": location,
+        "address": address,
+        "state_id": state_id,
+        "district_id": district_id,
+        "block_id": block_id,
+    }
+    return await UserService.update_participant(
+        db=db,
+        participant_id=participant_id,
+        data=data,
+        image=image,
+    )
 
 
 # ===========================

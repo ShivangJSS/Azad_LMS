@@ -18,6 +18,28 @@ def _not_found() -> HTTPException:
     )
 
 
+def _assert_centre_name_available(
+    db: Session,
+    centre_name: str,
+    district_id: int,
+    exclude_id: Optional[int] = None,
+) -> None:
+    """Reject a duplicate centre name within the same district (exact match)."""
+    query = db.query(CentreMaster).filter(
+        CentreMaster.centre_name == centre_name,
+        CentreMaster.district_id == district_id,
+        CentreMaster.deleted_at.is_(None),
+    )
+    if exclude_id is not None:
+        query = query.filter(CentreMaster.centre_id != exclude_id)
+
+    if query.first() is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A centre with this name already exists in this district.",
+        )
+
+
 class CentreService:
 
     # ------------------------------------------------------------------
@@ -87,6 +109,9 @@ class CentreService:
         db: Session,
         centre: CentreCreateRequest,
     ) -> CentreMaster:
+        _assert_centre_name_available(
+            db, centre.centre_name, centre.district_id
+        )
         try:
             created = CentreRepository.create_centre(db=db, data=centre)
 
@@ -109,6 +134,10 @@ class CentreService:
 
         if not centre:
             raise _not_found()
+
+        _assert_centre_name_available(
+            db, data.centre_name, data.district_id, exclude_id=centre_id
+        )
 
         try:
             updated = CentreRepository.update_centre(

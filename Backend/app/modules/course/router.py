@@ -8,9 +8,12 @@ from app.modules.course.schema import CourseUpdateRequest
 from app.database.database import get_db
 from app.modules.course.service import CourseService
 
+from app.shared.dependencies.module_access import Module, require_module_access
+
 router = APIRouter(
     prefix="/courses",
     tags=["Courses"],
+    dependencies=[Depends(require_module_access(Module.MODULE_MANAGEMENT))],
 )
 
 
@@ -86,14 +89,6 @@ def update_course(
     course_image: UploadFile | None = File(None),
     db: Session = Depends(get_db),
 ):
-    print("======== UPDATE ========")
-    print(course_id)
-    print(language_id)
-    print(course_name)
-    print(course_description)
-    print(status)
-    print(course_image)
-    print("========================")
 
     return CourseService.update_course(
         db=db,

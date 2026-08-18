@@ -1,8 +1,11 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+
+from app.modules.auth.dependencies import get_current_user
 
 router = APIRouter(
     prefix="/audit-logs",
     tags=["Audit Logs"],
+    dependencies=[Depends(get_current_user)],
 )
 
 # In the future, you could add endpoints to view audit logs, for example:

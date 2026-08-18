@@ -1,47 +1,38 @@
 from collections import defaultdict
-from sqlalchemy import func
-from sqlalchemy.orm import Session
+
 from passlib.context import CryptContext  # type: ignore
-from app.modules.centres.model import BlockMaster, CentreMaster
-from app.modules.master.state.model import StateMaster
-from app.modules.master.district.model import DistrictMaster
-from app.modules.users.model import ParticipantMaster
-from app.modules.batch.model import BatchParticipant, BatchMaster
-from app.modules.auth.model import User
-from app.modules.batch.model import BatchMaster
-from app.modules.users.schema import ParticipantCreateRequest
+from sqlalchemy import BigInteger, String, case, cast, distinct, func, or_
+from sqlalchemy.orm import Session
 
-# from app.modules.assessment.model import McqQuestionOption,ScqQuestionOption,MatchLeftItem,MatchRightItem
 from app.modules.assessment.model import (
-    McqMaster,
-    ScqMaster,
     AssessmentMapping,
-    PostSessionAssessment,
-    McqQuestionOption,
-    ScqQuestionOption,
-    MatchMakingMaster,
+    DropBucket,
+    DropBucketItem,
+    DropBucketMaster,
     MatchLeftItem,
+    MatchMakingMaster,
     MatchRightItem,
-    MatchCorrectAnswer,
+    McqMaster,
+    McqQuestionOption,
+    PostSessionAssessment,
+    ScqMaster,
+    ScqQuestionOption,
 )
-
-from app.modules.users.model import ParticipantMaster
-from app.modules.batch.model import BatchParticipant, BatchMaster
-from app.modules.centres.model import (
-    CentreMaster,
-)
-from app.modules.master.state.model import StateMaster
+from app.modules.auth.model import User
+from app.modules.batch.model import BatchMaster, BatchParticipant
+from app.modules.centres.model import BlockMaster, CentreMaster
+from app.modules.dashboard.model import ParticipantModule
 from app.modules.master.district.model import DistrictMaster
-
-from app.modules.module.model import ModuleMaster
-
-# from app.modules.assessment.model import AssessmentMapping, AssessmentMaster, PostSessionAssessment
-# from app.modules.assessment.model import McqMaster
-# from app.modules.assessment.model import ScqMaster
-# from app.modules.assessment.model import MatchMakingMaster
-from app.modules.users.model import ParticipantMaster
-from app.modules.batch.model import BatchParticipant
-from app.modules.centres.model import CentreMaster
+from app.modules.master.state.model import StateMaster
+from app.modules.module.model import ModuleMaster, ModuleType
+from app.modules.users.model import (
+    ParticipantDb,
+    ParticipantMaster,
+    ParticipantMcq,
+    ParticipantMm,
+    ParticipantScq,
+)
+from app.modules.users.schema import ParticipantCreateRequest
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -323,6 +314,20 @@ class UserRepository:
         batch_id: int,
         participant_id: int,
     ):
+        # Don't create a duplicate mapping if this participant is already in
+        # this batch — that would show the trainee twice in the list.
+        existing = (
+            db.query(BatchParticipant)
+            .filter(
+                BatchParticipant.batch_id == batch_id,
+                BatchParticipant.participant_id == participant_id,
+                BatchParticipant.deleted_at.is_(None),
+            )
+            .first()
+        )
+        if existing:
+            return existing
+
         mapping = BatchParticipant(
             batch_id=batch_id,
             participant_id=participant_id,
@@ -382,16 +387,149 @@ class UserRepository:
         batch_id: int | None = None,
         search: str | None = None,
     ):
+        # ------------------------------------------------------------------
+        # Score sub-queries (MCQ + SCQ) -> Performance chip.
+        # ------------------------------------------------------------------
+        mcq_perf = (
+            db.query(
+                ParticipantMcq.participant_id.label("participant_id"),
+                func.count(
+                    case((ParticipantMcq.option_selected.isnot(None), 1))
+                ).label("attempted"),
+                func.count(
+                    case((McqQuestionOption.is_mcq_option_correct == 1, 1))
+                ).label("correct"),
+            )
+            .outerjoin(
+                McqQuestionOption,
+                ParticipantMcq.option_selected
+                == cast(McqQuestionOption.mcq_option_id, String),
+            )
+            .group_by(ParticipantMcq.participant_id)
+            .subquery()
+        )
+
+        scq_perf = (
+            db.query(
+                ParticipantScq.participant_id.label("participant_id"),
+                func.count(
+                    case((ParticipantScq.option_selected.isnot(None), 1))
+                ).label("attempted"),
+                func.count(
+                    case((ScqQuestionOption.is_scq_option_correct == 1, 1))
+                ).label("correct"),
+            )
+            .outerjoin(
+                ScqQuestionOption,
+                ParticipantScq.option_selected
+                == cast(ScqQuestionOption.scq_option_id, String),
+            )
+            .group_by(ParticipantScq.participant_id)
+            .subquery()
+        )
+
+        # ------------------------------------------------------------------
+        # Completion sub-queries -> Course Progress.
+        # Course Progress = completed questions / configured questions * 100,
+        # matching the report's PROGRESS metric (100% when the whole
+        # assessment is done, otherwise proportional to what's completed).
+        # "done" is counted distinctly per question type across all four
+        # question kinds; "configured" is the distinct set of questions
+        # mapped to the participant's assigned modules.
+        # ------------------------------------------------------------------
+        mcq_done = (
+            db.query(
+                ParticipantMcq.participant_id.label("participant_id"),
+                func.count(distinct(ParticipantMcq.mcq_id)).label("done"),
+            )
+            .filter(ParticipantMcq.option_selected.isnot(None))
+            .group_by(ParticipantMcq.participant_id)
+            .subquery()
+        )
+
+        scq_done = (
+            db.query(
+                ParticipantScq.participant_id.label("participant_id"),
+                func.count(distinct(ParticipantScq.single_choice_id)).label("done"),
+            )
+            .filter(ParticipantScq.option_selected.isnot(None))
+            .group_by(ParticipantScq.participant_id)
+            .subquery()
+        )
+
+        mm_done = (
+            db.query(
+                ParticipantMm.participant_id.label("participant_id"),
+                func.count(distinct(ParticipantMm.question_id)).label("done"),
+            )
+            .group_by(ParticipantMm.participant_id)
+            .subquery()
+        )
+
+        db_done = (
+            db.query(
+                ParticipantDb.participant_id.label("participant_id"),
+                func.count(distinct(DropBucket.drop_bucket_id)).label("done"),
+            )
+            .join(DropBucket, DropBucket.bucket_id == ParticipantDb.bucket_id)
+            .group_by(ParticipantDb.participant_id)
+            .subquery()
+        )
+
+        configured = (
+            db.query(
+                ParticipantModule.participant_id.label("participant_id"),
+                func.count(
+                    distinct(
+                        func.concat(
+                            AssessmentMapping.assessment_type,
+                            ":",
+                            cast(AssessmentMapping.assessment_ref_id, String),
+                        )
+                    )
+                ).label("total"),
+            )
+            .join(
+                PostSessionAssessment,
+                PostSessionAssessment.module_id == ParticipantModule.module_id,
+            )
+            .join(
+                AssessmentMapping,
+                AssessmentMapping.assessment_id
+                == PostSessionAssessment.assessment_id,
+            )
+            .filter(
+                ParticipantModule.status == "1",
+                PostSessionAssessment.is_active == 1,
+                PostSessionAssessment.deleted_at.is_(None),
+                AssessmentMapping.is_active == 1,
+            )
+            .group_by(ParticipantModule.participant_id)
+            .subquery()
+        )
+
         query = (
             db.query(
                 ParticipantMaster.participant_id,
                 ParticipantMaster.participant_name,
                 ParticipantMaster.enrollment_no,
+                ParticipantMaster.mobile_no,
+                ParticipantMaster.age,
                 ParticipantMaster.status,
+                ParticipantMaster.images.label("image"),
                 StateMaster.state_name,
                 DistrictMaster.district_name,
                 CentreMaster.centre_name,
                 BatchMaster.batch_name,
+                mcq_perf.c.attempted.label("mcq_attempted"),
+                mcq_perf.c.correct.label("mcq_correct"),
+                scq_perf.c.attempted.label("scq_attempted"),
+                scq_perf.c.correct.label("scq_correct"),
+                mcq_done.c.done.label("mcq_done"),
+                scq_done.c.done.label("scq_done"),
+                mm_done.c.done.label("mm_done"),
+                db_done.c.done.label("db_done"),
+                configured.c.total.label("configured_total"),
             )
             .join(
                 BatchParticipant,
@@ -412,6 +550,34 @@ class UserRepository:
             .join(
                 DistrictMaster,
                 ParticipantMaster.district_id == DistrictMaster.district_lgd_code,
+            )
+            .outerjoin(
+                mcq_perf,
+                ParticipantMaster.participant_id == mcq_perf.c.participant_id,
+            )
+            .outerjoin(
+                scq_perf,
+                ParticipantMaster.participant_id == scq_perf.c.participant_id,
+            )
+            .outerjoin(
+                mcq_done,
+                ParticipantMaster.participant_id == mcq_done.c.participant_id,
+            )
+            .outerjoin(
+                scq_done,
+                ParticipantMaster.participant_id == scq_done.c.participant_id,
+            )
+            .outerjoin(
+                mm_done,
+                ParticipantMaster.participant_id == mm_done.c.participant_id,
+            )
+            .outerjoin(
+                db_done,
+                ParticipantMaster.participant_id == db_done.c.participant_id,
+            )
+            .outerjoin(
+                configured,
+                ParticipantMaster.participant_id == configured.c.participant_id,
             )
             .filter(
                 ParticipantMaster.deleted_at.is_(None),
@@ -437,7 +603,100 @@ class UserRepository:
                 ParticipantMaster.participant_name.ilike(f"%{search}%")
             )
 
-        return query.order_by(ParticipantMaster.participant_name).all()
+        rows = query.order_by(ParticipantMaster.participant_name).all()
+
+        # A participant mapped to more than one batch (or with a stale
+        # duplicate mapping) would otherwise appear once per mapping. Show
+        # each participant only once, keeping name order.
+        seen = set()
+        deduped = []
+        for row in rows:
+            if row.participant_id in seen:
+                continue
+            seen.add(row.participant_id)
+            deduped.append(row)
+
+        return deduped
+
+    @staticmethod
+    def get_participant_edit(db: Session, participant_id: int):
+        p = (
+            db.query(ParticipantMaster)
+            .filter(
+                ParticipantMaster.participant_id == participant_id,
+                ParticipantMaster.deleted_at.is_(None),
+            )
+            .first()
+        )
+        if not p:
+            return None
+
+        bp = (
+            db.query(BatchParticipant.batch_id, BatchMaster.centre_id)
+            .join(BatchMaster, BatchMaster.batch_id == BatchParticipant.batch_id)
+            .filter(
+                BatchParticipant.participant_id == participant_id,
+                BatchParticipant.deleted_at.is_(None),
+            )
+            .first()
+        )
+
+        return {
+            "participant_id": p.participant_id,
+            "participant_name": p.participant_name,
+            "enrollment_no": p.enrollment_no,
+            "username": p.username,
+            "gender": p.gender,
+            "age": p.age,
+            "email": p.email,
+            "mobile_no": p.mobile_no,
+            "location": p.location,
+            "address": p.address,
+            "pin": p.pin,
+            "aadhaar_number": p.aadhaar_number,
+            "state_id": p.state_id,
+            "district_id": p.district_id,
+            "block_id": p.block_id,
+            "centre_id": bp.centre_id if bp else None,
+            "batch_id": bp.batch_id if bp else None,
+            "image": p.images,
+        }
+
+    @staticmethod
+    def update_participant(db: Session, participant_id: int, data: dict, image_name):
+        p = (
+            db.query(ParticipantMaster)
+            .filter(
+                ParticipantMaster.participant_id == participant_id,
+                ParticipantMaster.deleted_at.is_(None),
+            )
+            .first()
+        )
+        if not p:
+            return None
+
+        # Editable fields only (enrollment / username / password are not changed here).
+        p.participant_name = data.get("participant_name", p.participant_name)
+        p.age = data.get("age", p.age)
+        p.gender = data.get("gender", p.gender)
+        p.email = data.get("email", p.email)
+        p.mobile_no = data.get("mobile_no", p.mobile_no)
+        p.pin = data.get("pin", p.pin)
+        p.aadhaar_number = data.get("aadhaar_number", p.aadhaar_number)
+        p.location = data.get("location", p.location)
+        p.address = data.get("address", p.address)
+        if data.get("state_id"):
+            p.state_id = data["state_id"]
+        if data.get("district_id"):
+            p.district_id = data["district_id"]
+        if data.get("block_id"):
+            p.block_id = data["block_id"]
+        if image_name:
+            p.images = image_name
+
+        db.commit()
+        db.refresh(p)
+        return p
 
     @staticmethod
     def get_participant_profile(
@@ -1205,20 +1464,26 @@ class UserRepository:
 
             if mcq_attempted_ids:
 
-                mcq_selected_options = {
-                    row.mcq_id: row.option_selected
-                    for row in (
-                        db.query(
-                            ParticipantMcq.mcq_id,
-                            ParticipantMcq.option_selected,
-                        )
-                        .filter(
-                            ParticipantMcq.participant_id == participant_id,
-                            ParticipantMcq.attempt_id == attempt_id,
-                        )
-                        .all()
+                # A question may have several selected options and several
+                # correct options. Aggregate the participant's selections into
+                # a set; the MCQ is Correct only when the selected set exactly
+                # matches the correct set (no partial credit). Values are
+                # compared as strings to avoid id/text type mismatches.
+                selected_by_mcq = defaultdict(set)
+
+                for row in (
+                    db.query(
+                        ParticipantMcq.mcq_id,
+                        ParticipantMcq.option_selected,
                     )
-                }
+                    .filter(
+                        ParticipantMcq.participant_id == participant_id,
+                        ParticipantMcq.attempt_id == attempt_id,
+                    )
+                    .all()
+                ):
+                    if row.option_selected is not None:
+                        selected_by_mcq[row.mcq_id].add(str(row.option_selected))
 
                 for mcq_id in mcq_attempted_ids:
 
@@ -1230,51 +1495,56 @@ class UserRepository:
                     attempt_total_questions += 1
                     attempt_total_marks += mcq.marks or 0
 
-                    selected_option = mcq_selected_options.get(mcq_id)
+                    selected_set = selected_by_mcq.get(mcq_id, set())
 
-                    question_status = "Wrong"
+                    correct_set = {
+                        str(option.mcq_option_id)
+                        for option in mcq_options.get(mcq_id, [])
+                        if str(option.is_mcq_option_correct) == "1"
+                    }
+
+                    is_correct_answer = (
+                        bool(correct_set) and selected_set == correct_set
+                    )
+
+                    question_status = (
+                        "Correct" if is_correct_answer else "Wrong"
+                    )
 
                     option_list = []
 
-                    wrong_already_counted = False
-
                     for option in mcq_options.get(mcq_id, []):
 
-                        option_status = ""
+                        option_id = str(option.mcq_option_id)
+                        is_selected = option_id in selected_set
+                        is_answer = str(option.is_mcq_option_correct) == "1"
 
-                        if (
-                            option.mcq_option_id == selected_option
-                            and str(option.is_mcq_option_correct) == "1"
-                        ):
-
+                        if is_selected and is_answer:
                             option_status = "Correct"
-
-                            question_status = "Correct"
-
-                            attempt_total_correct += 1
-
-                            attempt_total_score += mcq.marks or 0
-
-                        elif (
-                            option.mcq_option_id == selected_option
-                            and str(option.is_mcq_option_correct) == "0"
-                        ):
-
+                        elif is_selected and not is_answer:
                             option_status = "Wrong"
-
-                        elif str(option.is_mcq_option_correct) == "1":
-
+                        elif is_answer:
                             option_status = "Correct"
+                        else:
+                            option_status = ""
 
                         option_list.append(
                             {
                                 "mcq_option_text": option.mcq_option_text,
                                 "option_status": option_status,
+                                # Distinguish "the trainee picked this" from
+                                # "this is a correct answer" so the report can
+                                # show the selection and the correct answer
+                                # separately (esp. for wrong answers).
+                                "is_selected": is_selected,
+                                "is_correct": is_answer,
                             }
                         )
 
-                    if question_status == "Wrong":
-
+                    if is_correct_answer:
+                        attempt_total_correct += 1
+                        attempt_total_score += mcq.marks or 0
+                    else:
                         attempt_total_wrong += 1
 
                     attempt_mcq_list.append(
@@ -1345,10 +1615,16 @@ class UserRepository:
 
                         option_status = ""
 
-                        if (
-                            option.scq_option_id == selected
-                            and int(option.is_scq_option_correct) == 1
-                        ):
+                        # Compare as strings to avoid id/text type mismatches
+                        # (option_selected is stored as text) — otherwise the
+                        # trainee's picked option is never flagged.
+                        is_sel = (
+                            selected is not None
+                            and str(option.scq_option_id) == str(selected)
+                        )
+                        is_ans = int(option.is_scq_option_correct) == 1
+
+                        if is_sel and is_ans:
 
                             option_status = "Correct"
 
@@ -1358,14 +1634,11 @@ class UserRepository:
 
                             attempt_total_score += scq.marks or 0
 
-                        elif (
-                            option.scq_option_id == selected
-                            and int(option.is_scq_option_correct) == 0
-                        ):
+                        elif is_sel and not is_ans:
 
                             option_status = "Wrong"
 
-                        elif int(option.is_scq_option_correct) == 1:
+                        elif is_ans:
 
                             option_status = "Correct"
 
@@ -1373,6 +1646,8 @@ class UserRepository:
                             {
                                 "scq_option_text": option.scq_option_text,
                                 "option_status": option_status,
+                                "is_selected": is_sel,
+                                "is_correct": is_ans,
                             }
                         )
 
@@ -1412,8 +1687,6 @@ class UserRepository:
                 }
             )
 
-            print("bucket_attempted_ids:", bucket_attempted_ids)
-            print("bucket_to_master:", bucket_to_master)
 
             if bucket_attempted_ids:
 
@@ -1430,6 +1703,16 @@ class UserRepository:
                     participant_bucket_answers[row.bucket_id][row.item_id].add(
                         row.item_id
                     )
+
+                # Flat item_id -> name map so an item the trainee dropped into
+                # the WRONG bucket (its correct bucket differs) can still be
+                # shown by name under that wrong bucket.
+                item_name_by_id = {}
+                for _grp_items in bucket_items_grouped.values():
+                    for _grp_item in _grp_items:
+                        item_name_by_id[_grp_item.drop_bucket_item_id] = (
+                            _grp_item.item_name
+                        )
 
                 for bucket_master_id in bucket_attempted_ids:
 
@@ -1453,29 +1736,55 @@ class UserRepository:
 
                         item_list = []
 
+                        placed_here = set(
+                            participant_bucket_answers.get(
+                                bucket.bucket_id, {}
+                            ).keys()
+                        )
+                        correct_item_ids = set()
+
+                        # Correct items for this bucket (the right answers).
                         for item in bucket_items_grouped.get(
                             bucket.bucket_id,
                             [],
                         ):
 
                             question_total_items += 1
+                            correct_item_ids.add(item.drop_bucket_item_id)
 
-                            is_correct = (
-                                item.drop_bucket_item_id
-                                in participant_bucket_answers.get(
-                                    bucket.bucket_id,
-                                    {},
-                                )
+                            is_selected = (
+                                item.drop_bucket_item_id in placed_here
                             )
 
-                            if is_correct:
+                            if is_selected:
                                 question_correct_items += 1
 
                             item_list.append(
                                 {
                                     "item_id": item.drop_bucket_item_id,
                                     "item_name": item.item_name,
-                                    "is_correct": is_correct,
+                                    # is_answer = belongs in this bucket;
+                                    # is_selected = trainee dropped it here.
+                                    "is_answer": True,
+                                    "is_selected": is_selected,
+                                    "is_correct": is_selected,
+                                }
+                            )
+
+                        # Items the trainee WRONGLY dropped into this bucket
+                        # (they belong to a different bucket).
+                        for placed_id in placed_here:
+                            if placed_id in correct_item_ids:
+                                continue
+                            item_list.append(
+                                {
+                                    "item_id": placed_id,
+                                    "item_name": item_name_by_id.get(
+                                        placed_id, ""
+                                    ),
+                                    "is_answer": False,
+                                    "is_selected": True,
+                                    "is_correct": False,
                                 }
                             )
 
@@ -1728,10 +2037,6 @@ class UserRepository:
             attempt_wise_result=attempt_result["attempt_wise_result"],
         )
 
-        print("========================")
-        print("assessment_summary")
-        print(assessment_summary)
-        print("========================")
         # ============================================================
         # RETURN
         # ============================================================
@@ -1740,3 +2045,110 @@ class UserRepository:
             "attempt_wise_result": attempt_result,
             "assessment_summary": assessment_summary,
         }
+
+    # ==================================================================
+    # Manage Modules (instance-style helpers)
+    # ==================================================================
+
+    def __init__(self, db: Session):
+        self.db = db
+
+    def get_module_by_id(self, module_id: int):
+        return (
+            self.db.query(ModuleMaster)
+            .filter(ModuleMaster.module_id == module_id)
+            .first()
+        )
+
+    def get_module_group(self, module):
+        # Every language variant of the module (same parent group).
+        parent_key = module.parent_id or module.module_id
+        return (
+            self.db.query(ModuleMaster)
+            .filter(
+                ModuleMaster.deleted_at.is_(None),
+                or_(
+                    ModuleMaster.parent_id == parent_key,
+                    ModuleMaster.module_id == parent_key,
+                ),
+            )
+            .all()
+        )
+
+    def get_modules_by_language(self, language_id: int):
+        return (
+            self.db.query(
+                ModuleMaster.module_id,
+                ModuleMaster.parent_id,
+                ModuleMaster.module_name,
+                ModuleMaster.language_id,
+                ModuleType.module_type.label("module_type"),
+            )
+            .outerjoin(
+                ModuleType,
+                ModuleType.module_type_id
+                == cast(ModuleMaster.module_type, BigInteger),
+            )
+            .filter(
+                ModuleMaster.language_id == language_id,
+                ModuleMaster.deleted_at.is_(None),
+            )
+            .order_by(ModuleMaster.module_id)
+            .all()
+        )
+
+    def get_assigned_module_ids(self, participant_id: int):
+        rows = (
+            self.db.query(ParticipantModule.module_id)
+            .filter(
+                ParticipantModule.participant_id == participant_id,
+                ParticipantModule.status == "1",
+            )
+            .all()
+        )
+        return {row.module_id for row in rows}
+
+    def get_participant_module(self, participant_id: int, module_id: int):
+        return (
+            self.db.query(ParticipantModule)
+            .filter(
+                ParticipantModule.participant_id == participant_id,
+                ParticipantModule.module_id == module_id,
+            )
+            .first()
+        )
+
+    def create_participant_module(self, participant_id, course_id, module_id):
+        # participant_module_id has no DB default, so allocate the next id
+        # explicitly and flush so subsequent inserts in the same request see it.
+        next_id = (
+            self.db.query(func.max(ParticipantModule.participant_module_id)).scalar()
+            or 0
+        ) + 1
+        participant_module = ParticipantModule(
+            participant_module_id=next_id,
+            participant_id=participant_id,
+            course_id=course_id,
+            module_id=module_id,
+            lock_status=0,
+            status="1",
+        )
+        self.db.add(participant_module)
+        self.db.flush()
+        return participant_module
+
+    def delete_participant_modules(self, participant_id: int, module_ids: list):
+        return (
+            self.db.query(ParticipantModule)
+            .filter(
+                ParticipantModule.participant_id == participant_id,
+                ParticipantModule.module_id.in_(module_ids),
+            )
+            .delete(synchronize_session=False)
+        )
+
+    def commit(self):
+        self.db.commit()
+
+    def rollback(self):
+        self.db.rollback()

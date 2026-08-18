@@ -2,6 +2,7 @@ from sqlalchemy import (
     BigInteger,
     Column,
     DateTime,
+    ForeignKey,
     Integer,
     String,
     Text,
@@ -125,3 +126,52 @@ class TopicMapping(Base):
         
         server_default=text("CURRENT_TIMESTAMP"),
     )    
+
+
+class PreSessionAssessment(Base):
+    __tablename__ = "pre_session_assessment"
+
+    pre_session_assessment_id = Column(
+        BigInteger,
+        primary_key=True,
+    )
+
+    assessment_id = Column(BigInteger)
+
+    module_id = Column(BigInteger)
+
+    topic_id = Column(Integer)
+
+    is_active = Column(Integer)
+
+    created_at = Column(DateTime)
+
+    updated_at = Column(DateTime)
+
+    deleted_at = Column(DateTime)
+
+
+class SelfPacedLearning(Base):
+    __tablename__ = "self_paced_learning"
+
+    self_paced_learning_id = Column(
+        BigInteger,
+        primary_key=True,
+        autoincrement=True
+    )
+
+    module_id = Column(BigInteger)
+
+    doc_id = Column(BigInteger)
+
+    topic_id = Column(Integer)
+
+    is_active = Column(Integer)
+
+    created_at = Column(DateTime)
+
+    updated_at = Column(DateTime)
+
+    deleted_at = Column(DateTime)
+
+    listing_type = Column(String(10))

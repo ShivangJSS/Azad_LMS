@@ -4,28 +4,28 @@ from sqlalchemy import and_, case, distinct, exists, func, or_, text
 from sqlalchemy.orm import aliased, Session
 from sqlalchemy.orm import Query
 
-from app.modules.assessment.model import AssessmentMaster, PostSessionAssessment
-from app.modules.centres.model import (
-    BatchMaster,
-    BatchParticipant,
-    CentreMaster,
-    ParticipantDb,
-    ParticipantMcq,
-    ParticipantMm,
-    ParticipantScq,
+from app.modules.assessment.model import (
+    AssessmentMaster,
+    PostSessionAssessment,
 )
+from app.modules.batch.model import BatchMaster, BatchParticipant
 from app.modules.course.model import CourseMaster
 from app.modules.dashboard.Login_Log import LoginLog
 from app.modules.dashboard.model import ParticipantModule
 from app.modules.document.model import DocumentCategory, DocumentMaster
-from app.modules.master.district.model import DistrictMaster
-from app.modules.master.state.model import StateMaster
-from app.modules.module.model import ModuleMaster
-from app.modules.users.model import ParticipantMaster
-
 
 # This import is causing a ModuleNotFoundError. Assuming app.modules.users.model exists.
 from app.modules.centres.model import CentreMaster
+from app.modules.master.district.model import DistrictMaster
+from app.modules.master.state.model import StateMaster
+from app.modules.module.model import ModuleMaster
+from app.modules.users.model import (
+    ParticipantDb,
+    ParticipantMaster,
+    ParticipantMcq,
+    ParticipantMm,
+    ParticipantScq,
+)
 
 class DashboardRepository:
 

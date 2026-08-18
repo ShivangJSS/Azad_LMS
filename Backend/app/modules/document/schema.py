@@ -9,6 +9,7 @@ class DocumentListResponse(BaseModel):
     doc_title: str
     doc_type: Optional[str]
     module_name: Optional[str]
+    category_name: Optional[str] = None
     topic_name: Optional[str]
     language_name: Optional[str]
     status: Optional[int]

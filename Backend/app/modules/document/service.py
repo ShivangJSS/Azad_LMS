@@ -130,6 +130,22 @@ class DocumentService:
         media_file: UploadFile | None,
     ) -> DocumentMaster:
 
+        # Reject a duplicate document title within the same language (exact match).
+        existing = (
+            db.query(DocumentMaster)
+            .filter(
+                DocumentMaster.doc_title == request.doc_title,
+                DocumentMaster.language_id == request.language_id,
+                DocumentMaster.deleted_at.is_(None),
+            )
+            .first()
+        )
+        if existing is not None:
+            raise HTTPException(
+                status_code=400,
+                detail="A document with this title already exists in this language.",
+            )
+
         try:
             doc_image = None
             doc_ref_id = None

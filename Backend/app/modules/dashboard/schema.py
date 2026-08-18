@@ -69,6 +69,25 @@ class ModuleWisePerformanceItem(BaseModel):
     total: int
 
 
+class TraineeStatusItem(BaseModel):
+    status: str
+    label: str
+    total: int
+
+
+class TraineeStatusDetail(BaseModel):
+    participant_id: int | None = None
+    participant_name: str | None = None
+    mobile_no: str | None = None
+    enrollment_no: str | None = None
+    age: int | None = None
+    state_name: str | None = None
+    district_name: str | None = None
+    centre_name: str | None = None
+    course_progress: float | int | None = None
+    performance_status: str | None = None
+
+
 class DashboardParticipantDetail(BaseModel):
     participant_id: int
     participant_name: str
@@ -112,6 +131,7 @@ class DashboardLoginDetail(BaseModel):
 
 class DashboardResponse(BaseModel):
     summary: DashboardSummaryResponse
+    trainee_status: list[TraineeStatusItem] = []
     state_wise_participants: list[StateWiseParticipant]
     state_wise_centres: list[ChartItem]
     gender_distribution: list[GenderDistributionItem]

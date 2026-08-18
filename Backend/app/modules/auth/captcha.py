@@ -24,11 +24,10 @@ def get_required_env(name: str) -> str:
     return value
 
 
-REDIS_HOST = get_required_env("REDIS_HOST")
-REDIS_PASSWORD = get_required_env("REDIS_PASSWORD")
-
+REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
 REDIS_DB = int(os.getenv("REDIS_DB", "0"))
+REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", "")
 
 
 # ==========================================================

@@ -2,16 +2,23 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.database.database import get_db
-from app.modules.module.Topic.schema import CreateTopicRequest,TopicTranslationRequest,UpdateTopicRequest
+from app.modules.module.Topic.schema import (
+    CreateTopicRequest,
+    TopicTranslationRequest,
+    UpdateTopicRequest,
+)
 from app.modules.module.Topic.service import TopicService
 
-router = APIRouter(
+from app.shared.dependencies.module_access import Module, require_module_access
+
+topic_router = APIRouter(
     prefix="/topics",
     tags=["Topic Master"],
+    dependencies=[Depends(require_module_access(Module.MODULE_MANAGEMENT))],
 )
 
 
-@router.get("")
+@topic_router.get("")
 def get_topics(
     language_id: int = Query(...),
     search: str | None = Query(None),
@@ -34,7 +41,7 @@ def get_topics(
     }
 
 
-@router.get("/{topic_id}")
+@topic_router.get("/{topic_id}")
 def get_topic(
     topic_id: int,
     db: Session = Depends(get_db),
@@ -49,7 +56,7 @@ def get_topic(
     }
 
 
-@router.delete("/{topic_id}")
+@topic_router.delete("/{topic_id}")
 def delete_topic(
     topic_id: int,
     db: Session = Depends(get_db),
@@ -65,7 +72,7 @@ def delete_topic(
     }
 
 
-@router.post("")
+@topic_router.post("")
 def create_topics(
     request: CreateTopicRequest,
     db: Session = Depends(get_db),
@@ -82,7 +89,7 @@ def create_topics(
     }
 
 
-@router.post("/{topic_id}/translation")
+@topic_router.post("/{topic_id}/translation")
 def save_translation(
     topic_id: int,
     request: TopicTranslationRequest,
@@ -102,10 +109,7 @@ def save_translation(
     }
 
 
-
-
-
-@router.put("/{topic_id}")
+@topic_router.put("/{topic_id}")
 def update_topic(
     topic_id: int,
     request: UpdateTopicRequest,
@@ -122,4 +126,21 @@ def update_topic(
         "success": True,
         "message": "Topic updated successfully.",
         "data": data,
+    }
+
+
+@topic_router.get("/{topic_id}/translation/{language_id}")
+def get_topic_translation(
+    topic_id: int,
+    language_id: int,
+    db: Session = Depends(get_db),
+):
+    return {
+        "success": True,
+        "message": "Topic translation fetched successfully.",
+        "data": TopicService.get_topic_translation(
+            db=db,
+            topic_id=topic_id,
+            language_id=language_id,
+        ),
     }

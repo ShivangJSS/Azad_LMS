@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import List, Optional
 from typing import Optional
+from typing import Literal
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
@@ -19,7 +20,7 @@ class CreatableRoleResponse(BaseModel):
 
 class UserCreateRequest(BaseModel):
     name: str = Field(..., max_length=255)
-    username: str = Field(..., max_length=255)
+    username: Optional[str] = Field(default=None, max_length=255)
     email: EmailStr
     password: str = Field(..., min_length=8)
 
@@ -231,25 +232,6 @@ class ParticipantCreateRequest(BaseModel):
     location: str
     address: str    
 
-class ParticipantListResponse(BaseModel):
-    participant_id: int
-    participant_name: str
-    enrollment_no: str
-    username: str
-    gender: str
-    mobile_no: str | None
-    email: str | None
-
-    state: str
-    district: str
-    block: str
-    centre: str
-    batch: str
-
-    status: str
-    image: str | None
-
-
 class CentreResponse(BaseModel):
     centre_id: int
     centre_name: str
@@ -272,6 +254,8 @@ class ParticipantListResponse(BaseModel):
     batch_name: str | None = None
 
     status: str
+    course_progress: float = 0
+    performance_status: str | None = None
 
 
 # ===============================
@@ -389,3 +373,24 @@ class ParticipantReportResponse(BaseModel):
     participant: ParticipantProfileResponse
     attempt_wise_result: AttemptWiseResultResponse
     assessment_summary: AssessmentSummaryResponse
+
+
+# ===============================
+# Manage Modules
+# ===============================
+
+class ParticipantModuleActionRequest(BaseModel):
+    participant_id: int
+    module_id: int
+    action: Optional[Literal["assign", "unassign"]] = None
+
+
+class ParticipantModuleResponse(BaseModel):
+    module_id: int
+    parent_id: int
+    module_name: str
+    module_type: Optional[str] = None
+    language_id: int
+    assigned: bool
+
+    model_config = ConfigDict(from_attributes=True)

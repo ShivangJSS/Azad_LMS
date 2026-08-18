@@ -2,9 +2,9 @@ from datetime import datetime
 from typing import Optional
 
 from app.modules.document.schema import DocumentCreateRequest
-from sqlalchemy import and_, cast, func
-from sqlalchemy.orm import Session 
-from app.modules.module.model import ModuleMaster
+from sqlalchemy import and_, cast, func, BigInteger
+from sqlalchemy.orm import Session
+from app.modules.module.model import ModuleMaster, ModuleType
 import csv
 import io
 from app.modules.document.model import ( # Corrected import path for DocumentCategory
@@ -25,15 +25,19 @@ class DocumentRepository:
         db: Session,
         language_id: int | None = None,
     ):
-        query = db.query(
-            DocumentCategory.doc_category_id,
-            DocumentCategory.doc_category_name,
-        ).filter(DocumentCategory.status == 1)
-
-        if language_id is not None:
-            query = query.filter(DocumentCategory.language_id == language_id)
-
-        return query.order_by(DocumentCategory.doc_category_name.asc()).all()
+        # Category = module type (Technical / Non Technical). Columns are
+        # labelled doc_category_id / doc_category_name so the response mapping
+        # stays unchanged. language_id is accepted but unused (module types are
+        # language-independent).
+        return (
+            db.query(
+                ModuleType.module_type_id.label("doc_category_id"),
+                ModuleType.module_type.label("doc_category_name"),
+            )
+            .filter(ModuleType.status == 1)
+            .order_by(ModuleType.module_type.asc())
+            .all()
+        )
 
     @staticmethod
     def get_pdf(db: Session, pdf_id: int):
@@ -64,6 +68,8 @@ class DocumentRepository:
                 DocumentMaster.doc_type,
                 DocumentMaster.status,
                 ModuleMaster.module_name.label("module_name"),
+                # Category = the module's type (Technical / Non Technical).
+                ModuleType.module_type.label("category_name"),
                 TopicMaster.topic_name.label("topic_name"),
                 LanguageMaster.language_name.label("language_name"),
                 PdfMaster.pdf_name.label("pdf_name"),
@@ -79,6 +85,11 @@ class DocumentRepository:
             .outerjoin(
                 ModuleMaster,
                 DocumentMaster.module_id == ModuleMaster.module_id,
+            )
+            .outerjoin(
+                ModuleType,
+                ModuleType.module_type_id
+                == cast(DocumentMaster.doc_category_id, BigInteger),
             )
             .outerjoin(
                 TopicMaster,
@@ -115,9 +126,7 @@ class DocumentRepository:
         if language_id:
             query = query.filter(DocumentMaster.language_id == language_id)
         else:
-            # The unfiltered management list shows source documents only.
-            # A selected language must include its translation records, whose
-            # parent_id points to the source document rather than themselves.
+     
             query = query.filter(DocumentMaster.parent_id == DocumentMaster.doc_id)
 
         if doc_type:
@@ -603,7 +612,7 @@ class DocumentRepository:
                 DocumentMaster.doc_id,
                 DocumentMaster.doc_title,
                 DocumentMaster.doc_description,
-                DocumentCategory.doc_category_name.label("category_name"),
+                ModuleType.module_type.label("category_name"),
                 DocumentMaster.doc_type,
                 DocumentMaster.doc_ref_id,
                 DocumentMaster.status,
@@ -611,8 +620,9 @@ class DocumentRepository:
                 DocumentMaster.updated_at,
             )
             .outerjoin(
-                DocumentCategory,
-                DocumentMaster.doc_category_id == DocumentCategory.doc_category_id,
+                ModuleType,
+                ModuleType.module_type_id
+                == cast(DocumentMaster.doc_category_id, BigInteger),
             )
             .filter(DocumentMaster.deleted_at.is_(None))
         )

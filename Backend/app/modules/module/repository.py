@@ -3,19 +3,24 @@ from io import BytesIO
 import os
 from openpyxl.styles import Font
 import uuid
-
+from app.modules.assessment.model import AssessmentMapping, AssessmentMaster, DropBucketMaster, MatchMakingMaster, McqMaster, PostSessionAssessment, ScqMaster
 from fastapi import UploadFile
 from fastapi import HTTPException
+from app.utils.file_upload import validate_upload, IMAGE_EXTENSIONS
 from openpyxl import Workbook
-from sqlalchemy import BigInteger, cast, func, distinct
-from sqlalchemy.orm import Session
+from sqlalchemy import BigInteger, and_, case, cast, exists, func, distinct
+from sqlalchemy.orm import Session, aliased
 from app.modules.module.schema import  ModuleTranslation
 from app.modules.module.model import (
     ModuleMaster,
     ModuleType,
+    PreSessionAssessment,
+    SelfPacedLearning,
+
     TopicMapping,
 )
 from app.modules.document.model import (
+    DocumentMaster,
     LanguageMaster,
     TopicMaster,
 )
@@ -162,7 +167,7 @@ class ModuleRepository:
      upload_dir = "uploads/module_icons"
      os.makedirs(upload_dir, exist_ok=True)
 
-     extension = os.path.splitext(module_icon.filename)[1]
+     extension = validate_upload(module_icon, IMAGE_EXTENSIONS)
      filename = f"{uuid.uuid4()}{extension}"
  
      filepath = os.path.join(upload_dir, filename)
@@ -255,7 +260,7 @@ class ModuleRepository:
             if os.path.exists(old_file):
                 os.remove(old_file)
 
-        extension = os.path.splitext(module_icon.filename)[1]
+        extension = validate_upload(module_icon, IMAGE_EXTENSIONS)
         filename = f"{uuid.uuid4()}{extension}"
 
         filepath = os.path.join(upload_dir, filename)
@@ -386,11 +391,21 @@ class ModuleRepository:
         .first()
     )
 
+     # If a translation for this language already exists, UPDATE it instead of
+     # erroring — this lets the same screen be used to edit a translation.
      if existing:
-        raise HTTPException(
-            status_code=400,
-            detail="Translation already exists",
-        )
+        existing.module_name = request.module_name
+        existing.module_description = request.module_description
+        existing.module_overview = request.module_overview
+        existing.module_objective = request.module_objective
+
+        db.commit()
+        db.refresh(existing)
+
+        return {
+            "message": "Translation updated successfully",
+            "module_id": existing.module_id,
+        }
 
      translation = ModuleMaster(
         parent_id=parent_module.parent_id,
@@ -544,3 +559,660 @@ class ModuleRepository:
      stream.seek(0)
 
      return stream
+
+
+
+    @staticmethod
+    def get_post_assessments_by_module(
+        db: Session,
+        module_id: int
+    ):
+        return (
+            db.query(
+                AssessmentMaster.assessment_id,
+                AssessmentMaster.assessment_name
+            )
+            .join(
+                PostSessionAssessment,
+                PostSessionAssessment.assessment_id
+                == AssessmentMaster.assessment_id
+            )
+            .filter(
+                PostSessionAssessment.module_id == module_id,
+                PostSessionAssessment.is_active == 1
+            )
+            .order_by(AssessmentMaster.assessment_id)
+            .all()
+        )
+
+    @staticmethod
+    def get_pre_assessments_by_module(
+        db: Session,
+        module_id: int,
+    ):
+        """Return the pre-session assessment container(s) for a module.
+
+        Unlike post-session (whose container was seeded during migration), no
+        pre-session container exists until it's used, so we bootstrap one on
+        first access (an AssessmentMaster + PreSessionAssessment row). Ids are
+        assigned explicitly because these migrated tables have no sequence.
+        After it exists, the normal assessment-mapping endpoints work exactly
+        like post-session (keyed by this assessment_id).
+        """
+
+        def _query():
+            return (
+                db.query(
+                    AssessmentMaster.assessment_id,
+                    AssessmentMaster.assessment_name,
+                )
+                .join(
+                    PreSessionAssessment,
+                    PreSessionAssessment.assessment_id
+                    == AssessmentMaster.assessment_id,
+                )
+                .filter(
+                    PreSessionAssessment.module_id == module_id,
+                    PreSessionAssessment.is_active == 1,
+                )
+                .order_by(AssessmentMaster.assessment_id)
+                .all()
+            )
+
+        rows = _query()
+        if rows:
+            return rows
+
+        # --- bootstrap a pre-session container for this module ---
+        last_am = (
+            db.query(AssessmentMaster.assessment_id)
+            .order_by(AssessmentMaster.assessment_id.desc())
+            .first()
+        )
+        assessment_id = (last_am[0] if last_am and last_am[0] else 0) + 1
+
+        db.add(
+            AssessmentMaster(
+                assessment_id=assessment_id,
+                parent_id=assessment_id,
+                assessment_name="Pre-Session Assessment",
+                module_id=module_id,
+                is_active=1,
+                created_at=datetime.now(),
+                updated_at=datetime.now(),
+            )
+        )
+        db.flush()
+
+        last_pre = (
+            db.query(PreSessionAssessment.pre_session_assessment_id)
+            .order_by(PreSessionAssessment.pre_session_assessment_id.desc())
+            .first()
+        )
+        pre_id = (last_pre[0] if last_pre and last_pre[0] else 0) + 1
+
+        db.add(
+            PreSessionAssessment(
+                pre_session_assessment_id=pre_id,
+                assessment_id=assessment_id,
+                module_id=module_id,
+                is_active=1,
+                created_at=datetime.now(),
+                updated_at=datetime.now(),
+            )
+        )
+        db.commit()
+
+        return _query()
+
+
+    @staticmethod
+    def get_scq_assessment_mapping(
+        db: Session,
+        assessment_id: int
+    ):
+        return (
+            db.query(
+                ScqMaster.scq_id,
+                ScqMaster.scq_question_title,
+                ScqMaster.scq_question_description,
+                ScqMaster.image_url,
+                ScqMaster.status,
+                ScqMaster.marks,
+                ScqMaster.language_id,
+                LanguageMaster.language_name,
+
+                case(
+                    (
+                        exists().where(
+                            and_(
+                                AssessmentMapping.assessment_ref_id
+                                == ScqMaster.scq_id,
+
+                                AssessmentMapping.assessment_type
+                                == "SCQ",
+
+                                AssessmentMapping.is_active
+                                == 1,
+
+                                AssessmentMapping.assessment_id
+                                == assessment_id
+                            )
+                        ),
+                        True
+                    ),
+                    else_=False
+                ).label("is_checked")
+            )
+            .outerjoin(
+                LanguageMaster,
+                LanguageMaster.language_id
+                == ScqMaster.language_id
+            )
+            .all()
+        )
+
+
+
+    @staticmethod
+    def get_mcq_assessment_mapping(
+     db: Session,
+     assessment_id: int
+):
+     return (
+        db.query(
+            McqMaster.mcq_id,
+            McqMaster.mcq_question_title,
+            McqMaster.mcq_question_description,
+            McqMaster.image_url,
+            McqMaster.status,
+            McqMaster.marks,
+            McqMaster.language_id,
+            LanguageMaster.language_name,
+
+            case(
+                (
+                    exists().where(
+                        and_(
+                            AssessmentMapping.assessment_ref_id
+                            == McqMaster.mcq_id,
+
+                            AssessmentMapping.assessment_type
+                            == "MCQ",
+
+                            AssessmentMapping.is_active
+                            == 1,
+
+                            AssessmentMapping.assessment_id
+                            == assessment_id
+                        )
+                    ),
+                    True
+                ),
+                else_=False
+            ).label("is_checked")
+        )
+        .outerjoin(
+            LanguageMaster,
+            LanguageMaster.language_id
+            == McqMaster.language_id
+        )
+        .all()
+    )
+
+    @staticmethod
+    def get_match_making_assessment_mapping(
+     db: Session,
+     assessment_id: int
+):
+     return (
+        db.query(
+            MatchMakingMaster.match_making_id,
+            MatchMakingMaster.match_making_question_title,
+            MatchMakingMaster.match_making_question_description,
+            MatchMakingMaster.image_url,
+            MatchMakingMaster.status,
+            MatchMakingMaster.marks,
+            MatchMakingMaster.language_id,
+            LanguageMaster.language_name,
+
+            case(
+                (
+                    exists().where(
+                        and_(
+                            AssessmentMapping.assessment_ref_id
+                            == MatchMakingMaster.match_making_id,
+
+                            AssessmentMapping.assessment_type
+                            == "MM",
+
+                            AssessmentMapping.is_active
+                            == 1,
+
+                            AssessmentMapping.assessment_id
+                            == assessment_id
+                        )
+                    ),
+                    True
+                ),
+                else_=False
+            ).label("is_checked")
+        )
+        .outerjoin(
+            LanguageMaster,
+            LanguageMaster.language_id
+            == MatchMakingMaster.language_id
+        )
+        .all()
+    )
+
+
+    @staticmethod
+    def get_drop_bucket_assessment_mapping(
+     db: Session,
+     assessment_id: int
+):
+     return (
+        db.query(
+            DropBucketMaster.drop_bucket_id,
+            DropBucketMaster.drop_bucket_question_title,
+            DropBucketMaster.drop_bucket_question_description,
+            DropBucketMaster.image_url,
+            DropBucketMaster.status,
+            DropBucketMaster.marks,
+            DropBucketMaster.language_id,
+            LanguageMaster.language_name,
+
+            case(
+                (
+                    exists().where(
+                        and_(
+                            AssessmentMapping.assessment_ref_id
+                            == DropBucketMaster.drop_bucket_id,
+
+                            AssessmentMapping.assessment_type
+                            == "DB",
+
+                            AssessmentMapping.is_active
+                            == 1,
+
+                            AssessmentMapping.assessment_id
+                            == assessment_id
+                        )
+                    ),
+                    True
+                ),
+                else_=False
+            ).label("is_checked")
+        )
+        .outerjoin(
+            LanguageMaster,
+            LanguageMaster.language_id
+            == DropBucketMaster.language_id
+        )
+        .all()
+    )
+
+    @staticmethod
+    def save_assessment_mapping(
+     db,
+     assessment_type: str,
+     assessments: list
+):
+     created_count = 0
+
+     for item in assessments:
+
+        exists = (
+            db.query(AssessmentMapping)
+            .filter(
+                AssessmentMapping.assessment_id
+                == item.assessment_id,
+
+                AssessmentMapping.assessment_type
+                == assessment_type,
+
+                AssessmentMapping.assessment_ref_id
+                == item.assessment_ref_id
+            )
+            .first()
+        )
+
+        if exists:
+            continue
+
+        mapping = AssessmentMapping(
+            assessment_id=item.assessment_id,
+            assessment_type=assessment_type,
+            assessment_ref_id=item.assessment_ref_id,
+            is_active=1,
+            created_at=datetime.now(),
+            updated_at=datetime.now()
+        )
+
+        db.add(mapping)
+        created_count += 1
+
+     db.commit()
+
+     return created_count
+
+
+
+    @staticmethod
+    def get_topics_for_main_content(
+        db: Session,
+        module_id: int,
+    ):
+        return (
+            db.query(
+                TopicMaster.topic_id,
+                TopicMaster.topic_name,
+                TopicMaster.module_id,
+                LanguageMaster.language_name,
+            )
+            .outerjoin(
+                LanguageMaster,
+                LanguageMaster.language_id
+                == TopicMaster.language_id,
+            )
+            .filter(
+                TopicMaster.module_id == module_id,
+                TopicMaster.parent_id == TopicMaster.topic_id,
+                TopicMaster.is_active == "1",
+            )
+            .order_by(TopicMaster.topic_name)
+            .all()
+        )
+
+    @staticmethod
+    def get_documents_for_main_content(
+        db: Session,
+    ):
+        return (
+            db.query(
+                DocumentMaster.doc_id,
+                DocumentMaster.doc_title,
+                DocumentMaster.doc_description,
+                DocumentMaster.doc_type,
+                LanguageMaster.language_name,
+            )
+            .outerjoin(
+                LanguageMaster,
+                LanguageMaster.language_id
+                == DocumentMaster.language_id,
+            )
+            .filter(
+                DocumentMaster.status == 1,
+                DocumentMaster.parent_id
+                == DocumentMaster.doc_id,
+            )
+            .all()
+        )
+
+    @staticmethod
+    def check_main_content_exists(
+        db: Session,
+        module_id: int,
+        topic_id: int,
+        doc_id: int,
+        listing_type: str = "main",
+    ):
+        return (
+            db.query(SelfPacedLearning)
+            .filter(
+                SelfPacedLearning.module_id == module_id,
+                SelfPacedLearning.topic_id == topic_id,
+                SelfPacedLearning.doc_id == doc_id,
+                SelfPacedLearning.listing_type == listing_type,
+                SelfPacedLearning.is_active == 1,
+            )
+            .first()
+        )
+
+    @staticmethod
+    def create_main_content(
+        db: Session,
+        module_id: int,
+        topic_id: int,
+        doc_id: int,
+        listing_type: str = "main",
+    ):
+        # The self_paced_learning PK has no DB sequence, so assign the next id
+        # explicitly instead of relying on auto-increment (which sends NULL).
+        last = (
+            db.query(SelfPacedLearning.self_paced_learning_id)
+            .order_by(SelfPacedLearning.self_paced_learning_id.desc())
+            .first()
+        )
+        next_id = (last[0] if last and last[0] else 0) + 1
+
+        record = SelfPacedLearning(
+            self_paced_learning_id=next_id,
+            module_id=module_id,
+            topic_id=topic_id,
+            doc_id=doc_id,
+            listing_type=listing_type,
+            is_active=1,
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
+        )
+
+        db.add(record)
+        db.flush()
+
+        return record
+
+    @staticmethod
+    def create_topic_mapping(
+        db: Session,
+        module_id: int,
+        topic_id: int,
+        doc_id: int,
+    ):
+        mapping = (
+            db.query(TopicMapping)
+            .filter(
+                TopicMapping.module_id == module_id,
+                TopicMapping.topic_id == topic_id,
+                TopicMapping.doc_id == doc_id,
+            )
+            .first()
+        )
+
+        if not mapping:
+            mapping = TopicMapping(
+                module_id=module_id,
+                topic_id=topic_id,
+                doc_id=doc_id,
+                status="1",
+            )
+            db.add(mapping)
+
+        return mapping
+
+    @staticmethod
+    def update_module_main_content_flag(
+        db: Session,
+        module_id: int,
+    ):
+        (
+            db.query(ModuleMaster)
+            .filter(
+                ModuleMaster.module_id == module_id
+            )
+            .update(
+                {
+                    ModuleMaster.main_content_of_the_module: 1
+                }
+            )
+        )
+
+    @staticmethod
+    def update_document_main_content_flag(
+        db: Session,
+        doc_id: int,
+    ):
+        (
+            db.query(DocumentMaster)
+            .filter(
+                DocumentMaster.doc_id == doc_id
+            )
+            .update(
+                {
+                    DocumentMaster.main_content_of_the_module: 1,
+                }
+            )
+        )
+
+    @staticmethod
+    def get_main_content_list(
+        db: Session,
+        module_id: int,
+        language_id: int | None = None,
+        listing_type: str = "main",
+    ):
+        # The document is attached in ONE language (the base doc). To show the
+        # content in another language we resolve its translation via parent_id
+        # (all language variants of a document share the same parent_id), and
+        # fall back to the base document when no translation exists.
+        DocBase = aliased(DocumentMaster)
+        DocLang = aliased(DocumentMaster)
+
+        doc_title = func.coalesce(DocLang.doc_title, DocBase.doc_title).label(
+            "doc_title"
+        )
+        doc_type = func.coalesce(DocLang.doc_type, DocBase.doc_type).label(
+            "doc_type"
+        )
+        doc_ref_id = func.coalesce(DocLang.doc_ref_id, DocBase.doc_ref_id).label(
+            "doc_ref_id"
+        )
+        doc_language_id = func.coalesce(
+            DocLang.language_id, DocBase.language_id
+        ).label("language_id")
+
+        # When no language is requested, resolve to the base doc's own language.
+        wanted_language = language_id if language_id else DocBase.language_id
+
+        query = (
+            db.query(
+                SelfPacedLearning.self_paced_learning_id,
+                SelfPacedLearning.module_id,
+                SelfPacedLearning.topic_id,
+                SelfPacedLearning.doc_id,
+                SelfPacedLearning.is_active,
+                TopicMaster.topic_name,
+                doc_title,
+                doc_type,
+                doc_ref_id,
+                doc_language_id,
+                LanguageMaster.language_name,
+            )
+            .join(
+                TopicMaster,
+                TopicMaster.topic_id
+                == SelfPacedLearning.topic_id,
+            )
+            .join(
+                DocBase,
+                DocBase.doc_id == SelfPacedLearning.doc_id,
+            )
+            .outerjoin(
+                DocLang,
+                and_(
+                    DocLang.parent_id == DocBase.parent_id,
+                    DocLang.language_id == wanted_language,
+                    DocLang.deleted_at.is_(None),
+                ),
+            )
+            .outerjoin(
+                LanguageMaster,
+                LanguageMaster.language_id
+                == func.coalesce(DocLang.language_id, DocBase.language_id),
+            )
+            .filter(
+                SelfPacedLearning.module_id == module_id,
+                SelfPacedLearning.listing_type == listing_type,
+            )
+            # NOTE: inactive rows are intentionally kept so the Module Config
+            # list still shows a deactivated item (with its "View Content"
+            # button hidden and an Activate action) instead of removing it.
+        )
+
+        return query.all()
+    # =========================================================
+    # Deactivate helpers (additive – used by Module Config UI)
+    # =========================================================
+
+    @staticmethod
+    def deactivate_main_content(
+        db: Session,
+        self_paced_learning_id: int,
+    ):
+        record = (
+            db.query(SelfPacedLearning)
+            .filter(
+                SelfPacedLearning.self_paced_learning_id
+                == self_paced_learning_id,
+            )
+            .first()
+        )
+
+        if not record:
+            return None
+
+        record.is_active = 0
+        record.updated_at = datetime.now()
+
+        db.commit()
+
+        return record
+
+    @staticmethod
+    def activate_main_content(
+        db: Session,
+        self_paced_learning_id: int,
+    ):
+        record = (
+            db.query(SelfPacedLearning)
+            .filter(
+                SelfPacedLearning.self_paced_learning_id
+                == self_paced_learning_id,
+            )
+            .first()
+        )
+
+        if not record:
+            return None
+
+        record.is_active = 1
+        record.updated_at = datetime.now()
+
+        db.commit()
+        db.refresh(record)
+
+        return record
+
+    @staticmethod
+    def deactivate_assessment_mapping(
+        db: Session,
+        assessment_id: int,
+        assessment_type: str,
+        assessment_ref_id: int,
+    ):
+        updated = (
+            db.query(AssessmentMapping)
+            .filter(
+                AssessmentMapping.assessment_id == assessment_id,
+                AssessmentMapping.assessment_type == assessment_type,
+                AssessmentMapping.assessment_ref_id == assessment_ref_id,
+            )
+            .update(
+                {AssessmentMapping.is_active: 0}
+            )
+        )
+
+        db.commit()
+
+        return updated
