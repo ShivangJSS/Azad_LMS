@@ -9,7 +9,6 @@ class UserRole(IntEnum):
     PI = 5
 
 
-
 ROLE_LABELS = {
     UserRole.SUPER_ADMIN: "Super Admin",
     UserRole.ADMIN: "Admin",
@@ -19,29 +18,26 @@ ROLE_LABELS = {
 }
 
 
+# Who can create/manage which roles.
 CREATABLE_ROLES = {
-    UserRole.SUPER_ADMIN: [
+    UserRole.SUPER_ADMIN: {
         UserRole.ADMIN,
-    ],
-
-    UserRole.ADMIN: [
+    },
+    UserRole.ADMIN: {
         UserRole.STATE_LEAD,
         UserRole.DISTRICT_LEAD,
         UserRole.PI,
-    ],
-
-    UserRole.STATE_LEAD: [
+    },
+    UserRole.STATE_LEAD: {
         UserRole.DISTRICT_LEAD,
         UserRole.PI,
-    ],
-
-    UserRole.DISTRICT_LEAD: [
+    },
+    UserRole.DISTRICT_LEAD: {
         UserRole.PI,
-    ],
-
-    UserRole.PI: [],
+    },
+    UserRole.PI: set(),
 }
 
 
-ACTIVE = 1
-INACTIVE = 0
+ACTIVE = "1"
+INACTIVE = "0"

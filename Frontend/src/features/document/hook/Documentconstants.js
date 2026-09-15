@@ -1,4 +1,4 @@
-import { LANGUAGES } from "../../../shared/constants/languageConstants";
+import { LANGUAGES } from "@/shared/constants/languageConstants";
 
 export const PER_PAGE = 10;
 

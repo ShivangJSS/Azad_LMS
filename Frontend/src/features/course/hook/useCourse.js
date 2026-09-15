@@ -1,31 +1,29 @@
-import { useEffect, useMemo, useState } from "react";
-import { getAllCourses } from "../services/CourseService";
-import { getLanguageByKey } from "../../../shared/constants/languageConstants";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+    getAllCourses,
+} from "@/features/course/services/CourseService";
+import { getLanguageByKey } from "@/shared/constants/languageConstants";
 
 export const STATUS = {
     ACTIVE: "1",
     INACTIVE: "0",
 };
- 
- 
+
 export const STATUS_LABELS = {
     [STATUS.ACTIVE]: "Active",
     [STATUS.INACTIVE]: "Inactive",
 };
- 
- 
+
 /** Options for a <select>. */
 export const STATUS_OPTIONS = [
     { value: STATUS.ACTIVE, label: STATUS_LABELS[STATUS.ACTIVE] },
     { value: STATUS.INACTIVE, label: STATUS_LABELS[STATUS.INACTIVE] },
 ];
- 
- 
+
 /** "Active" for "1". Returns "-" when unknown. */
 export function getStatusLabel(value) {
     return STATUS_LABELS[String(value).trim()] || "-";
 }
-
 
 const useCourse = (activeTab) => {
     const [courses, setCourses] = useState([]);
@@ -33,9 +31,9 @@ const useCourse = (activeTab) => {
 
     const [searchText, setSearchText] = useState("");
     const [query, setQuery] = useState("");
+    const fetchedLanguageId = useRef(null);
 
-    // The selected tab (english/hindi/bangla/tamil) drives which language's
-    // courses the backend returns.
+    // Selected tab drives the language returned by the backend.
     const languageId = getLanguageByKey(activeTab)?.id || 1;
 
     const fetchCourses = async () => {
@@ -44,7 +42,12 @@ const useCourse = (activeTab) => {
 
             const response = await getAllCourses(languageId);
 
-            setCourses(response.data.items || []);
+            setCourses(
+                (response?.data?.items || []).map((course) => ({
+                    ...course,
+                    module_count: Number(course.module_count ?? 0),
+                }))
+            );
 
         } catch (error) {
             console.error("Error fetching courses:", error);
@@ -56,7 +59,13 @@ const useCourse = (activeTab) => {
 
     // Refetch whenever the language tab changes.
     useEffect(() => {
+        if (fetchedLanguageId.current === languageId) {
+            return;
+        }
+
+        fetchedLanguageId.current = languageId;
         fetchCourses();
+
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [languageId]);
 
@@ -69,9 +78,7 @@ const useCourse = (activeTab) => {
         setQuery("");
     };
 
-    // The backend already returns the correct language set (with English
-    // fallback), so only the search query is filtered client-side. Filtering
-    // by language_name here previously hid every non-English course.
+    // Backend returns courses for the selected language.
     const filteredCourses = useMemo(() => {
         return courses.filter((course) => {
             const matchesQuery =
@@ -91,6 +98,7 @@ const useCourse = (activeTab) => {
 
         searchText,
         setSearchText,
+        appliedSearch: query,
 
         fetchCourses,
         handleSearch,

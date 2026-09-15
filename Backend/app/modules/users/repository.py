@@ -1,14 +1,17 @@
 from collections import defaultdict
 
-from passlib.context import CryptContext  # type: ignore
 from sqlalchemy import BigInteger, String, case, cast, distinct, func, or_
 from sqlalchemy.orm import Session
+from app.database import db
+
+from app.modules.auth.security import hash_password
 
 from app.modules.assessment.model import (
     AssessmentMapping,
     DropBucket,
     DropBucketItem,
     DropBucketMaster,
+    MatchCorrectAnswer,
     MatchLeftItem,
     MatchMakingMaster,
     MatchRightItem,
@@ -33,8 +36,6 @@ from app.modules.users.model import (
     ParticipantScq,
 )
 from app.modules.users.schema import ParticipantCreateRequest
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 class UserRepository:
@@ -97,11 +98,11 @@ class UserRepository:
 
     @staticmethod
     def get_by_email(db: Session, email: str):
+        normalized_email = email.strip().lower()
         return (
             db.query(User)
-            .filter(User.status == "1")
-            .filter(User.email == email)
-            .first()
+            .filter(func.lower(func.trim(User.email)) == normalized_email)
+        .first()
         )
 
     @staticmethod
@@ -161,11 +162,9 @@ class UserRepository:
         return user
 
     @staticmethod
-    def soft_delete_user(db: Session, user: User):
-        user.status = "0"
+    def delete_user(db: Session, user: User):
+        db.delete(user)
         db.commit()
-        db.refresh(user)
-        return user
 
     @staticmethod
     def get_by_id(db: Session, user_id: int):
@@ -174,19 +173,23 @@ class UserRepository:
         )
 
     @staticmethod
+    def get_by_id_for_delete(db: Session, user_id: int):
+        return db.query(User).filter(User.id == user_id).first()
+
+    @staticmethod
     def get_by_email_except_user(
         db: Session,
         email: str,
         user_id: int,
     ):
+        normalized_email = email.strip().lower()
         return (
             db.query(User)
-            .filter(
-                User.email == email,
-                User.id != user_id,
-                User.status == "1",
-            )
-            .first()
+        .filter(
+            func.lower(func.trim(User.email)) == normalized_email,
+            User.id != user_id,
+        )
+        .first()
         )
 
     @staticmethod
@@ -256,11 +259,12 @@ class UserRepository:
         if existing_enrollment:
             return "duplicate_enrollment_no"
 
+        username = (data.username or "").strip()
         # Check for duplicate username
         existing_username = (
             db.query(ParticipantMaster)
             .filter(
-                ParticipantMaster.username == data.username,
+                func.lower(func.trim(ParticipantMaster.username)) == username.lower(),
                 ParticipantMaster.deleted_at.is_(None),
             )
             .first()
@@ -268,12 +272,12 @@ class UserRepository:
         if existing_username:
             return "duplicate_username"
 
-        hashed_password = pwd_context.hash(data.password)
+        hashed_password = hash_password(data.password)
 
         participant = ParticipantMaster(
             enrollment_no=data.enrollment_no,
             participant_name=data.participant_name,
-            username=data.username,
+            username=username,
             password=hashed_password,
             gender=data.gender,
             age=data.age,
@@ -393,9 +397,9 @@ class UserRepository:
         mcq_perf = (
             db.query(
                 ParticipantMcq.participant_id.label("participant_id"),
-                func.count(
-                    case((ParticipantMcq.option_selected.isnot(None), 1))
-                ).label("attempted"),
+                func.count(case((ParticipantMcq.option_selected.isnot(None), 1))).label(
+                    "attempted"
+                ),
                 func.count(
                     case((McqQuestionOption.is_mcq_option_correct == 1, 1))
                 ).label("correct"),
@@ -412,9 +416,9 @@ class UserRepository:
         scq_perf = (
             db.query(
                 ParticipantScq.participant_id.label("participant_id"),
-                func.count(
-                    case((ParticipantScq.option_selected.isnot(None), 1))
-                ).label("attempted"),
+                func.count(case((ParticipantScq.option_selected.isnot(None), 1))).label(
+                    "attempted"
+                ),
                 func.count(
                     case((ScqQuestionOption.is_scq_option_correct == 1, 1))
                 ).label("correct"),
@@ -495,8 +499,7 @@ class UserRepository:
             )
             .join(
                 AssessmentMapping,
-                AssessmentMapping.assessment_id
-                == PostSessionAssessment.assessment_id,
+                AssessmentMapping.assessment_id == PostSessionAssessment.assessment_id,
             )
             .filter(
                 ParticipantModule.status == "1",
@@ -603,7 +606,8 @@ class UserRepository:
                 ParticipantMaster.participant_name.ilike(f"%{search}%")
             )
 
-        rows = query.order_by(ParticipantMaster.participant_name).all()
+        # Newest trainees first, so a just-added trainee shows at the top.
+        rows = query.order_by(ParticipantMaster.participant_id.desc()).all()
 
         # A participant mapped to more than one batch (or with a stale
         # duplicate mapping) would otherwise appear once per mapping. Show
@@ -662,9 +666,49 @@ class UserRepository:
             "image": p.images,
         }
 
+    # @staticmethod
+    # def update_participant(db: Session, participant_id: int, data: dict, image_name):
+    #     p = (
+    #         db.query(ParticipantMaster)
+    #         .filter(
+    #             ParticipantMaster.participant_id == participant_id,
+    #             ParticipantMaster.deleted_at.is_(None),
+    #         )
+    #         .first()
+    #     )
+    #     if not p:
+    #         return None
+
+    #     # Editable fields only (enrollment / username / password are not changed here).
+    #     p.participant_name = data.get("participant_name", p.participant_name)
+    #     p.age = data.get("age", p.age)
+    #     p.gender = data.get("gender", p.gender)
+    #     p.email = data.get("email", p.email)
+    #     p.mobile_no = data.get("mobile_no", p.mobile_no)
+    #     p.pin = data.get("pin", p.pin)
+    #     p.aadhaar_number = data.get("aadhaar_number", p.aadhaar_number)
+    #     p.location = data.get("location", p.location)
+    #     p.address = data.get("address", p.address)
+    #     if data.get("state_id"):
+    #         p.state_id = data["state_id"]
+    #     if data.get("district_id"):
+    #         p.district_id = data["district_id"]
+    #     if data.get("block_id"):
+    #         p.block_id = data["block_id"]
+    #     if image_name:
+    #         p.images = image_name
+
+    #     db.commit()
+    #     db.refresh(p)
+    #     return p
     @staticmethod
-    def update_participant(db: Session, participant_id: int, data: dict, image_name):
-        p = (
+    def update_participant(
+        db: Session,
+        participant_id: int,
+        data: dict,
+        image_name=None,
+    ):
+        participant = (
             db.query(ParticipantMaster)
             .filter(
                 ParticipantMaster.participant_id == participant_id,
@@ -672,31 +716,84 @@ class UserRepository:
             )
             .first()
         )
-        if not p:
+
+        if not participant:
             return None
 
-        # Editable fields only (enrollment / username / password are not changed here).
-        p.participant_name = data.get("participant_name", p.participant_name)
-        p.age = data.get("age", p.age)
-        p.gender = data.get("gender", p.gender)
-        p.email = data.get("email", p.email)
-        p.mobile_no = data.get("mobile_no", p.mobile_no)
-        p.pin = data.get("pin", p.pin)
-        p.aadhaar_number = data.get("aadhaar_number", p.aadhaar_number)
-        p.location = data.get("location", p.location)
-        p.address = data.get("address", p.address)
-        if data.get("state_id"):
-            p.state_id = data["state_id"]
-        if data.get("district_id"):
-            p.district_id = data["district_id"]
-        if data.get("block_id"):
-            p.block_id = data["block_id"]
+        # Basic participant details
+        if data.get("participant_name") is not None:
+            participant.participant_name = data["participant_name"]
+
+        if data.get("age") is not None:
+            participant.age = data["age"]
+
+        if data.get("gender") is not None:
+            participant.gender = data["gender"]
+
+        if data.get("email") is not None:
+            participant.email = data["email"]
+
+        if data.get("mobile_no") is not None:
+            participant.mobile_no = data["mobile_no"]
+
+        if data.get("pin") is not None:
+            participant.pin = data["pin"]
+
+        if data.get("aadhaar_number") is not None:
+            participant.aadhaar_number = data["aadhaar_number"]
+
+        if data.get("location") is not None:
+            participant.location = data["location"]
+
+        if data.get("address") is not None:
+            participant.address = data["address"]
+
+        # Editable location
+        if data.get("state_id") is not None:
+            participant.state_id = data["state_id"]
+
+        if data.get("district_id") is not None:
+            participant.district_id = data["district_id"]
+
+        if data.get("block_id") is not None:
+            participant.block_id = data["block_id"]
+
+        # Enrollment number
+        enrollment_no = data.get("enrollment_no")
+
+        if enrollment_no:
+            participant.enrollment_no = enrollment_no
+
+        # Batch / Centre mapping
+        batch_id = data.get("batch_id")
+
+        if batch_id is not None:
+            batch_participant = (
+                db.query(BatchParticipant)
+                .filter(
+                    BatchParticipant.participant_id == participant_id,
+                    BatchParticipant.deleted_at.is_(None),
+                )
+                .first()
+            )
+
+            if batch_participant:
+                batch_participant.batch_id = int(batch_id)
+            else:
+                batch_participant = BatchParticipant(
+                    participant_id=participant_id,
+                    batch_id=int(batch_id),
+                )
+                db.add(batch_participant)
+
+        # Image
         if image_name:
-            p.images = image_name
+            participant.images = image_name
 
         db.commit()
-        db.refresh(p)
-        return p
+        db.refresh(participant)
+
+        return participant
 
     @staticmethod
     def get_participant_profile(
@@ -1345,7 +1442,14 @@ class UserRepository:
 
         mcq_options = defaultdict(list)
 
-        for option in db.query(McqQuestionOption).all():
+        for option in (
+            db.query(McqQuestionOption)
+            .filter(
+                McqQuestionOption.deleted_at.is_(None),
+                McqQuestionOption.status == 1,
+            )
+            .all()
+        ):
             mcq_options[option.mcq_id].append(option)
 
         # ============================================================
@@ -1354,7 +1458,14 @@ class UserRepository:
 
         scq_options = defaultdict(list)
 
-        for option in db.query(ScqQuestionOption).all():
+        for option in (
+            db.query(ScqQuestionOption)
+            .filter(
+                ScqQuestionOption.deleted_at.is_(None),
+                ScqQuestionOption.status == 1,
+            )
+            .all()
+        ):
             scq_options[option.scq_id].append(option)
 
         # ============================================================
@@ -1363,7 +1474,14 @@ class UserRepository:
 
         buckets = db.query(DropBucket).all()
 
-        bucket_items = db.query(DropBucketItem).all()
+        bucket_items = (
+            db.query(DropBucketItem)
+            .filter(
+                DropBucketItem.deleted_at.is_(None),
+                DropBucketItem.status == 1,
+            )
+            .all()
+        )
 
         bucket_items_grouped = defaultdict(list)
 
@@ -1445,6 +1563,17 @@ class UserRepository:
             for item in db.query(MatchRightItem).all():
                 right_items[item.match_making_id].append(item)
 
+            # The actual correct left -> right pairing, keyed by
+            # match_left_id. Used to show what the correct answer was for a
+            # pairing the trainee got wrong (mirrors how MCQ/SCQ/Drop Bucket
+            # show the correct option even when it wasn't selected).
+            correct_right_by_left = {
+                row.match_left_id: row.match_right_id
+                for row in db.query(MatchCorrectAnswer).filter(
+                    MatchCorrectAnswer.deleted_at.is_(None)
+                )
+            }
+
             # ============================================================
             # PROCESS MCQ FOR THIS ATTEMPT
             # ============================================================
@@ -1507,9 +1636,7 @@ class UserRepository:
                         bool(correct_set) and selected_set == correct_set
                     )
 
-                    question_status = (
-                        "Correct" if is_correct_answer else "Wrong"
-                    )
+                    question_status = "Correct" if is_correct_answer else "Wrong"
 
                     option_list = []
 
@@ -1618,10 +1745,9 @@ class UserRepository:
                         # Compare as strings to avoid id/text type mismatches
                         # (option_selected is stored as text) — otherwise the
                         # trainee's picked option is never flagged.
-                        is_sel = (
-                            selected is not None
-                            and str(option.scq_option_id) == str(selected)
-                        )
+                        is_sel = selected is not None and str(
+                            option.scq_option_id
+                        ) == str(selected)
                         is_ans = int(option.is_scq_option_correct) == 1
 
                         if is_sel and is_ans:
@@ -1650,6 +1776,9 @@ class UserRepository:
                                 "is_correct": is_ans,
                             }
                         )
+
+                    if question_status != "Correct":
+                        attempt_total_wrong += 1
 
                     attempt_scq_list.append(
                         {
@@ -1686,7 +1815,6 @@ class UserRepository:
                     if row.bucket_id in bucket_to_master
                 }
             )
-
 
             if bucket_attempted_ids:
 
@@ -1737,9 +1865,7 @@ class UserRepository:
                         item_list = []
 
                         placed_here = set(
-                            participant_bucket_answers.get(
-                                bucket.bucket_id, {}
-                            ).keys()
+                            participant_bucket_answers.get(bucket.bucket_id, {}).keys()
                         )
                         correct_item_ids = set()
 
@@ -1752,9 +1878,7 @@ class UserRepository:
                             question_total_items += 1
                             correct_item_ids.add(item.drop_bucket_item_id)
 
-                            is_selected = (
-                                item.drop_bucket_item_id in placed_here
-                            )
+                            is_selected = item.drop_bucket_item_id in placed_here
 
                             if is_selected:
                                 question_correct_items += 1
@@ -1779,9 +1903,7 @@ class UserRepository:
                             item_list.append(
                                 {
                                     "item_id": placed_id,
-                                    "item_name": item_name_by_id.get(
-                                        placed_id, ""
-                                    ),
+                                    "item_name": item_name_by_id.get(placed_id, ""),
                                     "is_answer": False,
                                     "is_selected": True,
                                     "is_correct": False,
@@ -1887,13 +2009,22 @@ class UserRepository:
 
                     for left in left_items.get(mm_id, []):
 
-                        selected = next(
+                        # The stored answer row for this specific left item —
+                        # carries the trainee's pick AND its own is_correct
+                        # flag, computed at submission time from the actual
+                        # correct mapping (never re-derived from position).
+                        answer_row = next(
                             (
-                                a.right_option
+                                a
                                 for a in answers
                                 if str(a.left_option) == str(left.match_left_id)
                             ),
                             None,
+                        )
+
+                        selected = answer_row.right_option if answer_row else None
+                        is_pair_correct = (
+                            answer_row is not None and str(answer_row.is_correct) == "1"
                         )
 
                         left_list.append(
@@ -1901,6 +2032,16 @@ class UserRepository:
                                 "match_left_id": left.match_left_id,
                                 "match_left_text": left.match_left_text,
                                 "selected_right": selected,
+                                # Per-pair correctness, straight from the
+                                # stored answer row.
+                                "is_selected": answer_row is not None,
+                                "is_correct": is_pair_correct,
+                                # The actual correct right item for this left
+                                # item, so a wrong pairing can still show
+                                # what the right answer was.
+                                "correct_right": correct_right_by_left.get(
+                                    left.match_left_id
+                                ),
                             }
                         )
 
@@ -2086,8 +2227,7 @@ class UserRepository:
             )
             .outerjoin(
                 ModuleType,
-                ModuleType.module_type_id
-                == cast(ModuleMaster.module_type, BigInteger),
+                ModuleType.module_type_id == cast(ModuleMaster.module_type, BigInteger),
             )
             .filter(
                 ModuleMaster.language_id == language_id,

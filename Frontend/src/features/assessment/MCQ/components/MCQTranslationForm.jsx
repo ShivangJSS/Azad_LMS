@@ -1,6 +1,6 @@
 import React from "react";
 
-import { getMediaUrl } from "../../../../shared/utils/mediaUrl";
+import { getMediaUrl } from "@/shared/utils/mediaUrl";
 
 export default function MCQTranslationForm({
     form,

@@ -11,9 +11,23 @@ MAX_UPLOAD_BYTES = 200 * 1024 * 1024  # 200 MB
 # the app origin, so extensions that can execute as active content
 # (.html, .htm, .svg, .js, .xhtml, .php, ...) must never be accepted here.
 ALLOWED_UPLOAD_EXTENSIONS = {
-    ".jpg", ".jpeg", ".png", ".webp", ".gif",
-    ".pdf", ".ppt", ".pptx", ".doc", ".docx", ".xls", ".xlsx",
-    ".mp4", ".webm", ".mov", ".mkv", ".avi",
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".webp",
+    ".gif",
+    ".pdf",
+    ".ppt",
+    ".pptx",
+    ".doc",
+    ".docx",
+    ".xls",
+    ".xlsx",
+    ".mp4",
+    ".webm",
+    ".mov",
+    ".mkv",
+    ".avi",
 }
 
 # Image-only subset for icon/photo fields.
@@ -76,7 +90,8 @@ async def save_file(file: UploadFile | None, folder: str):
     filepath = os.path.join(upload_dir, filename)
 
     with open(filepath, "wb") as buffer:
-        buffer.write(await file.read())
+        while chunk := await file.read(1024 * 1024):
+            buffer.write(chunk)
 
     return filename
 

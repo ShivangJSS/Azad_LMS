@@ -1,4 +1,4 @@
-import API from '../../../api/Api';
+import API from '@/api/Api';
 
 // ==========================================================
 // Participants
@@ -12,6 +12,38 @@ export const getParticipants = async (params) => {
         console.error('Error fetching participants:', error);
         throw error;
     }
+};
+
+export const exportParticipants = async (params = {}) => {
+    const participants = await getParticipants(params);
+    const rows = [
+        ["S. No.", "Trainee Name", "Enrollment Id", "Status"],
+        ...(Array.isArray(participants)
+            ? participants.map((participant, index) => [
+                  index + 1,
+                  participant.participant_name,
+                  participant.enrollment_no,
+                  participant.status,
+              ])
+            : []),
+    ];
+
+    const csv = rows
+        .map((row) =>
+            row
+                .map((value) => {
+                    const text = value == null ? "" : String(value);
+                    return /[",\n\r]/.test(text)
+                        ? `"${text.replace(/"/g, '""')}"`
+                        : text;
+                })
+                .join(",")
+        )
+        .join("\r\n");
+
+    return new Blob(["\uFEFF", csv], {
+        type: "text/csv;charset=utf-8",
+    });
 };
 
 export const createParticipant = async (formData) => {

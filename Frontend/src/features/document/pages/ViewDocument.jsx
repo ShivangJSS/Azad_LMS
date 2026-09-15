@@ -2,18 +2,18 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
 
-import AppLayout from "../../../components/layout/AppLayout";
-import Breadcrumbs from "../../../shared/components/breadcrumbs/Breadcrumbs";
-import LanguageTabs from "../../../shared/components/language/LanguageTabs";
+import AppLayout from "@/components/layout/AppLayout";
+import Breadcrumbs from "@/shared/components/breadcrumbs/Breadcrumbs";
+import LanguageTabs from "@/shared/components/language/LanguageTabs";
 import {
     getLanguageById,
     getLanguageByKey,
-} from "../../../shared/constants/languageConstants";
+} from "@/shared/constants/languageConstants";
 
-import { getDocument } from "../services/DocumentServices";
-import useTranslation from "../hook/useTranslation";
+import { getDocument } from "@/features/document/services/DocumentServices";
+import useTranslation from "@/features/document/hook/useTranslation";
 
-import TranslationForm from "../components/TranslationForm";
+import TranslationForm from "@/features/document/components/TranslationForm";
 
 
 const MEDIA_URL = import.meta.env.VITE_API_URL;
@@ -422,8 +422,7 @@ export default function ViewDocument() {
                 `${languageName} translation saved successfully.`
             );
 
-            // Go back to the document list on success.
-            navigate("/documents");
+            // Save in place (AJAX) — stay on the page, no redirect.
 
         } catch (
             requestError

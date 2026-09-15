@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
 class StateResponse(BaseModel):
@@ -37,8 +37,8 @@ class CentreCreateRequest(BaseModel):
     latitude: Optional[Decimal] = Field(None, ge=-90, le=90)
     longitude: Optional[Decimal] = Field(None, ge=-180, le=180)
 
-    pin: str = Field(..., min_length=6, max_length=6)
-    phone_number: str = Field(..., min_length=1, max_length=50)
+    pin: str = Field(..., pattern=r"^\d{6}$")
+    phone_number: str = Field(..., pattern=r"^\d+$")
     email: EmailStr
 
     block_id: int
@@ -46,6 +46,15 @@ class CentreCreateRequest(BaseModel):
     state_id: int
 
     status: int = Field(default=1, ge=0, le=1)
+
+    @field_validator('centre_name', 'address', 'location')
+    @classmethod
+    def strip_and_validate_not_empty(cls, v):
+        if isinstance(v, str):
+            v = v.strip()
+            if not v:
+                raise ValueError('Field cannot be empty or contain only whitespace')
+        return v
 
 
 class CentreResponse(BaseModel):
@@ -127,7 +136,7 @@ class CentreUpdateRequest(BaseModel):
     longitude: Optional[Decimal] = Field(None)
 
     pin: str = Field(..., pattern=r"^\d{6}$")
-    phone_number: str = Field(..., min_length=1, max_length=50)
+    phone_number: str = Field(..., pattern=r"^\d+$")
     email: EmailStr
 
     state_id: int
@@ -135,6 +144,15 @@ class CentreUpdateRequest(BaseModel):
     block_id: int
 
     status: int = Field(..., ge=0, le=1)
+
+    @field_validator('centre_name', 'address', 'location')
+    @classmethod
+    def strip_and_validate_not_empty(cls, v):
+        if isinstance(v, str):
+            v = v.strip()
+            if not v:
+                raise ValueError('Field cannot be empty or contain only whitespace')
+        return v
 
 
 class CentreStatusUpdateRequest(BaseModel):

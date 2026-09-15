@@ -13,23 +13,26 @@ export default function Pagination({
     }
 
     return (
-        <div className="flex ">
+        <div className="glass-pager inline-flex items-stretch">
 
             <button
                 onClick={() => onPageChange(currentPage - 1)}
                 disabled={currentPage === 1}
-                className="border px-3 py-1 rounded-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                aria-label="Previous page"
+                title="Previous"
+                className="glass-pager-btn border px-3 py-1 rounded-sm bg-white/60 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-                Previous
+                <span aria-hidden="true">&lsaquo;</span>
             </button>
 
             {pages.map((page) => (
                 <button
                     key={page}
                     onClick={() => onPageChange(page)}
-                    className={`px-3 py-1 rounded-sm border ${currentPage === page
+                    aria-current={currentPage === page ? "page" : undefined}
+                    className={`glass-pager-btn px-3 py-1 rounded-sm border ${currentPage === page
                         ? "bg-[#7b216f] text-white"
-                        : "hover:bg-gray-100"
+                        : "bg-white/60 hover:bg-gray-100"
                         }`}
                 >
                     {page}
@@ -39,9 +42,11 @@ export default function Pagination({
             <button
                 onClick={() => onPageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className="border px-3 py-1 rounded-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                aria-label="Next page"
+                title="Next"
+                className="glass-pager-btn border px-3 py-1 rounded-sm bg-white/60 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-                Next
+                <span aria-hidden="true">&rsaquo;</span>
             </button>
 
         </div>

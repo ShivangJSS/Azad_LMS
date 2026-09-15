@@ -3,7 +3,7 @@ import {
     PER_PAGE,
     cellClass,
     headCellClass,
-} from "../hook/Documentconstants";
+} from "@/features/document/hook/Documentconstants";
 
 const actionBtn =
     "h-[28px] rounded-[4px] px-[12px] text-[13px] font-semibold !text-white hover:opacity-90";

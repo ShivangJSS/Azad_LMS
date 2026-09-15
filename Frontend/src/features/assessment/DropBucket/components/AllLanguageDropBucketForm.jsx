@@ -1,4 +1,6 @@
 import { FiPlus, FiTrash2 } from "react-icons/fi";
+import toast from "react-hot-toast";
+import { isValidImageFile, IMAGE_TYPE_ERROR } from "@/shared/utils/imageValidation";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -96,7 +98,15 @@ export default function AllLanguageDropBucketForm({
                         <input
                             type="file"
                             accept="image/*"
-                            onChange={onImageChange}
+                            onChange={(e) => {
+                                const file = e.target.files?.[0] || null;
+                                if (file && !isValidImageFile(file)) {
+                                    toast.error(IMAGE_TYPE_ERROR);
+                                    e.target.value = "";
+                                    return;
+                                }
+                                onImageChange(e);
+                            }}
                             className="block h-[35px] w-full rounded-[3px] border border-[#D8E2EF] bg-white text-[13px] text-[#344050] file:mr-[12px] file:h-full file:border-0 file:bg-[#344050] file:px-[14px] file:text-[13px] file:font-medium file:text-white"
                         />
                         {form?.image_preview && (
@@ -212,12 +222,15 @@ export default function AllLanguageDropBucketForm({
                                     <input
                                         type="file"
                                         accept="image/*"
-                                        onChange={(e) =>
-                                            onBucketImageChange(
-                                                index,
-                                                e.target.files?.[0] || null
-                                            )
-                                        }
+                                        onChange={(e) => {
+                                            const file = e.target.files?.[0] || null;
+                                            if (file && !isValidImageFile(file)) {
+                                                toast.error(IMAGE_TYPE_ERROR);
+                                                e.target.value = "";
+                                                return;
+                                            }
+                                            onBucketImageChange(index, file);
+                                        }}
                                         className="block h-[35px] w-full rounded-[3px] border border-[#D8E2EF] bg-white text-[13px] text-[#344050] file:mr-[12px] file:h-full file:border-0 file:bg-[#344050] file:px-[14px] file:text-[13px] file:font-medium file:text-white"
                                     />
                                     {bucket?.bucket_image_preview && (

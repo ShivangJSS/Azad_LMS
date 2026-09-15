@@ -1,4 +1,6 @@
 import { FiTrash2 } from "react-icons/fi";
+import toast from "react-hot-toast";
+import { isValidImageFile, IMAGE_TYPE_ERROR } from "@/shared/utils/imageValidation";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -123,7 +125,15 @@ export default function MCQForm({
                     )}
 
                     <input
-                        onChange={onImageChange}
+                        onChange={(e) => {
+                            const file = e.target.files?.[0] || null;
+                            if (file && !isValidImageFile(file)) {
+                                toast.error(IMAGE_TYPE_ERROR);
+                                e.target.value = "";
+                                return;
+                            }
+                            onImageChange(e);
+                        }}
                         type="file"
                         name="image"
                         accept="image/*"

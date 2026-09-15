@@ -1,5 +1,5 @@
 // // import { ArrowUpDown } from 'lucide-react';
-// import DataTable from "../../../shared/components/table/DataTable";
+// import DataTable from "@/shared/components/table/DataTable";
 // const BRAND = '#732269';
 
 // // function SortableHeader({ label, sortKey, sortConfig, onSort }) {

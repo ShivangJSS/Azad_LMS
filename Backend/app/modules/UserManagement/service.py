@@ -5,6 +5,7 @@ from app.common.enums import Status, UserRole
 from app.modules.auth.model import User
 from app.modules.auth.security import hash_password
 from app.modules.audit_log.service import create_audit_log
+from app.shared.dependencies.location_scope import user_is_in_scope
 
 from . import repository as user_repository
 from .exceptions import (
@@ -17,7 +18,6 @@ from .schema import (
     UserBaseResponse,
     DeleteUserResponse,
 )
-
 
 # ==========================================================
 # Helper Methods
@@ -72,7 +72,7 @@ def _get_current_user_role(
     try:
         return UserRole(int(current_user.role))
 
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Invalid logged-in user role.",
@@ -95,7 +95,7 @@ def _get_user_role(
     try:
         return UserRole(int(user.role))
 
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid user role.",
@@ -150,13 +150,9 @@ def _check_create_permission(
     requested user role.
     """
 
-    current_role = _get_current_user_role(
-        current_user
-    )
+    current_role = _get_current_user_role(current_user)
 
-    allowed_roles = _get_allowed_roles(
-        current_role
-    )
+    allowed_roles = _get_allowed_roles(current_role)
 
     if not allowed_roles:
         raise HTTPException(
@@ -188,19 +184,11 @@ def _check_manage_permission(
     Admin -> State Head / District Head / PI
     """
 
-    current_role = _get_current_user_role(
-        current_user
-    )
+    current_role = _get_current_user_role(current_user)
 
+    target_role = _get_user_role(target_user)
 
-
-    target_role = _get_user_role(
-        target_user
-    )
-
-    allowed_roles = _get_allowed_roles(
-        current_role
-    )
+    allowed_roles = _get_allowed_roles(current_role)
 
     if target_role not in allowed_roles:
         raise HTTPException(
@@ -251,9 +239,7 @@ def create_new_user(
     # Hash Password
     # ------------------------------------------------------
 
-    hashed_password = hash_password(
-        request.password
-    )
+    hashed_password = hash_password(request.password)
 
     # ------------------------------------------------------
     # Create User
@@ -264,9 +250,7 @@ def create_new_user(
         email=request.email,
         password=hashed_password,
         role=request.role.value,
-        responsibility=_get_responsibility_for_role(
-            request.role
-        ),
+        responsibility=_get_responsibility_for_role(request.role),
         status=Status.ACTIVE.value,
     )
 
@@ -289,17 +273,12 @@ def create_new_user(
         action="CREATE",
         entity="User",
         entity_id=str(saved_user.id),
-        details=(
-            f"New user created with data: "
-            f"{request.model_dump()}"
-        ),
+        details=(f"New user created with data: " f"{request.model_dump()}"),
     )
 
     db.commit()
 
-    return _map_user_to_response_schema(
-        saved_user
-    )
+    return _map_user_to_response_schema(saved_user)
 
 
 # ==========================================================
@@ -322,10 +301,7 @@ def get_all_users_service(
         current_user=current_user,
     )
 
-    return [
-        _map_user_to_response_schema(user)
-        for user in users
-    ]
+    return [_map_user_to_response_schema(user) for user in users]
 
 
 # ==========================================================
@@ -354,30 +330,28 @@ def get_user_by_id_service(
     if not user:
         raise UserNotFoundError()
 
+    if current_user.id != user_id and not user_is_in_scope(user, current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have access to this user's location.",
+        )
+
     # ------------------------------------------------------
     # User can always view own account
     # ------------------------------------------------------
 
     if current_user.id == user_id:
-        return _map_user_to_response_schema(
-            user
-        )
+        return _map_user_to_response_schema(user)
 
     # ------------------------------------------------------
     # Get Roles
     # ------------------------------------------------------
 
-    current_role = _get_current_user_role(
-        current_user
-    )
+    current_role = _get_current_user_role(current_user)
 
-    target_role = _get_user_role(
-        user
-    )
+    target_role = _get_user_role(user)
 
-    allowed_roles = _get_allowed_roles(
-        current_role
-    )
+    allowed_roles = _get_allowed_roles(current_role)
 
     # ------------------------------------------------------
     # Check Permission
@@ -389,9 +363,7 @@ def get_user_by_id_service(
             detail="You don't have permission to access this user.",
         )
 
-    return _map_user_to_response_schema(
-        user
-    )
+    return _map_user_to_response_schema(user)
 
 
 # ==========================================================
@@ -421,6 +393,12 @@ def update_user_service(
     if not user:
         raise UserNotFoundError()
 
+    if not user_is_in_scope(user, current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have access to this user's location.",
+        )
+
     # ------------------------------------------------------
     # Check Manage Permission
     # ------------------------------------------------------
@@ -447,40 +425,27 @@ def update_user_service(
     # Get Update Data
     # ------------------------------------------------------
 
-    update_data = request.model_dump(
-        exclude_unset=True
-    )
+    update_data = request.model_dump(exclude_unset=True)
 
     # ------------------------------------------------------
     # Email Validation
     # ------------------------------------------------------
 
-    if (
-        "email" in update_data
-        and update_data["email"] is not None
-    ):
+    if "email" in update_data and update_data["email"] is not None:
 
-        existing_user = (
-            user_repository.get_user_by_email(
-                db=db,
-                email=update_data["email"],
-            )
+        existing_user = user_repository.get_user_by_email(
+            db=db,
+            email=update_data["email"],
         )
 
-        if (
-            existing_user is not None
-            and existing_user.id != user_id
-        ):
+        if existing_user is not None and existing_user.id != user_id:
             raise EmailAlreadyExistsError()
 
     # ------------------------------------------------------
     # Role Change Validation
     # ------------------------------------------------------
 
-    if (
-        "role" in update_data
-        and update_data["role"] is not None
-    ):
+    if "role" in update_data and update_data["role"] is not None:
 
         requested_role = update_data["role"]
 
@@ -489,23 +454,14 @@ def update_user_service(
             requested_role=requested_role,
         )
 
-        user.responsibility = (
-            _get_responsibility_for_role(
-                requested_role
-            )
-        )
+        user.responsibility = _get_responsibility_for_role(requested_role)
 
     # ------------------------------------------------------
     # Password
     # ------------------------------------------------------
 
-    if (
-        "password" in update_data
-        and update_data["password"]
-    ):
-        update_data["password"] = hash_password(
-            update_data["password"]
-        )
+    if "password" in update_data and update_data["password"]:
+        update_data["password"] = hash_password(update_data["password"])
 
     # ------------------------------------------------------
     # Apply Updates
@@ -557,9 +513,7 @@ def update_user_service(
 
     db.commit()
 
-    return _map_user_to_response_schema(
-        updated_user
-    )
+    return _map_user_to_response_schema(updated_user)
 
 
 # ==========================================================
@@ -587,6 +541,12 @@ def delete_user_service(
 
     if not user:
         raise UserNotFoundError()
+
+    if not user_is_in_scope(user, current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have access to this user's location.",
+        )
 
     # ------------------------------------------------------
     # Prevent Self Delete
@@ -630,6 +590,4 @@ def delete_user_service(
 
     db.commit()
 
-    return DeleteUserResponse(
-        message="User deleted successfully."
-    )
+    return DeleteUserResponse(message="User deleted successfully.")

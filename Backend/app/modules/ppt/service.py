@@ -177,7 +177,5 @@ class PptService:
         return StreamingResponse(
             iter([buffer.getvalue()]),
             media_type="text/csv",
-            headers={
-                "Content-Disposition": "attachment; filename=ppts.csv"
-            },
+            headers={"Content-Disposition": "attachment; filename=ppts.csv"},
         )

@@ -1,6 +1,21 @@
+import { LANGUAGES } from "@/shared/constants/languageConstants";
 import { FiPlus, FiTrash2, FiSave, FiX } from "react-icons/fi";
 
-export default function TopicForm({
+export default function TopicForm({ 
+    title = "Create Topic", 
+    submitText = "Submit", 
+    showAddMore = true, 
+    moduleId = "", 
+    modules = [], 
+    topics = [], 
+    onModuleChange, 
+    onTopicChange, 
+    onAddMore, 
+    onRemove, 
+    onSubmit, 
+    onCancel, 
+    loading = false,
+    currentLanguage = "english" 
     title = "Create Topic",
     submitText = "Submit",
     showAddMore = true,
@@ -15,6 +30,8 @@ export default function TopicForm({
     onCancel,
     loading = false,
 }) {
+    // Find the current language object
+    const currentLangObj = LANGUAGES.find(lang => lang.key === currentLanguage) || LANGUAGES[0];
     return (
         <form
             onSubmit={onSubmit}
@@ -74,7 +91,7 @@ export default function TopicForm({
 
                         <input
                             type="text"
-                            value="English"
+                            value={currentLangObj.label}
                             disabled
                             className="h-[35px] w-full rounded-[4px] border border-[#D8E2EF] bg-[#EDF2F8] px-[12px] text-[14px] text-[#344050] outline-none"
                         />

@@ -5,10 +5,10 @@ from app.common.enums import (
     Status,
 )
 
-
 # ==========================================
 # Request Schemas
 # ==========================================
+
 
 class CreateUserRequest(BaseModel):
     name: str
@@ -28,6 +28,7 @@ class UpdateUserRequest(BaseModel):
 # Response Schemas
 # ==========================================
 
+
 class UserBaseResponse(BaseModel):
     id: int
     name: str
@@ -36,9 +37,7 @@ class UserBaseResponse(BaseModel):
     responsibility: str | None = None
     status: str
 
-    model_config = ConfigDict(
-        from_attributes=True
-    )
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DeleteUserResponse(BaseModel):

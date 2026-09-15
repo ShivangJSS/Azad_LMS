@@ -1,17 +1,122 @@
 import { useEffect, useState } from "react";
-import { FaSearch, FaRedo } from "react-icons/fa";
+import { FaRedo, FaSearch } from "react-icons/fa";
+
+import { CARD_CLASS } from "../hook/dashboardTheme";
 
 import {
-    getDashboardStates,
-    getDashboardDistricts,
     getDashboardCentres,
-} from "../services/DashboardFilterService";
+    getDashboardDistricts,
+    getDashboardStates,
+} from "@/features/dashboard/services/DashboardFilterService";
 
-export default function DashboardFilter({
-    filters,
-    setFilters,
-}) {
+// ============================================================
+// Constants
+// ============================================================
 
+const EMPTY_FILTERS = Object.freeze({});
+
+// Flat white filter card matching the redesigned dashboard surface.
+// Inline styles on the controls (rather than utility classes) keep the
+// global form-sizing rules in index.css from overriding the new heights.
+const CONTROL_STYLE = {
+    width: "100%",
+    height: "40px",
+    padding: "0 0.75rem",
+    fontSize: "13px",
+    color: "#1F1B2E",
+    backgroundColor: "#FFFFFF",
+    border: "1px solid #E4E0EB",
+    borderRadius: "10px",
+    outline: "none",
+    boxShadow: "none",
+};
+
+const SELECT_STYLE = {
+    ...CONTROL_STYLE,
+    paddingRight: "2.25rem",
+    appearance: "none",
+    backgroundImage:
+        "url(\"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%236B6478' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e\")",
+    backgroundRepeat: "no-repeat",
+    backgroundPosition: "right 0.8rem center",
+    backgroundSize: "14px 10px",
+};
+
+const DISABLED_STYLE = {
+    backgroundColor: "#FAF9FC",
+    color: "#9C94A8",
+    cursor: "not-allowed",
+};
+
+const BUTTON_BASE_STYLE = {
+    height: "40px",
+    minWidth: "96px",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "7px",
+    padding: "0 18px",
+    fontSize: "13px",
+    fontWeight: 500,
+    whiteSpace: "nowrap",
+    borderRadius: "10px",
+    cursor: "pointer",
+};
+
+const SEARCH_STYLE = {
+    ...BUTTON_BASE_STYLE,
+    backgroundColor: "#732269",
+    border: "1px solid #732269",
+    color: "#fff",
+};
+
+const RESET_STYLE = {
+    ...BUTTON_BASE_STYLE,
+    backgroundColor: "#fff",
+    border: "1px solid #E4E0EB",
+    color: "#4A4356",
+};
+
+const LABEL_CLASS =
+    "mb-[6px] block text-[11px] font-medium uppercase leading-[14px] tracking-[0.06em] text-[#6B6478]";
+
+// ============================================================
+// Helpers
+// ============================================================
+
+const areFiltersEqual = (current, next) => {
+    const currentKeys = Object.keys(current);
+    const nextKeys = Object.keys(next);
+
+    if (currentKeys.length !== nextKeys.length) {
+        return false;
+    }
+
+    return currentKeys.every((key) => current[key] === next[key]);
+};
+
+const createFilters = ({
+    stateId,
+    districtId,
+    centreId,
+    fromDate,
+    toDate,
+}) =>
+    Object.fromEntries(
+        Object.entries({
+            state_id: stateId,
+            district_id: districtId,
+            centre_id: centreId,
+            from_date: fromDate,
+            to_date: toDate,
+        }).filter(([, value]) => value)
+    );
+
+// ============================================================
+// Component
+// ============================================================
+
+export default function DashboardFilter({ setFilters, loading = false }) {
     const [states, setStates] = useState([]);
     const [districts, setDistricts] = useState([]);
     const [centres, setCentres] = useState([]);
@@ -23,192 +128,173 @@ export default function DashboardFilter({
     const [fromDate, setFromDate] = useState("");
     const [toDate, setToDate] = useState("");
 
-    useEffect(() => {
-        loadStates();
-    }, []);
+    // ========================================================
+    // Load States
+    // ========================================================
 
     useEffect(() => {
+        let isCurrentRequest = true;
+
+        const loadStates = async () => {
+            try {
+                const response = await getDashboardStates();
+
+                if (isCurrentRequest) {
+                    setStates(Array.isArray(response) ? response : []);
+                }
+            } catch {
+                if (isCurrentRequest) {
+                    setStates([]);
+                }
+            }
+        };
+
+        loadStates();
+
+        return () => {
+            isCurrentRequest = false;
+        };
+    }, []);
+
+    // ========================================================
+    // Load Districts
+    // ========================================================
+
+    useEffect(() => {
+        let isCurrentRequest = true;
 
         if (!stateId) {
             setDistricts([]);
             setCentres([]);
-            return;
+            return () => {
+                isCurrentRequest = false;
+            };
         }
+
+        const loadDistricts = async () => {
+            try {
+                const response = await getDashboardDistricts(stateId);
+
+                if (isCurrentRequest) {
+                    setDistricts(Array.isArray(response) ? response : []);
+                }
+            } catch {
+                if (isCurrentRequest) {
+                    setDistricts([]);
+                }
+            }
+        };
 
         loadDistricts();
 
+        return () => {
+            isCurrentRequest = false;
+        };
     }, [stateId]);
 
+    // ========================================================
+    // Load Centres
+    // ========================================================
+
     useEffect(() => {
+        let isCurrentRequest = true;
 
-        if (!districtId) {
+        if (!stateId || !districtId) {
             setCentres([]);
-            return;
+            return () => {
+                isCurrentRequest = false;
+            };
         }
 
-        loadCentres();
-
-    }, [districtId]);
-
-    const loadStates = async () => {
-        try {
-
-            const response = await getDashboardStates();
-
-            setStates(response);
-
-        } catch (error) {
-        }
-    };
-
-    const loadDistricts = async () => {
-
-        try {
-
-            const response =
-                await getDashboardDistricts(stateId);
-
-            setDistricts(response);
-
-        } catch (error) {
-        }
-
-    };
-
-    const loadCentres = async () => {
-
-        try {
-
-            const response =
-                await getDashboardCentres(
+        const loadCentres = async () => {
+            try {
+                const response = await getDashboardCentres(
                     stateId,
                     districtId
                 );
 
-            setCentres(response);
+                if (isCurrentRequest) {
+                    setCentres(Array.isArray(response) ? response : []);
+                }
+            } catch {
+                if (isCurrentRequest) {
+                    setCentres([]);
+                }
+            }
+        };
 
-        } catch (error) {
-        }
+        loadCentres();
 
-    };
+        return () => {
+            isCurrentRequest = false;
+        };
+    }, [stateId, districtId]);
+
+    // ========================================================
+    // Search
+    // ========================================================
 
     const handleSearch = () => {
-
-        setFilters({
-            state_id: stateId || undefined,
-            district_id: districtId || undefined,
-            centre_id: centreId || undefined,
-            from_date: fromDate || undefined,
-            to_date: toDate || undefined,
+        const nextFilters = createFilters({
+            stateId,
+            districtId,
+            centreId,
+            fromDate,
+            toDate,
         });
 
+        setFilters((current) =>
+            areFiltersEqual(current, nextFilters) ? current : nextFilters
+        );
     };
 
-    const handleReset = () => {
+    // ========================================================
+    // Reset
+    // ========================================================
 
+    const handleReset = () => {
         setStateId("");
         setDistrictId("");
         setCentreId("");
-
         setFromDate("");
         setToDate("");
 
         setDistricts([]);
         setCentres([]);
 
-        setFilters({});
-
+        setFilters((current) =>
+            areFiltersEqual(current, EMPTY_FILTERS) ? current : EMPTY_FILTERS
+        );
     };
 
-    const panelStyle = {
-        width: "100%",
-        backgroundColor: "#F9F7FB",
-        border: "0.8px solid #EDE8F0",
-        borderRadius: "12px",
-        padding: "10px 12px",
-        boxShadow:
-            "0 1px 3px 0 rgba(107,45,91,0.06), 0 1px 2px 0 rgba(107,45,91,0.04)",
-    };
-
-    const controlStyle = {
-        width: "100%",
-        height: "34px",
-        padding: "0 0.65rem",
-        fontSize: "0.78rem",
-        color: "#2D2235",
-        backgroundColor: "#fff",
-        border: "1px solid #D8E2EF",
-        borderRadius: "0.375rem",
-        outline: "none",
-    };
-
-    const selectStyle = {
-        ...controlStyle,
-        paddingRight: "2.25rem",
-        appearance: "none",
-        backgroundImage:
-            "url(\"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e\")",
-        backgroundRepeat: "no-repeat",
-        backgroundPosition: "right 0.75rem center",
-        backgroundSize: "16px 12px",
-    };
-
-    const btnBase = {
-        height: "34px",
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: "5px",
-        padding: "0 1rem",
-        fontSize: "0.75rem",
-        fontWeight: 600,
-        whiteSpace: "nowrap",
-        borderRadius: "0.375rem",
-        cursor: "pointer",
-    };
-
-    const searchStyle = {
-        ...btnBase,
-        backgroundColor: "#6B2D5B",
-        border: "1px solid #6B2D5B",
-        color: "#fff",
-    };
-
-    const resetStyle = {
-        ...btnBase,
-        backgroundColor: "#fff",
-        border: "1px solid #6B2D5B",
-        color: "#6B2D5B",
-    };
+    // ========================================================
+    // Render
+    // ========================================================
 
     return (
-        <div className="w-full px-4">
-
-            <div style={panelStyle}>
-
-                <div
-                    className="flex flex-wrap items-center gap-4"
-                >
-
+        <div className="w-full">
+            <div className={`${CARD_CLASS} px-[18px] py-[16px]`}>
+                <div className="grid grid-cols-1 gap-[14px] sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[repeat(5,minmax(0,1fr))_auto]">
                     {/* State */}
 
-                    <div className="flex-1 min-w-[170px]">
+                    <div className="min-w-0">
+                        <label className={LABEL_CLASS} htmlFor="dash-state">
+                            State
+                        </label>
 
                         <select
+                            id="dash-state"
                             value={stateId}
-                            style={selectStyle}
-                            onChange={(e) => {
+                            style={SELECT_STYLE}
+                            onChange={(event) => {
+                                const value = event.target.value;
 
-                                setStateId(e.target.value);
+                                setStateId(value);
                                 setDistrictId("");
                                 setCentreId("");
-
                             }}
                         >
-
-                            <option key="state-placeholder" value="">
-                                Select State
-                            </option>
+                            <option value="">All States</option>
 
                             {states.map((state) => (
                                 <option
@@ -218,29 +304,33 @@ export default function DashboardFilter({
                                     {state.state_name}
                                 </option>
                             ))}
-
                         </select>
-
                     </div>
 
                     {/* District */}
 
-                    <div className="flex-1 min-w-[170px]">
+                    <div className="min-w-0">
+                        <label className={LABEL_CLASS} htmlFor="dash-district">
+                            District
+                        </label>
 
                         <select
+                            id="dash-district"
                             value={districtId}
-                            style={selectStyle}
-                            onChange={(e) => {
+                            style={
+                                stateId
+                                    ? SELECT_STYLE
+                                    : { ...SELECT_STYLE, ...DISABLED_STYLE }
+                            }
+                            disabled={!stateId}
+                            onChange={(event) => {
+                                const value = event.target.value;
 
-                                setDistrictId(e.target.value);
+                                setDistrictId(value);
                                 setCentreId("");
-
                             }}
                         >
-
-                            <option key="district-placeholder" value="">
-                                Select District
-                            </option>
+                            <option value="">All Districts</option>
 
                             {districts.map((district) => (
                                 <option
@@ -250,26 +340,30 @@ export default function DashboardFilter({
                                     {district.district_name}
                                 </option>
                             ))}
-
                         </select>
-
                     </div>
 
                     {/* Centre */}
 
-                    <div className="flex-1 min-w-[170px]">
+                    <div className="min-w-0">
+                        <label className={LABEL_CLASS} htmlFor="dash-centre">
+                            Centre
+                        </label>
 
                         <select
+                            id="dash-centre"
                             value={centreId}
-                            style={selectStyle}
-                            onChange={(e) =>
-                                setCentreId(e.target.value)
+                            style={
+                                districtId
+                                    ? SELECT_STYLE
+                                    : { ...SELECT_STYLE, ...DISABLED_STYLE }
+                            }
+                            disabled={!districtId}
+                            onChange={(event) =>
+                                setCentreId(event.target.value)
                             }
                         >
-
-                            <option key="centre-placeholder" value="">
-                                Select Centre
-                            </option>
+                            <option value="">All Centres</option>
 
                             {centres.map((centre) => (
                                 <option
@@ -279,65 +373,87 @@ export default function DashboardFilter({
                                     {centre.centre_name}
                                 </option>
                             ))}
-
                         </select>
-
                     </div>
 
                     {/* From Date */}
 
-                    <div className="flex-1 min-w-[160px]">
+                    <div className="min-w-0">
+                        <label className={LABEL_CLASS} htmlFor="dash-from">
+                            From Date
+                        </label>
 
                         <input
+                            id="dash-from"
                             type="date"
                             value={fromDate}
-                            style={controlStyle}
-                            onChange={(e) =>
-                                setFromDate(e.target.value)
+                            max={toDate || undefined}
+                            style={CONTROL_STYLE}
+                            onChange={(event) =>
+                                setFromDate(event.target.value)
                             }
                         />
-
                     </div>
 
                     {/* To Date */}
 
-                    <div className="flex-1 min-w-[160px]">
+                    <div className="min-w-0">
+                        <label className={LABEL_CLASS} htmlFor="dash-to">
+                            To Date
+                        </label>
 
                         <input
+                            id="dash-to"
                             type="date"
                             value={toDate}
-                            style={controlStyle}
-                            onChange={(e) =>
-                                setToDate(e.target.value)
+                            min={fromDate || undefined}
+                            style={CONTROL_STYLE}
+                            onChange={(event) =>
+                                setToDate(event.target.value)
                             }
                         />
-
                     </div>
 
-                    {/* Search */}
+                    {/* Actions */}
 
-                    <button
-                        style={searchStyle}
-                        onClick={handleSearch}
-                    >
-                        <FaSearch size={12} />
-                        Search
-                    </button>
+                    <div className="flex min-w-0 items-end gap-[10px]">
+                        <button
+                            type="button"
+                            disabled={loading}
+                            style={
+                                loading
+                                    ? { ...SEARCH_STYLE, opacity: 0.75, cursor: "wait" }
+                                    : SEARCH_STYLE
+                            }
+                            onClick={handleSearch}
+                        >
+                            {loading ? (
+                                <span
+                                    aria-hidden="true"
+                                    className="h-[13px] w-[13px] animate-spin rounded-full border-[2px] border-white/45 border-t-white"
+                                />
+                            ) : (
+                                <FaSearch size={12} />
+                            )}
+                            {loading ? "Searching…" : "Search"}
+                        </button>
 
-                    {/* Reset */}
-
-                    <button
-                        style={resetStyle}
-                        onClick={handleReset}
-                    >
-                        <FaRedo size={11} />
-                        Reset
-                    </button>
-
+                        <button
+                            type="button"
+                            disabled={loading}
+                            style={
+                                loading
+                                    ? { ...RESET_STYLE, opacity: 0.6, cursor: "wait" }
+                                    : RESET_STYLE
+                            }
+                            onClick={handleReset}
+                        >
+                            <FaRedo size={11} />
+                            Reset
+                        </button>
+                    </div>
                 </div>
-
             </div>
-
         </div>
     );
 }

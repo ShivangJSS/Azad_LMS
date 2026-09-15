@@ -2,20 +2,20 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
 
-import AppLayout from "../../../../components/layout/AppLayout";
-import Breadcrumbs from "../../../../shared/components/breadcrumbs/Breadcrumbs";
-import LanguageTabs from "../../../../shared/components/language/LanguageTabs";
+import AppLayout from "@/components/layout/AppLayout";
+import Breadcrumbs from "@/shared/components/breadcrumbs/Breadcrumbs";
+import LanguageTabs from "@/shared/components/language/LanguageTabs";
 
 import {
     getLanguageByKey,
-} from "../../../../shared/constants/languageConstants";
+} from "@/shared/constants/languageConstants";
 
 import {
     getMatchMakingById,
     updateMatchMaking,
-} from "../services/MatchingMakingService";
+} from "@/features/assessment/MatchMaking/services/MatchingMakingService";
 
-import MatchMakingTranslationForm from "../components/MatchMakingTranslation";
+import MatchMakingTranslationForm from "@/features/assessment/MatchMaking/components/MatchMakingTranslation";
 
 
 // =====================================================
@@ -453,12 +453,10 @@ export default function MatchMakingView() {
 
 
             // -------------------------------------
-            // REDIRECT TO LIST
+            // SAVE IN PLACE — stay on the page, refresh data
             // -------------------------------------
 
-            navigate(
-                "/match-making-master"
-            );
+            await loadMatchMaking();
 
 
         } catch (error) {

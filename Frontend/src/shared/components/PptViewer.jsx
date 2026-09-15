@@ -1,18 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 
-/* =========================================================================
-   PptViewer — renders a .pptx inline, in the browser (client-side).
-
-   Uses the `pptx-preview` package (+ `jszip`). Rendering happens entirely
-   in the browser, so it works BOTH on localhost and on the deployed host.
-
-   Required packages (install once in Frontend/):
-     npm install pptx-preview jszip --legacy-peer-deps
-
-   All slides are rendered stacked and centered on a full-width canvas; the
-   frame scrolls vertically. The slide itself is kept compact.
-========================================================================= */
-
 // Some decks ship an empty <p:defaultTextStyle/>, which makes pptx-preview
 // render blank slides. Patch it to a usable default before previewing.
 async function normalizePptx(JSZip, arrayBuffer) {
@@ -104,9 +91,7 @@ export default function PptViewer({ fileUrl, height = 420, onStatusChange }) {
             await previewer.preview(normalized);
 
             update("ready");
-        })().catch((err) => {
-            // eslint-disable-next-line no-console
-            console.error("PPT inline render failed:", err);
+        })().catch(() => {
             update("error");
         });
 

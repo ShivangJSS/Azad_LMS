@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getAllCentres, getBatchById, createBatch, updateBatch } from '../services/BatchService';
+import { getAllCentres, getBatchById, createBatch, updateBatch } from '@/features/batch/services/BatchService';
 
 const BRAND = '#732269';
 

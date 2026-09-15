@@ -11,7 +11,7 @@ import {
     createBucket,
     updateBucket,
     uploadImage,
-} from "../services/DropBucketServices";
+} from "@/features/assessment/DropBucket/services/DropBucketServices";
 
 const createEmptyBucket = () => ({
     bucket_name: "",

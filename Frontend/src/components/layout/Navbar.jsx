@@ -8,9 +8,9 @@ import {
     FaCaretDown,
 } from "react-icons/fa";
 
-import logo from "../../assets/logos/logo.svg";
-import avatar from "../../assets/img/team/avatar.png";
-import { hasPermission, permissions } from "../../config/permissions";
+import logo from "@/assets/logos/logo.svg";
+import avatar from "@/assets/img/team/avatar.png";
+import { hasPermission, permissions } from "@/config/permissions";
 
 
 const menuItems = [
@@ -39,7 +39,6 @@ const menuItems = [
         label: "Centres",
         dropdown: true,
         items: [
-            { label: "Create Centre", href: "/centres/create", allowedRoles: permissions.Centres },
             { label: "List Centres", href: "/centres/list", allowedRoles: permissions.Centres },
         ],
     },
@@ -47,7 +46,6 @@ const menuItems = [
         label: "Batch",
         dropdown: true,
         items: [
-            { label: "Create Batch", href: "/batches/create", allowedRoles: permissions.Batch },
             { label: "List Batch", href: "/batches/list", allowedRoles: permissions.Batch },
         ],
     },

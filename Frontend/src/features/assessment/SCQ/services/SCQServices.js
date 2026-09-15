@@ -1,4 +1,4 @@
-import Api from "../../../../api/Api";
+import Api from "@/api/Api";
 
 
 /* =========================================================
@@ -179,18 +179,13 @@ export const saveSCQTranslation = async (
    EXPORT
 ========================================================= */
 
-export const exportSCQs = async (
-    languageId
-) => {
+export const exportSCQs = async (params = {}) => {
 
     const response =
         await Api.get(
             "/scqs/export",
             {
-                params: {
-                    language_id:
-                        languageId,
-                },
+                params,
                 responseType: "blob",
             }
         );

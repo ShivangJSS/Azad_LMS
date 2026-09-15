@@ -2,20 +2,21 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 
-import AppLayout from "../../../../components/layout/AppLayout";
-import Breadcrumbs from "../../../../shared/components/breadcrumbs/Breadcrumbs";
+import AppLayout from "@/components/layout/AppLayout";
+import Breadcrumbs from "@/shared/components/breadcrumbs/Breadcrumbs";
 
-import ModuleForm from "../components/ModuleForm";
+import ModuleForm from "@/features/module/ListModule/components/ModuleForm";
 
 import {
     getModuleById,
     updateModule,
-} from "../services/ListService";
+} from "@/features/module/ListModule/services/ListService";
 
 import {
     getAllCourses,
-    getCourseImageUrl,
-} from "../../../course/services/CourseService";
+} from "@/features/course/services/CourseService";
+import { getModuleIconUrl } from "@/shared/utils/mediaUrl";
+import { validateImage, ASPECT_WIDE } from "@/shared/utils/imageValidation";
 
 const INITIAL_FORM = {
     fk_course_id: "",
@@ -72,7 +73,10 @@ export default function EditModules() {
                     module.module_objective || "",
                 module_duration:
                     module.module_duration || "",
-                status: String(module.status || ""),
+                // Use ?? so an Inactive module (status = 0) keeps "0" instead
+                // of collapsing to "" (which came up blank and then failed
+                // the backend's required int with a 422 on submit).
+                status: String(module.status ?? ""),
                 publishing_status:
                     module.publishing_status || "Published",
                 module_icon: null,
@@ -80,11 +84,11 @@ export default function EditModules() {
 
             if (module.module_icon) {
                 setExistingImage(
-                    getCourseImageUrl(module.module_icon)
+                    getModuleIconUrl(module.module_icon)
                 );
             } else if (module.icon_images) {
                 setExistingImage(
-                    getCourseImageUrl(module.icon_images)
+                    getModuleIconUrl(module.icon_images)
                 );
             }
 
@@ -113,8 +117,19 @@ export default function EditModules() {
         }));
     };
 
-    const handleFileChange = (e) => {
-        const file = e.target.files[0];
+    const handleFileChange = async (e) => {
+        const input = e.target;
+        const file = input.files[0];
+
+        if (file) {
+            // Module icon must be 16:9 (plus type/size checks).
+            const result = await validateImage(file, { aspectRatio: ASPECT_WIDE });
+            if (!result.ok) {
+                toast.error(result.error);
+                input.value = "";
+                return;
+            }
+        }
 
         setForm((prev) => ({
             ...prev,
@@ -199,9 +214,13 @@ export default function EditModules() {
         } catch (error) {
             console.error(error);
 
+            // A 422 returns `detail` as an ARRAY of error objects; passing
+            // that straight to toast.error made React try to render objects
+            // as children and crashed the whole page to blank. Only show it
+            // when it's a plain string, else a generic message.
+            const detail = error?.response?.data?.detail;
             toast.error(
-                error?.response?.data?.detail ||
-                    "Unable to update module."
+                typeof detail === "string" ? detail : "Unable to update module."
             );
         } finally {
             setLoading(false);

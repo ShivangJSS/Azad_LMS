@@ -4,10 +4,10 @@ from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 # -----------------------------------
 # MCQ Option
 # -----------------------------------
+
 
 class McqOptionBase(BaseModel):
     mcq_option_text: str = Field(..., max_length=500)
@@ -40,6 +40,7 @@ class McqOptionResponse(McqOptionBase):
 # MCQ Base
 # -----------------------------------
 
+
 class McqBase(BaseModel):
     parent_id: Optional[int] = None
     mcq_question_title: str = Field(..., max_length=500)
@@ -54,6 +55,7 @@ class McqBase(BaseModel):
 # Create MCQ
 # -----------------------------------
 
+
 class McqCreate(McqBase):
     options: List[McqOptionCreate]
 
@@ -61,6 +63,7 @@ class McqCreate(McqBase):
 # -----------------------------------
 # Update MCQ
 # -----------------------------------
+
 
 class McqUpdate(BaseModel):
     parent_id: Optional[int] = None
@@ -77,6 +80,7 @@ class McqUpdate(BaseModel):
 # Response
 # -----------------------------------
 
+
 class McqResponse(McqBase):
     model_config = ConfigDict(from_attributes=True)
 
@@ -89,6 +93,7 @@ class McqResponse(McqBase):
 # -----------------------------------
 # List Response
 # -----------------------------------
+
 
 class McqListItem(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -105,4 +110,3 @@ class McqListItem(BaseModel):
 class McqListResponse(BaseModel):
     total: int
     items: List[McqListItem]
-    

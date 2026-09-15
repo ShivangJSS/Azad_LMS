@@ -2,15 +2,15 @@ import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { FiX } from "react-icons/fi";
 
-import { LANGUAGES } from "../../../shared/constants/languageConstants";
+import { LANGUAGES } from "@/shared/constants/languageConstants";
 import {
     getParticipantModules,
     assignModule,
     unassignModule,
-} from "../services/ParticipantService";
+} from "@/features/participant/services/ParticipantService";
 
 const PURPLE = "#732269";
-
+import LanguageTabs from "@/shared/components/language/LanguageTabs";
 export default function ManageModuleModal({
     participantId,
     participantName,
@@ -26,8 +26,20 @@ export default function ManageModuleModal({
     const [busyIds, setBusyIds] = useState(() => new Set());
     const [savingAll, setSavingAll] = useState(false);
 
+    useEffect(() => {
+        document.body.style.overflow = "hidden";
+        return () => {
+            document.body.style.overflow = "";
+        };
+    }, []);
+
     const languageId =
         LANGUAGES.find((l) => l.key === languageKey)?.id || 1;
+
+    // Modules are assigned from English only; the backend assigns every
+    // language variant of the module automatically. Other language tabs show
+    // the (read-only) assigned status.
+    const isEnglish = languageId === 1;
 
     // Fetch modules for the current language. `showSpinner` is only used for
     // the very first load — tab switches and refreshes keep the current rows
@@ -95,6 +107,10 @@ export default function ManageModuleModal({
                 await assignModule(participantId, module.module_id);
                 toast.success("Module assigned.");
             }
+            // The backend assigns/unassigns every language variant of the
+            // module, so invalidate all cached languages — switching to
+            // Hindi/Bangla/Tamil then shows the updated status immediately.
+            setCache({});
             await fetchModules({ showSpinner: false });
         } catch (error) {
             toast.error(
@@ -121,6 +137,9 @@ export default function ManageModuleModal({
                 await assignModule(participantId, m.module_id);
             }
             toast.success(`${toAssign.length} module(s) assigned.`);
+            // Assignment applies to every language variant — clear all cached
+            // languages so other tabs reflect it immediately.
+            setCache({});
             await fetchModules({ showSpinner: false });
         } catch (error) {
             toast.error(
@@ -141,10 +160,10 @@ export default function ManageModuleModal({
                 <div className="w-full max-w-5xl rounded-[8px] bg-white shadow-xl">
                     {/* Header */}
                     <div
-                        className="flex items-center justify-between rounded-t-[8px] px-6 py-2"
+                        className="flex items-center justify-between rounded-t-[8px] px-6 "
                         style={{ backgroundColor: PURPLE }}
                     >
-                        <div>
+                        <div className="flex flex-col mt-2">
                             <h2 className="text-[20px] font-semibold text-white">
                                 Assign Modules
                             </h2>
@@ -166,7 +185,7 @@ export default function ManageModuleModal({
 
                     <div className="p-6">
                         {/* Language tabs */}
-                        <div className="mb-4 flex flex-wrap gap-6 border-b border-[#E3E6ED]">
+                        {/* <div className="mb-4 flex flex-wrap gap-6 border-b border-[#E3E6ED]">
                             {LANGUAGES.map((lang) => {
                                 const active = lang.key === languageKey;
                                 return (
@@ -183,6 +202,13 @@ export default function ManageModuleModal({
                                     </button>
                                 );
                             })}
+                        </div> */}
+
+                        <div className="mb-4">
+                            <LanguageTabs
+                                activeTab={languageKey}
+                                onChange={setLanguageKey}
+                            />
                         </div>
 
                         {/* Table */}
@@ -227,12 +253,16 @@ export default function ManageModuleModal({
                                                 <tr key={m.module_id} className="hover:bg-[#FAFBFD]">
                                                     <td className={td}>{index + 1}</td>
                                                     <td className={td}>
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={selected.has(m.module_id)}
-                                                            disabled={m.assigned}
-                                                            onChange={() => toggleSelect(m.module_id)}
-                                                        />
+                                                        {isEnglish ? (
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={selected.has(m.module_id)}
+                                                                disabled={m.assigned}
+                                                                onChange={() => toggleSelect(m.module_id)}
+                                                            />
+                                                        ) : (
+                                                            <span className="text-[#8A94A6]">—</span>
+                                                        )}
                                                     </td>
                                                     <td className={`${td} font-medium`}>
                                                         {m.module_name}
@@ -252,21 +282,25 @@ export default function ManageModuleModal({
                                                         )}
                                                     </td>
                                                     <td className={td}>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleToggleAssign(m)}
-                                                            disabled={busyIds.has(m.module_id)}
-                                                            className={`rounded-[4px] border px-4 py-1.5 text-[13px] font-medium disabled:opacity-60 ${m.assigned
+                                                        {isEnglish ? (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleToggleAssign(m)}
+                                                                disabled={busyIds.has(m.module_id)}
+                                                                className={`rounded-[4px] border px-4 py-1.5 text-[13px] font-medium disabled:opacity-60 ${m.assigned
                                                                     ? "border-red-300 text-red-500 hover:bg-red-50"
                                                                     : "border-[#2DD4BF] text-[#0F766E] hover:bg-[#ECFDF5]"
-                                                                }`}
-                                                        >
-                                                            {busyIds.has(m.module_id)
-                                                                ? "..."
-                                                                : m.assigned
-                                                                    ? "Unassign"
-                                                                    : "Assign"}
-                                                        </button>
+                                                                    }`}
+                                                            >
+                                                                {busyIds.has(m.module_id)
+                                                                    ? "..."
+                                                                    : m.assigned
+                                                                        ? "Unassign"
+                                                                        : "Assign"}
+                                                            </button>
+                                                        ) : (
+                                                            <span className="text-[#8A94A6]">—</span>
+                                                        )}
                                                     </td>
                                                 </tr>
                                             ))}
@@ -275,18 +309,20 @@ export default function ManageModuleModal({
                             </div>
                         </div>
 
-                        {/* Footer */}
-                        <div className="mt-4 flex justify-end">
-                            <button
-                                type="button"
-                                onClick={handleAssignSelected}
-                                disabled={savingAll}
-                                className="rounded-[4px] px-5 py-2.5 text-[14px] font-medium text-white disabled:opacity-60"
-                                style={{ backgroundColor: PURPLE }}
-                            >
-                                {savingAll ? "Assigning..." : "Assign Selected Modules"}
-                            </button>
-                        </div>
+                        {/* Footer — assignment is done from English only. */}
+                        {isEnglish && (
+                            <div className="mt-4 flex justify-end">
+                                <button
+                                    type="button"
+                                    onClick={handleAssignSelected}
+                                    disabled={savingAll}
+                                    className="rounded-[4px] px-5 py-2.5 text-[14px] font-medium text-white disabled:opacity-60"
+                                    style={{ backgroundColor: PURPLE }}
+                                >
+                                    {savingAll ? "Assigning..." : "Assign Selected Modules"}
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

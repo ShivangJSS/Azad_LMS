@@ -5,7 +5,7 @@ import toast from "react-hot-toast";
 import {
     getSCQs,
     deleteSCQ,
-} from "../services/SCQServices";
+} from "@/features/assessment/SCQ/services/SCQServices";
 
 
 /* =========================================================

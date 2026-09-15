@@ -1,9 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import AppLayout from "../../../components/layout/AppLayout";
-import UserForm from "../components/UserForm";
-import { getUserById, updateUser } from "../services/UserService";
+import AppLayout from "@/components/layout/AppLayout";
+import UserForm from "@/features/users/components/UserForm";
+import { getUserById, updateUser } from "@/features/users/services/UserService";
+import toast from "react-hot-toast";
+
 
 export default function EditUser() {
     const { id } = useParams();
@@ -12,11 +14,11 @@ export default function EditUser() {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(false);
 
-    useEffect(() => {
-        fetchUser();
-    }, []);
+    // useEffect(() => {
+    //     fetchUser();
+    // }, []);
 
-    const fetchUser = async () => {
+    const fetchUser = useCallback(async () => {
         try {
             setLoading(true);
 
@@ -26,10 +28,14 @@ export default function EditUser() {
 
         } catch (error) {
             console.error(error);
+            toast.error("Failed to load user. Please try again.");
         } finally {
             setLoading(false);
         }
-    };
+    }, [id]);
+    useEffect(() => {
+        fetchUser();
+    }, [fetchUser]);
 
     const handleUpdate = async (data) => {
         try {
@@ -44,10 +50,16 @@ export default function EditUser() {
 
             await updateUser(id, payload);
 
-            alert("User updated successfully");
+            toast.success("User updated successfully");
             navigate("/users/userlist");
 
         } catch (error) {
+            toast.error(
+                error?.response?.data?.detail ||
+                error?.response?.data?.message ||
+                "Unable to update user."
+            );
+            console.error(error);
         } finally {
             setLoading(false);
         }

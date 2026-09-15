@@ -1,7 +1,7 @@
 import React from "react";
-import AppLayout from "../../../components/layout/AppLayout";
-import Breadcrumbs from "../../../shared/components/breadcrumbs/Breadcrumbs";
-import CenterUserForm from "../components/CenterUserForm";
+import AppLayout from "@/components/layout/AppLayout";
+import Breadcrumbs from "@/shared/components/breadcrumbs/Breadcrumbs";
+import CenterUserForm from "@/features/center/components/CenterUserForm";
 
 export default function CreateCentre() {
 

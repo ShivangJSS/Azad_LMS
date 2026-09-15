@@ -4,7 +4,7 @@ import {
     getPdfs,
     deletePdf,
     getArchivedVersions,
-} from "../services/PdfService";
+} from "@/features/document/pdf/services/PdfService";
 import { PER_PAGE } from "./pdfConstants";
 
 /** Normalise the paginated `{ data, total }` envelope into an array. */

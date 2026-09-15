@@ -1,7 +1,6 @@
 from app.modules.auth.constants import UserRole
 from .constants import Permission
 
-
 PERMISSION_MAP: dict[UserRole, set[Permission]] = {
     UserRole.SUPER_ADMIN: {
         Permission.DASHBOARD_VIEW,

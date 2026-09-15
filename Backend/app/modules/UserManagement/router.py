@@ -25,7 +25,6 @@ from .schema import (
     UserBaseResponse,
 )
 
-
 router = APIRouter(
     prefix="/users",
     tags=["Users"],
@@ -38,6 +37,7 @@ router = APIRouter(
 # Super Admin -> Admin
 # Admin -> State Head / District Head / PI
 # ==========================================================
+
 
 @router.post(
     "",
@@ -66,6 +66,7 @@ def create_user(
 # Filtering/visibility handled by service/repository
 # ==========================================================
 
+
 @router.get(
     "",
     response_model=list[UserBaseResponse],
@@ -85,6 +86,7 @@ def get_all_users(
 # Get User By ID
 # Permission handled by service
 # ==========================================================
+
 
 @router.get(
     "/{user_id}",
@@ -108,6 +110,7 @@ def get_user_by_id(
 # Super Admin -> Admin
 # Admin -> State Head / District Head / PI
 # ==========================================================
+
 
 @router.put(
     "/{user_id}",
@@ -138,6 +141,7 @@ def update_user(
 # Super Admin -> Admin
 # Admin -> State Head / District Head / PI
 # ==========================================================
+
 
 @router.delete(
     "/{user_id}",

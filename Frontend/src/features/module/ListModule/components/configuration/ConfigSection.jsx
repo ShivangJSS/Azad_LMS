@@ -16,6 +16,9 @@ export default function ConfigSection({
     onAdd,
     addTitle = "Add",
     addDisabled = false,
+    // Configuration is done once on the English tab and applies to every
+    // language, so the "+" add button is hidden on HI/BN/TA.
+    showAdd = true,
 }) {
     return (
         <div className="relative mb-[34px]">
@@ -34,24 +37,26 @@ export default function ConfigSection({
                 {children}
             </div>
 
-            {/* ================= ADD FAB ================= */}
+            {/* ================= ADD FAB (English tab only) ================= */}
 
-            <button
-                type="button"
-                onClick={onAdd}
-                disabled={addDisabled}
-                title={addTitle}
-                aria-label={addTitle}
-                style={{ borderRadius: "9999px" }}
-                className={`absolute -bottom-[18px] right-[22px] flex aspect-square h-[50px] w-[50px] shrink-0 items-center justify-center rounded-full text-[22px] leading-none text-white shadow-md transition
-                ${
-                    addDisabled
-                        ? "cursor-not-allowed bg-[#b98fb0]"
-                        : "bg-[#732269] hover:bg-[#611c58]"
-                }`}
-            >
-                +
-            </button>
+            {showAdd && (
+                <button
+                    type="button"
+                    onClick={onAdd}
+                    disabled={addDisabled}
+                    title={addTitle}
+                    aria-label={addTitle}
+                    style={{ borderRadius: "9999px" }}
+                    className={`absolute -bottom-[18px] right-[22px] flex aspect-square h-[50px] w-[50px] shrink-0 items-center justify-center rounded-full text-[22px] leading-none text-white shadow-md transition
+                    ${
+                        addDisabled
+                            ? "cursor-not-allowed bg-[#b98fb0]"
+                            : "bg-[#732269] hover:bg-[#611c58]"
+                    }`}
+                >
+                    +
+                </button>
+            )}
 
         </div>
     );

@@ -2,20 +2,20 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
 
-import AppLayout from "../../../../components/layout/AppLayout";
-import Breadcrumbs from "../../../../shared/components/breadcrumbs/Breadcrumbs";
-import LanguageTabs from "../../../../shared/components/language/LanguageTabs";
+import AppLayout from "@/components/layout/AppLayout";
+import Breadcrumbs from "@/shared/components/breadcrumbs/Breadcrumbs";
+import LanguageTabs from "@/shared/components/language/LanguageTabs";
 
 import {
     getLanguageByKey,
-} from "../../../../shared/constants/languageConstants";
+} from "@/shared/constants/languageConstants";
 
 import {
     getSCQById,
     saveSCQTranslation,
-} from "../services/SCQServices";
+} from "@/features/assessment/SCQ/services/SCQServices";
 
-import SCQTranslationForm from "../components/SCQTranslationForm";
+import SCQTranslationForm from "@/features/assessment/SCQ/components/SCQTranslationForm";
 
 
 const INITIAL_FORM = {
@@ -458,8 +458,8 @@ export default function SCQView() {
             );
 
 
-            // Redirect only after successful API response
-            navigate("/scq-master");
+            // Save in place — stay on the page and refresh the shown data.
+            await loadSCQ();
 
 
         } catch (error) {

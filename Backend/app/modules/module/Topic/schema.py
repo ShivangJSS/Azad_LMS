@@ -2,10 +2,10 @@ from typing import List
 
 from pydantic import BaseModel
 
-
 # -------------------------
 # List Topic Response
 # -------------------------
+
 
 class TopicListResponse(BaseModel):
     topic_id: int
@@ -19,6 +19,7 @@ class TopicListResponse(BaseModel):
 # Add Topic
 # -------------------------
 
+
 class TopicItem(BaseModel):
     topic_name: str
     is_active: str
@@ -27,11 +28,15 @@ class TopicItem(BaseModel):
 class CreateTopicRequest(BaseModel):
     module_id: int
     topics: List[TopicItem]
+    # Which language tab these topics are being added from. Defaults to
+    # English (1) for existing callers that don't send it.
+    language_id: int = 1
 
 
 # -------------------------
 # View Topic
 # -------------------------
+
 
 class TopicTranslationResponse(BaseModel):
     topic_id: int
@@ -50,14 +55,14 @@ class TopicViewResponse(BaseModel):
 # Delete Topic
 # -------------------------
 
+
 class DeleteTopicResponse(BaseModel):
     success: bool
     message: str
 
 
-
-#--------------------------
-# translation 
+# --------------------------
+# translation
 # -------------------------
 
 
@@ -67,9 +72,9 @@ class TopicTranslationRequest(BaseModel):
     is_active: str = "1"
 
 
-#--------------------------
-#edit
-#--------------------------
+# --------------------------
+# edit
+# --------------------------
 class UpdateTopicRequest(BaseModel):
     module_id: int
     topic_name: str

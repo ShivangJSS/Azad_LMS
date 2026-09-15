@@ -2,11 +2,11 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
-import AppLayout from "../../../../components/layout/AppLayout";
-import Breadcrumbs from "../../../../shared/components/breadcrumbs/Breadcrumbs";
-import SCQForm from "../components/SCQForm";
+import AppLayout from "@/components/layout/AppLayout";
+import Breadcrumbs from "@/shared/components/breadcrumbs/Breadcrumbs";
+import SCQForm from "@/features/assessment/SCQ/components/SCQForm";
 
-import { createSCQ, uploadImage } from "../services/SCQServices";
+import { createSCQ, uploadImage } from "@/features/assessment/SCQ/services/SCQServices";
 
 
 const INITIAL_FORM = {

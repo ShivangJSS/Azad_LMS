@@ -161,11 +161,13 @@ class McqService:
     def export_mcqs(
         db: Session,
         language_id: int | None = None,
+        search: str | None = None,
     ):
 
         mcqs = McqRepository.get_all_for_export(
             db,
             language_id,
+            search,
         )
 
         wb = Workbook()

@@ -53,10 +53,7 @@ class VideoRepository:
         total = query.count()
 
         rows = (
-            query.order_by(VideoMaster.video_id.desc())
-            .offset(skip)
-            .limit(limit)
-            .all()
+            query.order_by(VideoMaster.video_id.desc()).offset(skip).limit(limit).all()
         )
 
         return rows, total
@@ -197,11 +194,7 @@ class VideoRepository:
 
     @staticmethod
     def get_archived_versions(db: Session, video_id: int):
-        current = (
-            db.query(VideoMaster)
-            .filter(VideoMaster.video_id == video_id)
-            .first()
-        )
+        current = db.query(VideoMaster).filter(VideoMaster.video_id == video_id).first()
 
         if not current:
             return []
@@ -225,8 +218,6 @@ class VideoRepository:
         )
 
         if current.video_unique_id:
-            query = query.filter(
-                VideoMaster.video_unique_id == current.video_unique_id
-            )
+            query = query.filter(VideoMaster.video_unique_id == current.video_unique_id)
 
         return query.order_by(VideoMaster.video_id.desc()).all()

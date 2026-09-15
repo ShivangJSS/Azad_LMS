@@ -52,12 +52,7 @@ class PdfRepository:
 
         total = query.count()
 
-        rows = (
-            query.order_by(PdfMaster.pdf_id.desc())
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        rows = query.order_by(PdfMaster.pdf_id.desc()).offset(skip).limit(limit).all()
 
         return rows, total
 
@@ -197,11 +192,7 @@ class PdfRepository:
 
     @staticmethod
     def get_archived_versions(db: Session, pdf_id: int):
-        current = (
-            db.query(PdfMaster)
-            .filter(PdfMaster.pdf_id == pdf_id)
-            .first()
-        )
+        current = db.query(PdfMaster).filter(PdfMaster.pdf_id == pdf_id).first()
 
         if not current:
             return []
@@ -225,8 +216,6 @@ class PdfRepository:
         )
 
         if current.pdf_unique_id:
-            query = query.filter(
-                PdfMaster.pdf_unique_id == current.pdf_unique_id
-            )
+            query = query.filter(PdfMaster.pdf_unique_id == current.pdf_unique_id)
 
         return query.order_by(PdfMaster.pdf_id.desc()).all()

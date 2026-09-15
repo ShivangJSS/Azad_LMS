@@ -19,7 +19,7 @@ from app.shared.dependencies.module_access import Module, require_module_access
 
 router = APIRouter(
     prefix="/match-making",
-    tags=["Match Making"],   # <-- Change only this line
+    tags=["Match Making"],  # <-- Change only this line
     dependencies=[Depends(require_module_access(Module.ASSESSMENT))],
 )
 
@@ -27,6 +27,7 @@ router = APIRouter(
 # ==========================
 # GET ALL CORRECT ANSWERS
 # ==========================
+
 
 @router.get(
     "/{match_making_id}/correct-answers",
@@ -46,6 +47,7 @@ def get_all(
 # GET CORRECT ANSWER BY ID
 # ==========================
 
+
 @router.get(
     "/correct-answers/{match_correct_answers_id}",
     response_model=MatchCorrectAnswerResponse,
@@ -63,6 +65,7 @@ def get_by_id(
 # ==========================
 # CREATE CORRECT ANSWER
 # ==========================
+
 
 @router.post(
     "/{match_making_id}/correct-answers",
@@ -84,6 +87,7 @@ def create(
 # UPDATE CORRECT ANSWER
 # ==========================
 
+
 @router.put(
     "/correct-answers/{match_correct_answers_id}",
     response_model=MatchCorrectAnswerResponse,
@@ -103,6 +107,7 @@ def update(
 # ==========================
 # DELETE CORRECT ANSWER
 # ==========================
+
 
 @router.delete(
     "/correct-answers/{match_correct_answers_id}",

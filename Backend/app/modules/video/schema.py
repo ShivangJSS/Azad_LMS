@@ -3,10 +3,10 @@ from typing import List, Optional
 
 from pydantic import BaseModel
 
-
 # =========================================================
 # VIDEO Update
 # =========================================================
+
 
 class VideoUpdateRequest(BaseModel):
     video_name: Optional[str] = None

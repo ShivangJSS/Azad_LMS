@@ -10,8 +10,6 @@ from app.modules.assessment.model import (
 from app.modules.assessment.schema.sqc_schema import (
     ScqCreate,
     ScqUpdate,
-
-    
 )
 
 
@@ -24,23 +22,15 @@ class ScqRepository:
         search: Optional[str] = None,
     ) -> List[ScqMaster]:
 
-        query = db.query(ScqMaster).filter(
-            ScqMaster.deleted_at.is_(None)
-        )
+        query = db.query(ScqMaster).filter(ScqMaster.deleted_at.is_(None))
 
         if language_id:
-            query = query.filter(
-                ScqMaster.language_id == language_id
-            )
+            query = query.filter(ScqMaster.language_id == language_id)
 
         if search:
-            query = query.filter(
-                ScqMaster.scq_question_title.ilike(f"%{search}%")
-            )
+            query = query.filter(ScqMaster.scq_question_title.ilike(f"%{search}%"))
 
-        return query.order_by(
-            ScqMaster.scq_id.desc()
-        ).all()
+        return query.order_by(ScqMaster.scq_id.desc()).all()
 
     @staticmethod
     def get_by_id(
@@ -192,72 +182,70 @@ class ScqRepository:
 
         db.commit()
 
-
-
     @staticmethod
     def save_translation(
-     db: Session,
-     parent_id: int,
-     data: ScqCreate,
-) -> ScqMaster:
+        db: Session,
+        parent_id: int,
+        data: ScqCreate,
+    ) -> ScqMaster:
 
-     scq = (
-        db.query(ScqMaster)
-        .filter(
-            ScqMaster.parent_id == parent_id,
-            ScqMaster.language_id == data.language_id,
-            ScqMaster.deleted_at.is_(None),
-        )
-        .first()
-    )
-
-     if scq:
-        scq.scq_question_title = data.scq_question_title
-        scq.scq_question_description = data.scq_question_description
-        scq.image_url = data.image_url
-        scq.marks = data.marks
-        scq.status = data.status
-        scq.updated_at = datetime.utcnow()
-
-        db.query(ScqQuestionOption).filter(
-            ScqQuestionOption.scq_id == scq.scq_id
-        ).delete()
-
-     else:
-        scq = ScqMaster(
-            parent_id=parent_id,
-            scq_question_title=data.scq_question_title,
-            scq_question_description=data.scq_question_description,
-            image_url=data.image_url,
-            marks=data.marks,
-            status=data.status,
-            language_id=data.language_id,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+        scq = (
+            db.query(ScqMaster)
+            .filter(
+                ScqMaster.parent_id == parent_id,
+                ScqMaster.language_id == data.language_id,
+                ScqMaster.deleted_at.is_(None),
+            )
+            .first()
         )
 
-        db.add(scq)
-        db.flush()
+        if scq:
+            scq.scq_question_title = data.scq_question_title
+            scq.scq_question_description = data.scq_question_description
+            scq.image_url = data.image_url
+            scq.marks = data.marks
+            scq.status = data.status
+            scq.updated_at = datetime.utcnow()
 
-     for option in data.options:
-        db.add(
-            ScqQuestionOption(
-                scq_id=scq.scq_id,
-                scq_option_text=option.scq_option_text,
-                is_scq_option_correct=option.is_scq_option_correct,
-                status=option.status,
-                language_id=option.language_id,
+            db.query(ScqQuestionOption).filter(
+                ScqQuestionOption.scq_id == scq.scq_id
+            ).delete()
+
+        else:
+            scq = ScqMaster(
+                parent_id=parent_id,
+                scq_question_title=data.scq_question_title,
+                scq_question_description=data.scq_question_description,
+                image_url=data.image_url,
+                marks=data.marks,
+                status=data.status,
+                language_id=data.language_id,
                 created_at=datetime.utcnow(),
                 updated_at=datetime.utcnow(),
             )
+
+            db.add(scq)
+            db.flush()
+
+        for option in data.options:
+            db.add(
+                ScqQuestionOption(
+                    scq_id=scq.scq_id,
+                    scq_option_text=option.scq_option_text,
+                    is_scq_option_correct=option.is_scq_option_correct,
+                    status=option.status,
+                    language_id=option.language_id,
+                    created_at=datetime.utcnow(),
+                    updated_at=datetime.utcnow(),
+                )
+            )
+
+        db.commit()
+        db.refresh(scq)
+
+        scq.options = ScqRepository.get_options(
+            db,
+            scq.scq_id,
         )
 
-     db.commit()
-     db.refresh(scq)
-
-     scq.options = ScqRepository.get_options(
-        db,
-        scq.scq_id,
-    )
-
-     return scq
+        return scq

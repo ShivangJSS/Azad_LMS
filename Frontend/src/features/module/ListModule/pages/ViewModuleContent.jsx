@@ -3,18 +3,18 @@ import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import { FiArrowLeft } from "react-icons/fi";
 
-import AppLayout from "../../../../components/layout/AppLayout";
-import Breadcrumbs from "../../../../shared/components/breadcrumbs/Breadcrumbs";
-import LanguageTabs from "../../../../shared/components/language/LanguageTabs";
-import DataTable from "../../../../shared/components/table/DataTable";
-import { getLanguageByKey } from "../../../../shared/constants/languageConstants";
+import AppLayout from "@/components/layout/AppLayout";
+import Breadcrumbs from "@/shared/components/breadcrumbs/Breadcrumbs";
+import LanguageTabs from "@/shared/components/language/LanguageTabs";
+import DataTable from "@/shared/components/table/DataTable";
+import { getLanguageByKey } from "@/shared/constants/languageConstants";
 
-import { getDocument } from "../../../document/services/DocumentServices";
+import { getDocument } from "@/features/document/services/DocumentServices";
 import {
     getMainContentList,
     deactivateMainContent,
     activateMainContent,
-} from "../services/ConfigurationService";
+} from "@/features/module/ListModule/services/ConfigurationService";
 
 const MEDIA_URL = import.meta.env.VITE_API_URL;
 

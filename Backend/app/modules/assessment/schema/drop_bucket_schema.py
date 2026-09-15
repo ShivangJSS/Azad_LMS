@@ -4,8 +4,8 @@ from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict
 
-
 # ---------------- Bucket ---------------- #
+
 
 class DropBucketOptionBase(BaseModel):
     bucket_name: str
@@ -28,6 +28,7 @@ class DropBucketOptionResponse(DropBucketOptionBase):
 
 
 # ---------------- Items ---------------- #
+
 
 class DropBucketItemBase(BaseModel):
     bucket_id: Optional[int] = None
@@ -54,6 +55,7 @@ class DropBucketItemResponse(DropBucketItemBase):
 
 
 # ---------------- Master ---------------- #
+
 
 class DropBucketBase(BaseModel):
     parent_id: int = 0
@@ -83,12 +85,14 @@ class DropBucketUpdate(BaseModel):
 
 # ---------------- All-language bulk edit ---------------- #
 
+
 class DropBucketBulkUpdate(BaseModel):
     """Edit the English question + all languages' buckets in one request.
 
     `buckets` is a FLAT list spanning every language; each bucket carries
     its own language_id so the backend can route it to the right master.
     """
+
     drop_bucket_question_title: str
     drop_bucket_question_description: Optional[str] = None
     image_url: Optional[str] = None
@@ -112,7 +116,6 @@ class DropBucketResponse(DropBucketBase):
     is_translation: bool = True
 
     model_config = ConfigDict(from_attributes=True)
-
 
 
 class DropBucketItemUpdate(BaseModel):

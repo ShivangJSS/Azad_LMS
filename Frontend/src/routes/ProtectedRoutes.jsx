@@ -8,6 +8,7 @@ export default function ProtectedRoute({
 
     const token = localStorage.getItem("access_token");
 
+    // User is not logged in
     if (!token) {
         return (
             <Navigate
@@ -20,9 +21,15 @@ export default function ProtectedRoute({
 
     // Permission check
     if (allowedRoles) {
-        const userPermissions = JSON.parse(
-            localStorage.getItem("permissions") || "[]"
-        );
+        let userPermissions = [];
+
+        try {
+            userPermissions = JSON.parse(
+                localStorage.getItem("permissions") || "[]"
+            );
+        } catch (error) {
+            userPermissions = [];
+        }
 
         const hasPermission = userPermissions.includes(allowedRoles);
 

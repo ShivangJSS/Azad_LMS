@@ -1,11 +1,4 @@
-import API from "../../../../api/API";
-
-// ======================================================
-// IMAGE UPLOAD
-// Uploads the actual file and returns the permanent backend
-// URL (e.g. "/uploads/assessment_images/<file>"). Never a blob.
-// ======================================================
-
+import API from "@/api/Api.js";
 export const uploadImage = async (file) => {
     const formData = new FormData();
     formData.append("image", file);

@@ -7,10 +7,10 @@ from pydantic import (
     field_validator,
 )
 
-
 # ==========================================================
 # Create State Request
 # ==========================================================
+
 
 class StateCreateRequest(BaseModel):
 
@@ -44,6 +44,7 @@ class StateCreateRequest(BaseModel):
 # Update State Request
 # ==========================================================
 
+
 class StateUpdateRequest(BaseModel):
 
     state_name: Optional[str] = Field(
@@ -72,20 +73,20 @@ class StateUpdateRequest(BaseModel):
 # State Response
 # ==========================================================
 
+
 class StateResponse(BaseModel):
 
     state_lgd_code: int
     state_name: str
     status: str
 
-    model_config = ConfigDict(
-        from_attributes=True
-    )
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ==========================================================
 # State List Response
 # ==========================================================
+
 
 class StateListResponse(BaseModel):
 
@@ -103,6 +104,7 @@ class StateListResponse(BaseModel):
 # ==========================================================
 # Delete State Response
 # ==========================================================
+
 
 class DeleteStateResponse(BaseModel):
 

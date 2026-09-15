@@ -1,10 +1,10 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 
-import AppLayout from "../../../../components/layout/AppLayout";
-import Breadcrumbs from "../../../../shared/components/breadcrumbs/Breadcrumbs";
-import DropBucketForm from "../components/DropBucketForm";
-import useDropBucketForm from "../hook/useDropBucketForm";
+import AppLayout from "@/components/layout/AppLayout";
+import Breadcrumbs from "@/shared/components/breadcrumbs/Breadcrumbs";
+import DropBucketForm from "@/features/assessment/DropBucket/components/DropBucketForm";
+import useDropBucketForm from "@/features/assessment/DropBucket/hook/useDropBucketForm";
 
 // =====================================================
 // COMPONENT

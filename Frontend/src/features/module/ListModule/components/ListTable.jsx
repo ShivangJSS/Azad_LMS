@@ -273,7 +273,12 @@ export default function ListTable({
                                                         type="button"
                                                         onClick={() =>
                                                             navigate(
-                                                                `/module-master/configure/${row.module_id}`
+                                                                // Configuration lives on the base
+                                                                // (English) module, so always configure
+                                                                // the parent — even from a translation tab.
+                                                                // Carry the current language so Configure
+                                                                // opens on the tab you came from.
+                                                                `/module-master/configure/${row.parent_id || row.module_id}?tab=${language}`
                                                             )
                                                         }
                                                         className="
@@ -319,31 +324,37 @@ export default function ListTable({
                                                         Edit
                                                     </button>
 
-                                                    {/* ADD TOPIC */}
+                                                    {/* ADD TOPIC — English
+                                                        only; HI/BN/TA topics
+                                                        are added via
+                                                        translation, not
+                                                        created fresh. */}
 
-                                                    <button
-                                                        type="button"
-                                                        onClick={() =>
-                                                            navigate(
-                                                                `/topic-master/add?module_id=${row.module_id}`
-                                                            )
-                                                        }
-                                                        className="
-                                                            h-[32px]
-                                                            !rounded-md
-                                                            border
-                                                            border-[#7B216F]
-                                                            bg-[#7B216F]
-                                                            px-[14px]
-                                                            text-[14px]
-                                                            font-medium
-                                                            !text-white
-                                                            transition
-                                                            hover:bg-[#691B60]
-                                                        "
-                                                    >
-                                                        Add Topic
-                                                    </button>
+                                                    {language === "english" && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                navigate(
+                                                                    `/topic-master/add?module_id=${row.module_id}`
+                                                                )
+                                                            }
+                                                            className="
+                                                                h-[32px]
+                                                                !rounded-md
+                                                                border
+                                                                border-[#7B216F]
+                                                                bg-[#7B216F]
+                                                                px-[14px]
+                                                                text-[14px]
+                                                                font-medium
+                                                                !text-white
+                                                                transition
+                                                                hover:bg-[#691B60]
+                                                            "
+                                                        >
+                                                            Add Topic
+                                                        </button>
+                                                    )}
 
                                                     {/* DELETE */}
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { FiX, FiInfo } from "react-icons/fi";
 
-import { getParticipantTimeSpent } from "../services/ParticipantService";
+import { getParticipantTimeSpent } from "@/features/participant/services/ParticipantService";
 
 const PURPLE = "#732269";
 
@@ -20,6 +20,13 @@ const formatDuration = (seconds) => {
 export default function TimeSpentModal({ participantId, participantName, onClose }) {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        document.body.style.overflow = "hidden";
+        return () => {
+            document.body.style.overflow = "";
+        };
+    }, []);
 
     useEffect(() => {
         if (!participantId) return;

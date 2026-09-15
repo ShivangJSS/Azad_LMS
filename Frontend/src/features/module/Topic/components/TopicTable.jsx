@@ -3,8 +3,8 @@ import {
     PER_PAGE,
     cellClass,
     headCellClass,
-} from "../hook/Topicconstants";
-import { getLanguageLabel } from "../../../../shared/constants/languageConstants";
+} from "@/features/module/Topic/hook/Topicconstants";
+import { getLanguageLabel } from "@/shared/constants/languageConstants";
 
 function EmptyRow({ children, colSpan }) {
     return (
@@ -23,15 +23,16 @@ export default function TopicTable({
     topics = [],
     loading = false,
     currentPage = 1,
+    canManage = true,
     onView,
     onEdit,
     onDelete,
-    isEnglish = true,
 }) {
 
-    // Topics are auto-translated on add, so other languages are read-only:
-    // the Action column (View / Edit / Delete) shows in English only.
-    const visibleColumns = isEnglish
+    // Every language tab now lists ONLY its own topics (real rows, not a
+    // blended view over English), so every column — including the name —
+    // is always meaningful and Add/View/Edit/Delete are available for all.
+    const visibleColumns = canManage
         ? TOPIC_COLUMNS
         : TOPIC_COLUMNS.filter((column) => column.key !== "action");
 
@@ -89,10 +90,7 @@ export default function TopicTable({
                                     {String(topic.status) === "1" ? "Active" : "Inactive"}
                                 </td>
 
-                                {/* Action column is English-only (other
-                                    languages are auto-translated, read-only). */}
-                                {isEnglish && (
-                                    <td className={cellClass}>
+                                {canManage && <td className={cellClass}>
                                         <div className="flex items-center justify-center gap-1">
 
                                             {/* View */}
@@ -134,8 +132,7 @@ export default function TopicTable({
                                             </button>
 
                                         </div>
-                                    </td>
-                                )}
+                                </td>}
                             </tr>
                         ))}
                 </tbody>

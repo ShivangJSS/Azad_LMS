@@ -14,8 +14,6 @@ from app.modules.assessment.schema.match_making_schema import (
 )
 
 
-
-
 class MatchMakingService:
 
     @staticmethod
@@ -32,14 +30,41 @@ class MatchMakingService:
 
     @staticmethod
     def get_by_id(
-     db: Session,
-     parent_id: int,
-     language_id: int,
-):
+        db: Session,
+        parent_id: int,
+        language_id: int,
+    ):
 
-    # English
-     if language_id == 1:
+        # English
+        if language_id == 1:
 
+            english = MatchMakingRepository.get_by_id(
+                db=db,
+                match_making_id=parent_id,
+            )
+
+            if not english:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Match Making not found.",
+                )
+
+            english.is_translation = True
+
+            return english
+
+        # Translation
+        translation = MatchMakingRepository.get_by_parent_and_language(
+            db=db,
+            parent_id=parent_id,
+            language_id=language_id,
+        )
+
+        if translation:
+            translation.is_translation = True
+            return translation
+
+        # Translation doesn't exist
         english = MatchMakingRepository.get_by_id(
             db=db,
             match_making_id=parent_id,
@@ -51,44 +76,17 @@ class MatchMakingService:
                 detail="Match Making not found.",
             )
 
-        english.is_translation = True
+        english.match_making_id = None
+        english.parent_id = parent_id
+        english.language_id = language_id
+
+        english.match_making_question_title = ""
+        english.match_making_question_description = ""
+
+        english.is_translation = False
 
         return english
 
-    # Translation
-     translation = MatchMakingRepository.get_by_parent_and_language(
-        db=db,
-        parent_id=parent_id,
-        language_id=language_id,
-    )
-
-     if translation:
-        translation.is_translation = True
-        return translation
-
-    # Translation doesn't exist
-     english = MatchMakingRepository.get_by_id(
-        db=db,
-        match_making_id=parent_id,
-    )
-
-     if not english:
-        raise HTTPException(
-            status_code=404,
-            detail="Match Making not found.",
-        )
-
-     english.match_making_id = None
-     english.parent_id = parent_id
-     english.language_id = language_id
-
-     english.match_making_question_title = ""
-     english.match_making_question_description = ""
-
-     english.is_translation = False
-
-     return english
-    
     @staticmethod
     def create(
         db: Session,
@@ -143,10 +141,7 @@ class MatchMakingService:
             match_making=match_making,
         )
 
-        return {
-            "message": "Match Making Question deleted successfully."
-        }
-
+        return {"message": "Match Making Question deleted successfully."}
 
     @staticmethod
     def get_left_items(
@@ -216,83 +211,74 @@ class MatchMakingService:
             left_item=left_item,
         )
 
-        return {
-            "message": "Left Item deleted successfully."
-        }
-
-
+        return {"message": "Left Item deleted successfully."}
 
     @staticmethod
     def get_right_items(
-     db: Session,
-     match_making_id: int,
-     language_id: int | None = None,
-):
-     return MatchMakingRepository.get_right_items(
-        db=db,
-        match_making_id=match_making_id,
-        language_id=language_id,
-    )
-
+        db: Session,
+        match_making_id: int,
+        language_id: int | None = None,
+    ):
+        return MatchMakingRepository.get_right_items(
+            db=db,
+            match_making_id=match_making_id,
+            language_id=language_id,
+        )
 
     @staticmethod
     def create_right_item(
-     db: Session,
-     match_making_id: int,
-     data: MatchRightItemCreate,
-):
-     return MatchMakingRepository.create_right_item(
-        db=db,
-        match_making_id=match_making_id,
-        data=data,
-    )
-
+        db: Session,
+        match_making_id: int,
+        data: MatchRightItemCreate,
+    ):
+        return MatchMakingRepository.create_right_item(
+            db=db,
+            match_making_id=match_making_id,
+            data=data,
+        )
 
     @staticmethod
     def update_right_item(
-     db: Session,
-     match_right_id: int,
-     data: MatchRightItemUpdate,
-):
-     right_item = MatchMakingRepository.get_right_item_by_id(
-        db=db,
-        match_right_id=match_right_id,
-    )
-
-     if not right_item:
-        raise HTTPException(
-            status_code=404,
-            detail="Right Item not found.",
+        db: Session,
+        match_right_id: int,
+        data: MatchRightItemUpdate,
+    ):
+        right_item = MatchMakingRepository.get_right_item_by_id(
+            db=db,
+            match_right_id=match_right_id,
         )
 
-     return MatchMakingRepository.update_right_item(
-        db=db,
-        right_item=right_item,
-        data=data,
-    )
+        if not right_item:
+            raise HTTPException(
+                status_code=404,
+                detail="Right Item not found.",
+            )
 
+        return MatchMakingRepository.update_right_item(
+            db=db,
+            right_item=right_item,
+            data=data,
+        )
 
     @staticmethod
     def delete_right_item(
-     db: Session,
-     match_right_id: int,
-):
-     right_item = MatchMakingRepository.get_right_item_by_id(
-        db=db,
-        match_right_id=match_right_id,
-    )
-
-     if not right_item:
-        raise HTTPException(
-            status_code=404,
-            detail="Right Item not found.",
+        db: Session,
+        match_right_id: int,
+    ):
+        right_item = MatchMakingRepository.get_right_item_by_id(
+            db=db,
+            match_right_id=match_right_id,
         )
 
-     MatchMakingRepository.delete_right_item(
-        db=db,
-        right_item=right_item,
-    )
+        if not right_item:
+            raise HTTPException(
+                status_code=404,
+                detail="Right Item not found.",
+            )
 
-     return {
-        "message": "Right Item deleted successfully."
-    }
+        MatchMakingRepository.delete_right_item(
+            db=db,
+            right_item=right_item,
+        )
+
+        return {"message": "Right Item deleted successfully."}

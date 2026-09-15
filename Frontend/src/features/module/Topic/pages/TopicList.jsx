@@ -1,16 +1,16 @@
 import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
-import AppLayout from "../../../../components/layout/AppLayout";
-import Breadcrumbs from "../../../../shared/components/breadcrumbs/Breadcrumbs";
-import LanguageTabs from "../../../../shared/components/language/LanguageTabs";
-import Pagination from "../../../../shared/components/table/Pagination";
+import AppLayout from "@/components/layout/AppLayout";
+import Breadcrumbs from "@/shared/components/breadcrumbs/Breadcrumbs";
+import LanguageTabs from "@/shared/components/language/LanguageTabs";
+import Pagination from "@/shared/components/table/Pagination";
 
-import TopicFilters from "../components/TopicFilters";
-import TopicTable from "../components/TopicTable";
+import TopicFilters from "@/features/module/Topic/components/TopicFilters";
+import TopicTable from "@/features/module/Topic/components/TopicTable";
 
 
-import useTopics from "../hook/useTopics";
+import useTopics from "@/features/module/Topic/hook/useTopics";
 
 const breadcrumbItems = [
     { label: "Home", path: "/dashboard" },
@@ -72,7 +72,7 @@ export default function TopicList() {
                 onChange={changeLanguage}
             />
 
-            <div className="w-full rounded-b-[8px] border border-t-0 border-[#D8E2EF] bg-white p-3">
+            <div className="w-full bg-white p-3">
 
                 <TopicFilters
                     filters={filters}
@@ -81,14 +81,16 @@ export default function TopicList() {
                     onReset={resetFilters}
                 />
 
+
+                <div className="border-t border-[#4FC3C3] my-[20px]" />
                 <div className="mt-[20px] mb-[14px] flex flex-wrap items-center justify-between gap-[12px]">
                     <p className="m-0 text-[14px] font-semibold text-[#344050]">
                         Total Topic (s):{" "}
                         <span className="text-[#7b216f]">{totalEntries}</span>
                     </p>
 
-                    {/* Topics are added in English only; other languages are
-                        translated from the English topic. */}
+                    {/* Add Topic — English only; HI/BN/TA topics are added
+                        via translation, not created fresh. */}
                     {language === "english" && (
                         <Link
                             to="/topic-master/add"
@@ -103,12 +105,21 @@ export default function TopicList() {
                     topics={topics}
                     loading={loading}
                     currentPage={currentPage}
-                    isEnglish={language === "english"}
+                    canManage={language === "english"}
                     onView={(topic) =>
                         navigate(`/topic-master/${topic.topic_id}?tab=${language}`)
                     }
                     onEdit={(topic) =>
-                        navigate(`/topic-master/edit/${topic.topic_id}?tab=${language}`)
+                        navigate(
+                            // The base-topic editor (module reassignment,
+                            // etc.) only makes sense for the English record.
+                            // Every other language edits its own translation
+                            // on the same screen as View, which is already
+                            // scoped to save ONLY that language.
+                            language === "english"
+                                ? `/topic-master/edit/${topic.topic_id}?tab=${language}`
+                                : `/topic-master/${topic.topic_id}?tab=${language}`
+                        )
                     }
                     onDelete={handleDelete}
                 />

@@ -1,0 +1,8 @@
+ecmwf-opendata
+xarray
+cfgrib
+pandas
+psycopg2-binary
+geopandas
+shapely
+schedule

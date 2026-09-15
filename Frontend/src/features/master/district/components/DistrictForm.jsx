@@ -60,12 +60,24 @@ export default function DistrictForm({
                             type="text"
                             inputMode="numeric"
                             readOnly={mode === "edit"}
+                            // Digits only, capped at 10 digits.
+                            onInput={(e) => {
+                                e.target.value = e.target.value
+                                    .replace(/\D/g, "")
+                                    .slice(0, 10);
+                            }}
                             {...register("district_lgd_code", {
                                 required: "District LGD Code is required",
                                 pattern: {
                                     value: /^\d+$/,
                                     message: "Only numbers allowed",
                                 },
+                                maxLength: {
+                                    value: 10,
+                                    message: "LGD Code cannot exceed 10 digits",
+                                },
+                                validate: (value) =>
+                                    Number(value) > 0 || "LGD Code must be greater than 0",
                             })}
                             className={`${fieldClass} ${mode === "edit"
                                     ? "cursor-not-allowed bg-[#F5F7FA]"

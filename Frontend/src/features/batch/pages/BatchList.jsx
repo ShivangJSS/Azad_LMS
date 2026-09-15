@@ -1,14 +1,15 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import DataTable from '../../../shared/components/table/DataTable';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Plus } from 'lucide-react';
+import DataTable from '@/shared/components/table/DataTable';
 
-import { getBatches, getStates, getDistricts, } from "../services/batchService";
-import BatchFilter from '../components/BatchFilter';
-import AppLayout from '../../../components/layout/AppLayout';
-import Pagination from '../../../shared/components/table/Pagination';
-import EntriesDropdown from '../../../shared/components/table/EntriesDropdown';
+import { getBatches, getStates, getDistricts, } from "@/features/batch/services/BatchService";
+import BatchFilter from '@/features/batch/components/BatchFilter';
+import AppLayout from '@/components/layout/AppLayout';
+import Pagination from '@/shared/components/table/Pagination';
+import EntriesDropdown from '@/shared/components/table/EntriesDropdown';
 import BatchView from "./BatchView";
-import { useRef } from "react";
+import Breadcrumbs from "@/shared/components/breadcrumbs/Breadcrumbs";
 
 
 const BRAND = "#732269";
@@ -58,9 +59,11 @@ export default function BatchList() {
     const [states, setStates] = useState([]);
     const [districts, setDistricts] = useState([]);
 
-    const [filters, setFilters] = useState({ state_id: '', district_id: '' });
+    // `filters` is the draft (edited in the filter row); `appliedFilters` is
+    // what actually queries the table — updated only on Search / Reset, so
+    // nothing auto-searches. Search lives inside the filter row (one bar).
+    const [filters, setFilters] = useState({ state_id: '', district_id: '', search: '' });
     const [appliedFilters, setAppliedFilters] = useState(filters);
-    const [search, setSearch] = useState('');
 
     const [batches, setBatches] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -103,7 +106,7 @@ export default function BatchList() {
             const data = await getBatches({
                 stateId: appliedFilters.state_id || undefined,
                 districtId: appliedFilters.district_id || undefined,
-                search: search || undefined,
+                search: appliedFilters.search || undefined,
             });
             setBatches(Array.isArray(data) ? data : []);
         } catch {
@@ -111,7 +114,7 @@ export default function BatchList() {
         } finally {
             setLoading(false);
         }
-    }, [appliedFilters, search]);
+    }, [appliedFilters]);
 
     useEffect(() => {
         loadBatches();
@@ -127,21 +130,19 @@ export default function BatchList() {
         });
     };
 
-    const handleReset = () => {
-        const empty = { state_id: '', district_id: '' };
-        setFilters(empty);
-        setAppliedFilters(empty);
-        setSearch('');
-        setPage(1);
-    };
-
-    // Filters apply immediately on change (matching the reference UI, which
-    // has no explicit Search button for this screen).
-    useEffect(() => {
+    // Apply the draft filters (state, district, search) only when the user
+    // clicks Search — matching the other list pages.
+    const handleSearch = () => {
         setPage(1);
         setAppliedFilters(filters);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [filters.state_id, filters.district_id]);
+    };
+
+    const handleReset = () => {
+        const empty = { state_id: '', district_id: '', search: '' };
+        setFilters(empty);
+        setAppliedFilters(empty);
+        setPage(1);
+    };
 
     const handleSort = (key) => {
         setSortConfig((prev) => ({
@@ -204,13 +205,18 @@ export default function BatchList() {
 
     return (
         <AppLayout>
-            <div className="flex items-center justify-between mb-4">
-                <span className="text-xl font-semibold text-gray-800">Batches List</span>
-                <nav className="text-sm italic" style={{ color: BRAND }}>
-                    Home <span className="text-gray-400 mx-1">/</span> Batches{' '}
-                    <span className="text-gray-400 mx-1">/</span>
-                    <span>Batches List</span>
-                </nav>
+            <div className="flex items-center justify-between mb-3">
+                <span className="text-xl font-semibold leading-tight text-gray-800">Batches List
+                </span>
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                    <Breadcrumbs
+                        items={[
+                            { label: "Home", path: "/dashboard" },
+                            { label: "List" },
+                        ]}
+                    />
+
+                </div>
             </div>
             <div className="bg-white min-h-screen p-3">
                 {/* Filters (separate component) */}
@@ -219,30 +225,43 @@ export default function BatchList() {
                     states={states}
                     districts={districts}
                     onFilterChange={handleFilterChange}
+                    onSearch={handleSearch}
                     onReset={handleReset}
-                    onAddBatch={() => navigate('/batches/create')}
                 />
 
-                {/* Entries + search */}
-                <div className="flex items-center justify-between mb-3">
-                    <p className="text-sm text-gray-500">
-                        {totalEntries === 0
-                            ? 'Showing 0 entries'
-                            : `Showing ${startIndex + 1} to ${endIndex} of ${totalEntries} entries`}
-                    </p>
-                    <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-500">Search:</span>
-                        <input
-                            type="text"
-                            value={search}
-                            onChange={(e) => {
-                                setSearch(e.target.value);
-                                setPage(1);
-                            }}
-                            className="border border-gray-300 rounded-md px-2 py-1 !shadow-inner text-sm w-56"
-                        />
-                    </div>
+                {/* <div className="flex justify-end mb-2">
+                    <button
+                        type="button"
+                        onClick={() => navigate('/batches/create')}
+                        style={{ backgroundColor: BRAND }}
+                        className="h-[39px] flex items-center !shadow-inner text-white text-sm font-medium px-3 !rounded-md hover:opacity-90 transition-opacity"
+                    >
+                        <Plus className="w-4.5 h-4.5" />
+                        Add Batch
+                    </button>
+                </div> */}
+
+                <div className="border-t border-[#4FC3C3] my-[20px]" />
+
+
+                {/* ================= COUNT + ADD ================= */}
+
+                <div className="flex flex-wrap items-center justify-between gap-[12px] mb-[16px]">
+
+                    <h6 className="m-0 text-[14px] font-bold text-[#344050]">
+                        Total Centre (s):{" "}
+                        <span className="text-[#7b216f]">{totalEntries}</span>
+                    </h6>
+
+                    <Link
+                        to="/batches/create"
+                        className="inline-flex items-center h-[38px] px-[20px] bg-white border border-[#344050] rounded-sm text-[14px] font-bold !text-[#344050] !no-underline hover:bg-gray-50"
+                    >
+                        +Add Batch
+                    </Link>
+
                 </div>
+
                 <DataTable
                     columns={columns}
                     data={pageRows}
@@ -251,8 +270,8 @@ export default function BatchList() {
                     sortField={sortConfig.key}
                     sortDirection={sortConfig.direction}
                     onSort={handleSort}
-                        renderRow={(b, index) => (
-                            <tr key={b.batch_id} className="hover:bg-[#fafafa]">
+                    renderRow={(b, index) => (
+                        <tr key={b.batch_id} className="hover:bg-[#fafafa]">
 
                             <td className={`${td} text-[#4d5969]`}>
                                 {startIndex + index + 1}
@@ -297,7 +316,8 @@ export default function BatchList() {
 
                                     <button
                                         onClick={() => handleShowParticipants(b.batch_id)}
-                                        className="flex items-center gap-2 px-4 py-1 text-[12px] font-medium text-[#4d5969] bg-white border-2 border-[#bfc7d1] rounded-sm hover:bg-[#f7f8fa]"
+                                        disabled={b.participant_count === 0}
+                                        className={`flex items-center gap-2 px-4 py-1 text-[12px] font-medium ${b.participant_count === 0 ? 'text-[#9DA9BB] bg-[#F5F7FA] border-[#D8E2EF] cursor-not-allowed' : 'text-[#4d5969] bg-white border-2 border-[#bfc7d1] rounded-sm hover:bg-[#f7f8fa]'}`}
                                     >
                                         Show Participants
 
@@ -312,16 +332,25 @@ export default function BatchList() {
                         </tr>
                     )}
                 />
-                {/* Pagination */}
-                <div className="flex items-center justify-between mt-4 px-3">
-                    <EntriesDropdown
-                        value={entriesPerPage}
-                        onChange={(value) => {
-                            setEntriesPerPage(Number(value));
-                            setPage(1);
-                        }}
-                    />
-                    <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
+                {/* Bottom section: Add Batch (right), entries count + pagination */}
+                <div className="mt-4 px-3 flex flex-col gap-3">
+
+                    {/* Add Batch — bottom of the table, aligned right */}
+
+
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex flex-wrap items-center gap-4">
+                            <EntriesDropdown
+                                value={entriesPerPage}
+                                onChange={(value) => {
+                                    setEntriesPerPage(Number(value));
+                                    setPage(1);
+                                }}
+                            />
+
+                        </div>
+                        <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
+                    </div>
                 </div>
             </div>
             {selectedBatchId && (

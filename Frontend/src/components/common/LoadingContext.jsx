@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 
-import { subscribeLoading } from "../../api/loadingBus";
+import { subscribeLoading } from "@/api/loadingBus";
 
 const LoadingContext = createContext();
 

@@ -3,14 +3,15 @@ import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import { FiPlus } from "react-icons/fi";
 
-import AppLayout from "../../../../components/layout/AppLayout";
-import Breadcrumbs from "../../../../shared/components/breadcrumbs/Breadcrumbs";
+import AppLayout from "@/components/layout/AppLayout";
+import Breadcrumbs from "@/shared/components/breadcrumbs/Breadcrumbs";
 
 import {
     getQuestionItems,
     updateBucketItems,
     uploadImage,
-} from "../services/DropBucketServices";
+} from "@/features/assessment/DropBucket/services/DropBucketServices";
+import { isValidImageFile, IMAGE_TYPE_ERROR } from "@/shared/utils/imageValidation";
 
 const MEDIA_URL = import.meta.env.VITE_API_URL || "";
 
@@ -270,9 +271,15 @@ export default function EditBucketItems() {
                                                 <input
                                                     type="file"
                                                     accept="image/*"
-                                                    onChange={(e) =>
-                                                        handleImage(index, e.target.files?.[0] || null)
-                                                    }
+                                                    onChange={(e) => {
+                                                        const file = e.target.files?.[0] || null;
+                                                        if (file && !isValidImageFile(file)) {
+                                                            toast.error(IMAGE_TYPE_ERROR);
+                                                            e.target.value = "";
+                                                            return;
+                                                        }
+                                                        handleImage(index, file);
+                                                    }}
                                                     className="block h-[35px] w-full rounded-[3px] border border-[#D8E2EF] bg-white text-[12px] text-[#344050] file:mr-[10px] file:h-full file:border-0 file:bg-[#344050] file:px-[12px] file:text-[12px] file:font-medium file:text-white"
                                                 />
                                                 {it.item_image_preview && (

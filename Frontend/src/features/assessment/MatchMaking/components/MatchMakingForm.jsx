@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import {
     createMatchMaking,
     uploadImage,
-} from "../services/MatchingMakingService";
+} from "@/features/assessment/MatchMaking/services/MatchingMakingService";
 
 const API_URL = import.meta.env.VITE_API_URL;
 

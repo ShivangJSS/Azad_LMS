@@ -174,7 +174,7 @@ def create_state_service(
             user=current_user,
             action="CREATE",
             entity=ENTITY_NAME,
-            entity_id=str(state.state_lgd_code), # type: ignore
+            entity_id=str(state.state_lgd_code),  # type: ignore
             details=str({"new_state": request.model_dump(mode="json")}),
         )
 
@@ -265,7 +265,9 @@ def update_state_service(
             exclude_lgd_code=str(state.state_lgd_code),
         )
 
-    state.state_name = request.state_name if request.state_name is not None else state.state_name
+    state.state_name = (
+        request.state_name if request.state_name is not None else state.state_name
+    )
     state.status = request.status if request.status is not None else state.status
 
     try:
@@ -278,10 +280,12 @@ def update_state_service(
             action="UPDATE",
             entity=ENTITY_NAME,
             entity_id=str(state_lgd_code),
-            details=str({
-                "old_state": previous_state,
-                "new_state": request.model_dump(mode="json"),
-            }),
+            details=str(
+                {
+                    "old_state": previous_state,
+                    "new_state": request.model_dump(mode="json"),
+                }
+            ),
         )
 
         db.commit()

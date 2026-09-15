@@ -1,22 +1,20 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
 
-import AppLayout from "../../../../components/layout/AppLayout";
-import Breadcrumbs from "../../../../shared/components/breadcrumbs/Breadcrumbs";
+import AppLayout from "@/components/layout/AppLayout";
+import Breadcrumbs from "@/shared/components/breadcrumbs/Breadcrumbs";
 
-import ModuleForm from "../components/ModuleForm";
+import ModuleForm from "@/features/module/ListModule/components/ModuleForm";
 
-import { createModule } from "../services/ListService";
+import { createModule } from "@/features/module/ListModule/services/ListService";
 
-import { getAllCourses } from "../../../course/services/CourseService";
-import {
-  LANGUAGES,
-  getLanguageByKey,
-} from "../../../../shared/constants/languageConstants";
+import { getAllCourses } from "@/features/course/services/CourseService";
+import { validateImage } from "@/shared/utils/imageValidation";
+import { getLanguageByKey } from "@/shared/constants/languageConstants";
 
-import LanguageTabs from "../../../../shared/components/language/LanguageTabs";
-
+// Modules are always added in English - HI/BN/TA content comes from
+// translating an existing English module, not from a fresh add here.
 const INITIAL_FORM = {
   fk_course_id: "",
   module_type: "",
@@ -46,6 +44,8 @@ const breadcrumbItems = [
 
 export default function AddModules() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const language = getLanguageByKey(searchParams.get("tab"));
 
   /* ================= STATE ================= */
 
@@ -54,9 +54,8 @@ export default function AddModules() {
   const [courses, setCourses] = useState([]);
 
   const [loading, setLoading] = useState(false);
-  const [language, setLanguage] = useState(
-    LANGUAGES[0].key
-  );
+
+  const [errors, setErrors] = useState({});
 
   const [courseLoading, setCourseLoading] =
     useState(false);
@@ -107,85 +106,83 @@ export default function AddModules() {
       ...prev,
       [name]: value,
     }));
+
+    setErrors((previous) => ({
+      ...previous,
+      [name]: "",
+    }));
   };
 
   /* ================= FILE ================= */
 
-  const handleFileChange = (e) => {
-    const file = e.target.files?.[0] || null;
+
+  const handleFileChange = async (e) => {
+    const input = e.target;
+    const file = input.files?.[0] || null;
+
+    if (file) {
+      const result = await validateImage(file);
+      if (!result.ok) {
+        setErrors((previous) => ({
+          ...previous,
+          module_icon: result.error,
+        }));
+        input.value = "";
+        return;
+      }
+    }
 
     setForm((prev) => ({
       ...prev,
       module_icon: file,
     }));
-  };
 
+    setErrors((previous) => ({
+      ...previous,
+      module_icon: "",
+    }));
+  };
   /* ================= VALIDATION ================= */
 
   const validateForm = () => {
-    if (!form.fk_course_id) {
-      toast.error("Please select course.");
-      return false;
+    const validationErrors = {
+      fk_course_id: !form.fk_course_id ? "Please select course." : "",
+      module_type: !form.module_type ? "Please select module type." : "",
+      module_name: !form.module_name.trim() ? "Please enter module name." : "",
+      module_description: !form.module_description.trim()
+        ? "Please enter module description."
+        : "",
+      module_overview: !form.module_overview.trim()
+        ? "Please enter module overview."
+        : "",
+      module_objective: !form.module_objective.trim()
+        ? "Please enter module objective."
+        : "",
+      module_duration: !form.module_duration ? "Please enter module duration." : "",
+      status: form.status === "" ? "Please select status." : "",
+      publishing_status: !form.publishing_status
+        ? "Please select publishing status."
+        : "",
+      module_icon: !form.module_icon ? "Please select module icon." : "",
+    };
+
+    setErrors(validationErrors);
+
+    const firstInvalidField = Object.keys(validationErrors).find(
+      (field) => validationErrors[field]
+    );
+
+    if (firstInvalidField) {
+      window.requestAnimationFrame(() => {
+        const field = document.querySelector(
+          `[name="${firstInvalidField}"]`
+        );
+        field?.scrollIntoView({ behavior: "smooth", block: "center" });
+        field?.focus({ preventScroll: true });
+      });
     }
 
-    if (!form.module_type) {
-      toast.error("Please select module type.");
-      return false;
-    }
-
-    if (!form.module_name.trim()) {
-      toast.error("Please enter module name.");
-      return false;
-    }
-
-    if (!form.module_description.trim()) {
-      toast.error(
-        "Please enter module description."
-      );
-      return false;
-    }
-
-    if (!form.module_overview.trim()) {
-      toast.error(
-        "Please enter module overview."
-      );
-      return false;
-    }
-
-    if (!form.module_objective.trim()) {
-      toast.error(
-        "Please enter module objective."
-      );
-      return false;
-    }
-
-    if (!form.module_duration) {
-      toast.error(
-        "Please enter module duration."
-      );
-      return false;
-    }
-
-    if (form.status === "") {
-      toast.error("Please select status.");
-      return false;
-    }
-
-    if (!form.publishing_status) {
-      toast.error(
-        "Please select publishing status."
-      );
-      return false;
-    }
-
-    if (!form.module_icon) {
-      toast.error(
-        "Please select module icon."
-      );
-      return false;
-    }
-
-    return true;
+    return !firstInvalidField;
   };
 
   /* ================= SUBMIT ================= */
@@ -206,6 +203,8 @@ export default function AddModules() {
         "fk_course_id",
         form.fk_course_id
       );
+
+      formData.append("language_id", String(language.id));
 
       formData.append(
         "module_name",
@@ -252,19 +251,13 @@ export default function AddModules() {
         form.module_icon
       );
 
-      // Debug FormData
-      for (const [key, value] of formData.entries()) {
-      }
-
-      const response =
-        await createModule(formData);
-
+      await createModule(formData);
 
       toast.success(
         "Module created successfully."
       );
 
-      navigate("/modules");
+      navigate(`/modules?tab=${language.key}`);
 
     } catch (error) {
       console.error(
@@ -290,7 +283,7 @@ export default function AddModules() {
   /* ================= CANCEL ================= */
 
   const handleCancel = () => {
-    navigate("/modules");
+    navigate(`/modules?tab=${language.key}`);
   };
 
   return (
@@ -301,7 +294,7 @@ export default function AddModules() {
       <div className="mb-[20px] flex items-center justify-between">
 
         <span className="m-0 text-[20px] font-medium text-[#344050]">
-          New Module
+          Add Module
         </span>
 
         <Breadcrumbs
@@ -325,6 +318,7 @@ export default function AddModules() {
           onSubmit={handleSubmit}
           onCancel={handleCancel}
           loading={loading}
+          errors={errors}
         />
       )}
 

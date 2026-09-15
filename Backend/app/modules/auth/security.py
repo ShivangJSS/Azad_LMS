@@ -1,40 +1,18 @@
-from typing import Protocol, cast
+import bcrypt
 
-from passlib.context import CryptContext  # pyright: ignore[reportMissingTypeStubs]
-
-
-# ==========================================================
-# Type Definition
-# ==========================================================
-
-class PasswordContext(Protocol):
-    def verify(
-        self,
-        secret: str,
-        hash: str,
-    ) -> bool: ...
-
-    def hash(
-        self,
-        secret: str,
-    ) -> str: ...
+BCRYPT_MAX_BYTES = 72
+BCRYPT_ROUNDS = 12
+_PHP_PREFIX = b"$2y$"
 
 
-# ==========================================================
-# Password Configuration
-# ==========================================================
-
-_context = CryptContext(
-    schemes=["bcrypt"],
-    deprecated="auto",
-)
-
-pwd_context = cast(PasswordContext, _context)
+def _encode_password(password: str) -> bytes:
+    return password.encode("utf-8")[:BCRYPT_MAX_BYTES]
 
 
 # ==========================================================
 # Verify Password
 # ==========================================================
+
 
 def verify_password(
     plain_password: str,
@@ -46,15 +24,19 @@ def verify_password(
     Returns True if the password matches.
     """
 
-    return pwd_context.verify(
-        plain_password,
-        hashed_password,
-    )
+    try:
+        return bcrypt.checkpw(
+            _encode_password(plain_password),
+            hashed_password.encode("utf-8"),
+        )
+    except ValueError, TypeError:
+        return False
 
 
 # ==========================================================
 # Hash Password
 # ==========================================================
+
 
 def hash_password(
     password: str,
@@ -63,4 +45,10 @@ def hash_password(
     Hash a password using bcrypt.
     """
 
-    return pwd_context.hash(password)
+    hashed = bcrypt.hashpw(
+        _encode_password(password),
+        bcrypt.gensalt(rounds=BCRYPT_ROUNDS),
+    )
+
+    # Existing LMS rows created by Laravel use the $2y$ bcrypt prefix.
+    return (_PHP_PREFIX + hashed[4:]).decode("utf-8")

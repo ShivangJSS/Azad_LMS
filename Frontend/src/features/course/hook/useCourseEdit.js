@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { getCourseById, updateCourse } from "../services/CourseService";
+import { getCourseById, updateCourse } from "@/features/course/services/CourseService";
 
 
 /**

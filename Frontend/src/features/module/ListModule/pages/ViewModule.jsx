@@ -1,18 +1,19 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 
-import AppLayout from "../../../../components/layout/AppLayout";
-import Breadcrumbs from "../../../../shared/components/breadcrumbs/Breadcrumbs";
-import LanguageTabs from "../../../../shared/components/language/LanguageTabs";
+import AppLayout from "@/components/layout/AppLayout";
+import Breadcrumbs from "@/shared/components/breadcrumbs/Breadcrumbs";
+import LanguageTabs from "@/shared/components/language/LanguageTabs";
 import {
     getModuleById,
     getModuleTranslation,
     saveModuleTranslation,
-} from "../services/ListService";
+} from "@/features/module/ListModule/services/ListService";
 import toast from "react-hot-toast";
 
-import TranslationForm from "../components/ModuleTranslationForm";
-import { getLanguageByKey } from "../../../../shared/constants/languageConstants";
+import TranslationForm from "@/features/module/ListModule/components/ModuleTranslationForm";
+import { getLanguageByKey } from "@/shared/constants/languageConstants";
+import { validateImage, ASPECT_WIDE } from "@/shared/utils/imageValidation";
 
 const breadcrumbItems = [
     {
@@ -85,10 +86,23 @@ export default function ViewModule() {
         }));
     };
 
-    const handleFileChange = (e) => {
+    const handleFileChange = async (e) => {
+        const input = e.target;
+        const file = input.files[0];
+
+        if (file) {
+            // Module icon must be 16:9 (plus type/size checks).
+            const result = await validateImage(file, { aspectRatio: ASPECT_WIDE });
+            if (!result.ok) {
+                toast.error(result.error);
+                input.value = "";
+                return;
+            }
+        }
+
         setModuleData((prev) => ({
             ...prev,
-            module_icon: e.target.files[0],
+            module_icon: file,
         }));
     };
 
@@ -107,23 +121,27 @@ export default function ViewModule() {
                 status: 1,
             };
 
-
-            const response = await saveModuleTranslation(
-                moduleId,
-                payload
-            );
-
+            await saveModuleTranslation(moduleId, payload);
 
             toast.success("Translation saved successfully.");
 
-            // Go back to the module list on success.
-            navigate("/modules");
+            // ONLY TAMIL -> MODULE LIST
+            if (Number(languageId) === 4) {
+                navigate("/modules", {
+                    replace: true,
+                });
+                return;
+            }
+
+            // HINDI / BANGLA -> STAY ON CURRENT PAGE
+            await loadModule();
 
         } catch (error) {
             console.error(error);
 
             toast.error(
                 error?.response?.data?.detail ||
+                error?.response?.data?.message ||
                 "Unable to save translation."
             );
         } finally {

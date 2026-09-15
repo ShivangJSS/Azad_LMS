@@ -11,11 +11,6 @@ router = APIRouter(
 )
 
 
-
-
-
-
-
 router.get(
     "/",
     summary="Get all MCQs",
@@ -31,8 +26,6 @@ router.get(
     "/{parent_id}",
     summary="Get MCQ Translation",
 )(McqController.get_mcq)
-
-
 
 
 router.put(
@@ -56,4 +49,3 @@ router.delete(
     "/{mcq_id}",
     summary="Delete MCQ",
 )(McqController.delete_mcq)
-

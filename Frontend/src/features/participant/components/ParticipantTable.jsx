@@ -1,6 +1,6 @@
 import { KeyRound, Clock } from 'lucide-react';
 
-import { getParticipantImageUrl } from '../../../shared/utils/mediaUrl';
+import { getParticipantImageUrl } from '@/shared/utils/mediaUrl';
 
 const BRAND = '#732269';
 

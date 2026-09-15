@@ -2,16 +2,16 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 
-import AppLayout from "../../../../components/layout/AppLayout";
-import Breadcrumbs from "../../../../shared/components/breadcrumbs/Breadcrumbs";
+import AppLayout from "@/components/layout/AppLayout";
+import Breadcrumbs from "@/shared/components/breadcrumbs/Breadcrumbs";
 
-import AllLanguageDropBucketForm from "../components/AllLanguageDropBucketForm";
+import AllLanguageDropBucketForm from "@/features/assessment/DropBucket/components/AllLanguageDropBucketForm";
 
 import {
     getBucketAllLanguages,
     bulkUpdateBuckets,
     uploadImage,
-} from "../services/DropBucketServices";
+} from "@/features/assessment/DropBucket/services/DropBucketServices";
 
 const breadcrumbItems = [
     { label: "Home", path: "/dashboard" },

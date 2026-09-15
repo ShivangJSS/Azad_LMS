@@ -1,8 +1,7 @@
 import {
     inputClass,
-    outlineButtonClass,
-    primaryButtonClass,
-} from "../hook/Listconstants";
+} from "@/features/module/ListModule/hook/Listconstants";
+import SearchResetActions from "@/shared/components/table/SearchResetActions";
 
 export default function ListFilters({
     filters,
@@ -33,25 +32,7 @@ export default function ListFilters({
             </div>
 
             {/* Buttons */}
-            <div className="flex shrink-0 items-center gap-4">
-
-                <button
-                    type="button"
-                    onClick={onSearch}
-                    className={`${primaryButtonClass} rounded-sm bg-[#732269]`}
-                >
-                    Search
-                </button>
-
-                <button
-                    type="button"
-                    onClick={onReset}
-                    className={outlineButtonClass}
-                >
-                    Reset
-                </button>
-
-            </div>
+            <SearchResetActions onSearch={onSearch} onReset={onReset} />
 
         </div>
     );

@@ -66,97 +66,93 @@ class BatchRepository:
 
     @staticmethod
     def get_batches(
-     db: Session,
-     state_id: Optional[int] = None,
-     district_id: Optional[int] = None,
-     status: Optional[int] = None,
-     search: Optional[str] = None,
-):
+        db: Session,
+        state_id: Optional[int] = None,
+        district_id: Optional[int] = None,
+        status: Optional[int] = None,
+        search: Optional[str] = None,
+    ):
 
-     query = (
-       db.query(
-            BatchMaster.batch_id,
-            BatchMaster.batch_name,
-            CentreMaster.centre_name.label("centre_name"),
-            CentreMaster.centre_id.label("centre_id"),
-            CentreMaster.state_id.label("state_id"),
-            CentreMaster.district_id.label("district_id"),
-            CentreMaster.block_id.label("block_id"),
-            BatchMaster.fy_year,
-            User.name.label("created_by"),
-            BatchMaster.status,
-            func.count(BatchParticipant.batch_participant_id).label(
-                "participant_count"
-            ),
-        )
-        .join(
-            CentreMaster,
-            (BatchMaster.centre_id == CentreMaster.centre_id)
-            & CentreMaster.deleted_at.is_(None),
-        )
-        .join(
-            DistrictMaster,
-            CentreMaster.district_id
-            == DistrictMaster.district_lgd_code,
-        )
-        .join(
-            StateMaster,
-            CentreMaster.state_id
-            == StateMaster.state_lgd_code,
-        )
-        .outerjoin(
-            User,
-            BatchMaster.created_by == User.id,
-        )
-        .outerjoin(
-            BatchParticipant,
-            (BatchMaster.batch_id == BatchParticipant.batch_id)
-            & BatchParticipant.deleted_at.is_(None),
-        )
-        .filter(
-            BatchMaster.deleted_at.is_(None),
-        )
-    )
-
-     if state_id is not None:
-        query = query.filter(
-            CentreMaster.state_id == state_id,
+        query = (
+            db.query(
+                BatchMaster.batch_id,
+                BatchMaster.batch_name,
+                CentreMaster.centre_name.label("centre_name"),
+                CentreMaster.centre_id.label("centre_id"),
+                CentreMaster.state_id.label("state_id"),
+                CentreMaster.district_id.label("district_id"),
+                CentreMaster.block_id.label("block_id"),
+                BatchMaster.fy_year,
+                User.name.label("created_by"),
+                BatchMaster.status,
+                func.count(BatchParticipant.batch_participant_id).label(
+                    "participant_count"
+                ),
+            )
+            .join(
+                CentreMaster,
+                (BatchMaster.centre_id == CentreMaster.centre_id)
+                & CentreMaster.deleted_at.is_(None),
+            )
+            .join(
+                DistrictMaster,
+                CentreMaster.district_id == DistrictMaster.district_lgd_code,
+            )
+            .join(
+                StateMaster,
+                CentreMaster.state_id == StateMaster.state_lgd_code,
+            )
+            .outerjoin(
+                User,
+                BatchMaster.created_by == User.id,
+            )
+            .outerjoin(
+                BatchParticipant,
+                (BatchMaster.batch_id == BatchParticipant.batch_id)
+                & BatchParticipant.deleted_at.is_(None),
+            )
+            .filter(
+                BatchMaster.deleted_at.is_(None),
+            )
         )
 
-     if district_id is not None:
-        query = query.filter(
-            CentreMaster.district_id == district_id,
+        if state_id is not None:
+            query = query.filter(
+                CentreMaster.state_id == state_id,
+            )
+
+        if district_id is not None:
+            query = query.filter(
+                CentreMaster.district_id == district_id,
+            )
+
+        if status is not None:
+            query = query.filter(
+                BatchMaster.status == status,
+            )
+
+        if search:
+            query = query.filter(
+                BatchMaster.batch_name.ilike(f"%{search}%"),
+            )
+
+        return (
+            query.group_by(
+                BatchMaster.batch_id,
+                BatchMaster.batch_name,
+                CentreMaster.centre_name,
+                CentreMaster.centre_id,
+                CentreMaster.state_id,
+                CentreMaster.district_id,
+                CentreMaster.block_id,
+                BatchMaster.fy_year,
+                User.name,
+                BatchMaster.status,
+            )
+            .order_by(BatchMaster.batch_id.desc())
+            .all()
         )
 
-     if status is not None:
-        query = query.filter(
-            BatchMaster.status == status,
-        )
-
-     if search:
-        query = query.filter(
-            BatchMaster.batch_name.ilike(f"%{search}%"),
-        )
-
-     return (
-        query.group_by(
-            BatchMaster.batch_id,
-            BatchMaster.batch_name,
-            CentreMaster.centre_name,
-            CentreMaster.centre_id,
-            CentreMaster.state_id,
-            CentreMaster.district_id,
-            CentreMaster.block_id,
-            BatchMaster.fy_year,
-            User.name,
-            BatchMaster.status,
-        )
-        .order_by(
-            BatchMaster.batch_id.desc()
-        )
-        .all()
-    )
-    
     @staticmethod
     def get_batch_by_id(
         db: Session,
@@ -174,47 +170,42 @@ class BatchRepository:
 
     @staticmethod
     def get_batch_view_by_id(
-     db: Session,
-     batch_id: int,
-):
+        db: Session,
+        batch_id: int,
+    ):
 
-     return (
-        db.query(
-            BatchMaster.batch_id,
-            BatchMaster.batch_name,
-
-            CentreMaster.state_id,
-            CentreMaster.district_id,
-            CentreMaster.block_id,
-
-            BatchMaster.centre_id,
-            CentreMaster.centre_name.label("centre_name"),
-
-            BatchMaster.fy_year,
-
-            BatchMaster.created_by,
-            User.name.label("created_by_name"),
-
-            BatchMaster.status,
-
-            BatchMaster.created_at,
-            BatchMaster.updated_at,
+        return (
+            db.query(
+                BatchMaster.batch_id,
+                BatchMaster.batch_name,
+                CentreMaster.state_id,
+                CentreMaster.district_id,
+                CentreMaster.block_id,
+                BatchMaster.centre_id,
+                CentreMaster.centre_name.label("centre_name"),
+                BatchMaster.fy_year,
+                BatchMaster.created_by,
+                User.name.label("created_by_name"),
+                BatchMaster.status,
+                BatchMaster.created_at,
+                BatchMaster.updated_at,
+            )
+            .join(
+                CentreMaster,
+                (BatchMaster.centre_id == CentreMaster.centre_id)
+                & CentreMaster.deleted_at.is_(None),
+            )
+            .outerjoin(
+                User,
+                BatchMaster.created_by == User.id,
+            )
+            .filter(
+                BatchMaster.batch_id == batch_id,
+                BatchMaster.deleted_at.is_(None),
+            )
+            .first()
         )
-        .join(
-            CentreMaster,
-            (BatchMaster.centre_id == CentreMaster.centre_id)
-            & CentreMaster.deleted_at.is_(None),
-        )
-        .outerjoin(
-            User,
-            BatchMaster.created_by == User.id,
-        )
-        .filter(
-            BatchMaster.batch_id == batch_id,
-            BatchMaster.deleted_at.is_(None),
-        )
-        .first()
-    )
+
     @staticmethod
     def update_batch(
         db: Session,
@@ -287,33 +278,29 @@ class BatchRepository:
 
         return batch
 
-
     @staticmethod
     def get_batch_participants(
-     db: Session,
-     batch_id: int,
-):
+        db: Session,
+        batch_id: int,
+    ):
 
-     return (
-        db.query(
-            ParticipantMaster.participant_id,
-            ParticipantMaster.participant_name,
-            ParticipantMaster.email,
-            ParticipantMaster.mobile_no,
-            ParticipantMaster.enrollment_no,
+        return (
+            db.query(
+                ParticipantMaster.participant_id,
+                ParticipantMaster.participant_name,
+                ParticipantMaster.email,
+                ParticipantMaster.mobile_no,
+                ParticipantMaster.enrollment_no,
+            )
+            .join(
+                BatchParticipant,
+                BatchParticipant.participant_id == ParticipantMaster.participant_id,
+            )
+            .filter(
+                BatchParticipant.batch_id == batch_id,
+                BatchParticipant.deleted_at.is_(None),
+                ParticipantMaster.deleted_at.is_(None),
+            )
+            .order_by(ParticipantMaster.participant_name)
+            .all()
         )
-        .join(
-            BatchParticipant,
-            BatchParticipant.participant_id
-            == ParticipantMaster.participant_id,
-        )
-        .filter(
-            BatchParticipant.batch_id == batch_id,
-            BatchParticipant.deleted_at.is_(None),
-            ParticipantMaster.deleted_at.is_(None),
-        )
-        .order_by(
-            ParticipantMaster.participant_name
-        )
-        .all()
-    )

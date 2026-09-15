@@ -1,4 +1,4 @@
-import { getModuleIconUrl } from "../../../../shared/utils/mediaUrl";
+import { getModuleIconUrl } from "@/shared/utils/mediaUrl";
 
 export default function ModuleTranslationForm({
     form = {
@@ -219,7 +219,7 @@ export default function ModuleTranslationForm({
             </form>
 
             {/* Back to List */}
-            <div className="mt-[12px] flex justify-end">
+            {/* <div className="mt-[12px] flex justify-end">
                 <button
                     type="button"
                     onClick={onCancel}
@@ -240,7 +240,7 @@ export default function ModuleTranslationForm({
                 >
                     Back to List
                 </button>
-            </div>
+            </div> */}
         </>
     );
 }

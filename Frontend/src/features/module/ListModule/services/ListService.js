@@ -1,4 +1,4 @@
-import API from "../../../../api/Api";
+import API from "@/api/Api";
 
 /* =========================================================
    GET MODULE LIST
@@ -141,14 +141,12 @@ export const deleteModule = async (moduleId) => {
    Backend returns XLSX
 ========================================================= */
 
-export const exportModules = async (languageId) => {
+export const exportModules = async (params = {}) => {
     try {
         const response = await API.get(
             "/modules/export",
             {
-                params: {
-                    language_id: languageId,
-                },
+                params,
                 responseType: "blob",
             }
         );

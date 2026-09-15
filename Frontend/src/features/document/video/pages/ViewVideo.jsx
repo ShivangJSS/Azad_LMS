@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import AppLayout from "../../../../components/layout/AppLayout";
-import Breadcrumbs from "../../../../shared/components/breadcrumbs/Breadcrumbs";
+import AppLayout from "@/components/layout/AppLayout";
+import Breadcrumbs from "@/shared/components/breadcrumbs/Breadcrumbs";
 
-import { getVideo } from "../services/VideoService";
-import { toMediaUrl } from "../hook/videoConstants";
+import { getVideo } from "@/features/document/video/services/VideoService";
+import { toMediaUrl } from "@/features/document/video/hook/videoConstants";
 
 const breadcrumbItems = [
     { label: "Home", path: "/dashboard" },

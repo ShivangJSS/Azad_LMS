@@ -1,8 +1,7 @@
 import {
     inputClass,
-    outlineButtonClass,
-    primaryButtonClass,
-} from "../hook/Topicconstants";
+} from "@/features/module/Topic/hook/Topicconstants";
+import SearchResetActions from "@/shared/components/table/SearchResetActions";
 
 export default function TopicFilters({
     filters,
@@ -27,25 +26,7 @@ export default function TopicFilters({
             </div>
 
             {/* Buttons */}
-            <div className="flex shrink-0 flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:gap-4">
-
-                <button
-                    type="button"
-                    onClick={onSearch}
-                    className={`${primaryButtonClass} w-full rounded-sm bg-[#732269] sm:w-30`}
-                >
-                    Search
-                </button>
-
-                <button
-                    type="button"
-                    onClick={onReset}
-                    className={`${outlineButtonClass} w-full sm:w-30`}
-                >
-                    Reset
-                </button>
-
-            </div>
+            <SearchResetActions onSearch={onSearch} onReset={onReset} />
 
         </div>
     );

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
     ComposableMap,
     Geographies,
@@ -7,12 +7,13 @@ import {
     ZoomableGroup,
 } from "react-simple-maps";
 
-/* Real India states map (topojson fetched from a CDN). Every state is a
-   hoverable region; the states that have centres are highlighted and
+import INDIA_TOPO from "./india.topo.json";
+
+/* Real India states map. The topojson (38 KB) ships inside this chunk, so
+   the map renders immediately — no CDN request, no spinner. Every state is
+   a hoverable region; the states that have centres are highlighted and
    labelled with their count. Includes +/- zoom controls and a white
    cursor tooltip — matching the reference dashboard. */
-const INDIA_TOPO_JSON =
-    "https://raw.githubusercontent.com/Anujarya300/bubble_maps/master/data/geography-data/india.topo.json";
 
 const BRAND = "#6B2D5B";
 const HILITE = ["#4d2f66", "#e8b23d", "#3d7fd6", "#2fb8a3", "#c77fd6"];
@@ -94,26 +95,12 @@ function MapSpinner({ height }) {
 }
 
 export default function StateWiseCentresMap({ centres = [], height = 420, onStateClick }) {
-    const [geoData, setGeoData] = useState(null); // null = loading
-    const [failed, setFailed] = useState(false);
+    const geoData = INDIA_TOPO;
+    const failed = false;
     const [hover, setHover] = useState(null); // { name, total }
     const [cursor, setCursor] = useState({ x: 0, y: 0 });
     const [position, setPosition] = useState(INITIAL);
     const wrapRef = useRef(null);
-
-    useEffect(() => {
-        let alive = true;
-        fetch(INDIA_TOPO_JSON)
-            .then((res) => {
-                if (!res.ok) throw new Error("map fetch failed");
-                return res.json();
-            })
-            .then((data) => alive && setGeoData(data))
-            .catch(() => alive && setFailed(true));
-        return () => {
-            alive = false;
-        };
-    }, []);
 
     // Index centres by canonical state name (with a stable colour each).
     const byState = useMemo(() => {

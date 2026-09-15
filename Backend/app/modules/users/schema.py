@@ -4,10 +4,10 @@ from typing import Optional
 from typing import Literal
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
-
 # ===========================
 # Common Responses
 # ===========================
+
 
 class CreatableRoleResponse(BaseModel):
     id: int
@@ -17,6 +17,7 @@ class CreatableRoleResponse(BaseModel):
 # ===========================
 # Create User
 # ===========================
+
 
 class UserCreateRequest(BaseModel):
     name: str = Field(..., max_length=255)
@@ -39,6 +40,7 @@ class UserCreateRequest(BaseModel):
 # Update User
 # ===========================
 
+
 class UserUpdateRequest(BaseModel):
     name: str = Field(..., max_length=255)
     username: Optional[str] = None
@@ -58,6 +60,7 @@ class UserUpdateRequest(BaseModel):
 # ===========================
 # User List Response
 # ===========================
+
 
 class UserResponse(BaseModel):
     id: int
@@ -84,6 +87,7 @@ class UserResponse(BaseModel):
 # ===========================
 # User Detail Response
 # ===========================
+
 
 class UserDetailResponse(BaseModel):
     id: int
@@ -118,6 +122,7 @@ class UserDetailResponse(BaseModel):
 # State Response
 # ===========================
 
+
 class StateResponse(BaseModel):
     state_lgd_code: int
     state_name: str
@@ -126,6 +131,7 @@ class StateResponse(BaseModel):
 # ===========================
 # District Response
 # ===========================
+
 
 class DistrictResponse(BaseModel):
     district_lgd_code: int
@@ -136,6 +142,7 @@ class DistrictResponse(BaseModel):
 # Block Response
 # ===========================
 
+
 class BlockResponse(BaseModel):
     block_lgd_code: int
     block_name: str
@@ -145,9 +152,11 @@ class BlockResponse(BaseModel):
 # Centre Response
 # ===========================
 
+
 class CentreResponse(BaseModel):
     centre_id: int
     centre_name: str
+
 
 class UserListItemResponse(BaseModel):
     id: int
@@ -184,10 +193,11 @@ class UserDetailResponse(BaseModel):
 
     status: str
 
-    model_config = ConfigDict(from_attributes=True)   
+    model_config = ConfigDict(from_attributes=True)
+
 
 class MessageResponse(BaseModel):
-    message: str     
+    message: str
 
 
 class UserUpdateRequest(BaseModel):
@@ -197,17 +207,18 @@ class UserUpdateRequest(BaseModel):
     password: Optional[str] = None
 
 
-
 class BatchResponse(BaseModel):
     batch_id: int
     batch_name: str
     fy_year: str
-    centre_name: str    
+    centre_name: str
+
 
 class EnrollmentResponse(BaseModel):
     participant_id: int
     enrollment_no: str
-    participant_name: str    
+    participant_name: str
+
 
 class ParticipantCreateRequest(BaseModel):
     state_id: int
@@ -215,7 +226,7 @@ class ParticipantCreateRequest(BaseModel):
     block_id: Optional[int] = None
     centre_id: int
     batch_id: int
-    
+
     participant_name: str
     enrollment_no: str
     username: str
@@ -230,16 +241,17 @@ class ParticipantCreateRequest(BaseModel):
     aadhaar_number: str | None = None
 
     location: str
-    address: str    
+    address: str | None = None
+
 
 class CentreResponse(BaseModel):
     centre_id: int
     centre_name: str
 
+
 class CentreResponse(BaseModel):
     centre_id: int
     centre_name: str
-
 
 
 class ParticipantListResponse(BaseModel):
@@ -262,6 +274,7 @@ class ParticipantListResponse(BaseModel):
 # Participant Profile
 # ===============================
 
+
 class ParticipantProfileResponse(BaseModel):
     participant_id: int
     participant_name: str
@@ -281,10 +294,10 @@ class ParticipantProfileResponse(BaseModel):
         from_attributes = True
 
 
-
 # ===============================
 # Module Wise Report
 # ===============================
+
 
 class ModuleReportResponse(BaseModel):
     module_id: int
@@ -300,7 +313,6 @@ class ModuleReportResponse(BaseModel):
 
     percentage: float = 0
     progress: float = 0
-
 
 
 class AttemptResponse(BaseModel):
@@ -353,6 +365,7 @@ class AttemptWiseResultResponse(BaseModel):
     overall_total_score: float
     overall_course_progress: float
 
+
 class AssessmentSummaryResponse(BaseModel):
     module_results: List[ModuleAssessmentResponse]
 
@@ -365,9 +378,11 @@ class AssessmentSummaryResponse(BaseModel):
     percentage: float
     progress: float
 
+
 # ===============================
 # Final Report Response
 # ===============================
+
 
 class ParticipantReportResponse(BaseModel):
     participant: ParticipantProfileResponse
@@ -378,6 +393,7 @@ class ParticipantReportResponse(BaseModel):
 # ===============================
 # Manage Modules
 # ===============================
+
 
 class ParticipantModuleActionRequest(BaseModel):
     participant_id: int

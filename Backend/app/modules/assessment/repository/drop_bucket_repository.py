@@ -1,5 +1,5 @@
-from datetime import datetime
-from typing import List, Optional
+from datetime import datetime, timezone
+from typing import List, Optional, cast
 
 from sqlalchemy.orm import Session
 
@@ -11,6 +11,7 @@ from app.modules.assessment.model import (
 
 from app.modules.assessment.schema.drop_bucket_schema import (
     DropBucketCreate,
+    DropBucketOptionCreate,
     DropBucketItemsUpdateRequest,
     DropBucketUpdate,
 )
@@ -37,19 +38,32 @@ class DropBucketRepository:
 
         results = query.order_by(DropBucketMaster.drop_bucket_id.desc()).all()
 
-        for row in results:
-            bucket = (
-                db.query(DropBucket)
-                .filter(
-                    DropBucket.drop_bucket_id == row.drop_bucket_id,
-                    DropBucket.deleted_at.is_(None),
-                )
-                .first()
+        if not results:
+            return results
+
+        # Optimization: Batch load matching buckets to eliminate N+1 queries
+        master_ids = [
+            row.parent_id if row.parent_id else row.drop_bucket_id for row in results
+        ]
+
+        buckets = (
+            db.query(DropBucket)
+            .filter(
+                DropBucket.drop_bucket_id.in_(master_ids),
+                DropBucket.deleted_at.is_(None),
             )
+            .all()
+        )
+
+        # Map buckets by ID and language for rapid lookup
+        bucket_map = {(b.drop_bucket_id, b.language_id): b for b in buckets}
+
+        for row in results:
+            target_id = row.parent_id if row.parent_id else row.drop_bucket_id
+            bucket = bucket_map.get((target_id, row.language_id))
 
             row.bucket_name = bucket.bucket_name if bucket else None
             row.bucket_image = bucket.bucket_image if bucket else None
-            # Expose the first bucket's id so the list can open its items.
             row.bucket_id = bucket.bucket_id if bucket else None
 
         return results
@@ -60,18 +74,24 @@ class DropBucketRepository:
         drop_bucket_id: int,
         language_id: int,
     ):
-        """All items across every bucket of a question, each labelled
-        with its bucket name. Returns (buckets_meta, items)."""
+        """All items across buckets for a specific language of a question."""
         buckets = DropBucketRepository.get_buckets(
-            db=db, drop_bucket_id=drop_bucket_id
+            db=db, drop_bucket_id=drop_bucket_id, language_id=language_id
         )
 
-        buckets_meta = []
-        items = []
+        buckets_meta: List[dict[str, object]] = []
+        items: List[dict[str, object]] = []
+
+        bucket_ids = [
+            b.id for b in buckets if hasattr(b, "id")
+        ]  # fallback safety if primary key name differs
 
         for b in buckets:
             buckets_meta.append(
-                {"bucket_id": b.bucket_id, "bucket_name": b.bucket_name}
+                {
+                    "bucket_id": getattr(b, "bucket_id", None),
+                    "bucket_name": b.bucket_name,
+                }
             )
 
             rows = (
@@ -134,22 +154,37 @@ class DropBucketRepository:
     def get_buckets(
         db: Session,
         drop_bucket_id: int,
+        language_id: Optional[int] = None,
     ):
-        return (
-            db.query(DropBucket)
-            .filter(
-                DropBucket.drop_bucket_id == drop_bucket_id,
-                DropBucket.deleted_at.is_(None),
-            )
-            .all()
+        master = (
+            db.query(DropBucketMaster)
+            .filter(DropBucketMaster.drop_bucket_id == drop_bucket_id)
+            .first()
         )
+
+        target_id = drop_bucket_id
+        lang = language_id
+
+        if master:
+            target_id = master.parent_id if master.parent_id else master.drop_bucket_id
+            if lang is None:
+                lang = master.language_id
+
+        query = db.query(DropBucket).filter(
+            DropBucket.drop_bucket_id == target_id,
+            DropBucket.deleted_at.is_(None),
+        )
+
+        if lang is not None:
+            query = query.filter(DropBucket.language_id == lang)
+
+        return query.all()
 
     @staticmethod
     def get_translations(
         db: Session,
         parent_id: int,
     ):
-        """All translation masters (parent_id == the English id)."""
         return (
             db.query(DropBucketMaster)
             .filter(
@@ -164,12 +199,11 @@ class DropBucketRepository:
     def replace_buckets(
         db: Session,
         drop_bucket_id: int,
-        buckets: list,
+        buckets: List[DropBucketOptionCreate],
     ):
-        """Delete existing buckets of a master and insert the given ones."""
-        db.query(DropBucket).filter(
-            DropBucket.drop_bucket_id == drop_bucket_id
-        ).delete(synchronize_session=False)
+        db.query(DropBucket).filter(DropBucket.drop_bucket_id == drop_bucket_id).delete(
+            synchronize_session=False
+        )
 
         for bucket in buckets:
             db.add(
@@ -179,8 +213,8 @@ class DropBucketRepository:
                     bucket_image=bucket.bucket_image,
                     status=1,
                     language_id=bucket.language_id,
-                    created_at=datetime.utcnow(),
-                    updated_at=datetime.utcnow(),
+                    created_at=datetime.now(timezone.utc),
+                    updated_at=datetime.now(timezone.utc),
                 )
             )
 
@@ -189,7 +223,6 @@ class DropBucketRepository:
         db: Session,
         data: DropBucketCreate,
     ):
-
         drop_bucket = DropBucketMaster(
             parent_id=data.parent_id,
             drop_bucket_question_title=data.drop_bucket_question_title,
@@ -198,8 +231,8 @@ class DropBucketRepository:
             marks=data.marks,
             status=data.status,
             language_id=data.language_id,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
 
         db.add(drop_bucket)
@@ -213,8 +246,8 @@ class DropBucketRepository:
                     bucket_image=bucket.bucket_image,
                     status=1,
                     language_id=bucket.language_id,
-                    created_at=datetime.utcnow(),
-                    updated_at=datetime.utcnow(),
+                    created_at=datetime.now(timezone.utc),
+                    updated_at=datetime.now(timezone.utc),
                 )
             )
 
@@ -223,7 +256,8 @@ class DropBucketRepository:
 
         drop_bucket.buckets = DropBucketRepository.get_buckets(
             db,
-            drop_bucket.drop_bucket_id,
+            cast(int, drop_bucket.drop_bucket_id),
+            language_id=drop_bucket.language_id,
         )
 
         return drop_bucket
@@ -234,7 +268,6 @@ class DropBucketRepository:
         drop_bucket: DropBucketMaster,
         data: DropBucketUpdate,
     ):
-
         update_data = data.model_dump(
             exclude_unset=True,
             exclude={"buckets"},
@@ -243,13 +276,12 @@ class DropBucketRepository:
         for key, value in update_data.items():
             setattr(drop_bucket, key, value)
 
-        drop_bucket.updated_at = datetime.utcnow()
+        drop_bucket.updated_at = datetime.now(timezone.utc)
 
         if data.buckets is not None:
-
             db.query(DropBucket).filter(
                 DropBucket.drop_bucket_id == drop_bucket.drop_bucket_id
-            ).delete()
+            ).delete(synchronize_session=False)
 
             for bucket in data.buckets:
                 db.add(
@@ -259,8 +291,8 @@ class DropBucketRepository:
                         bucket_image=bucket.bucket_image,
                         status=1,
                         language_id=bucket.language_id,
-                        created_at=datetime.utcnow(),
-                        updated_at=datetime.utcnow(),
+                        created_at=datetime.now(timezone.utc),
+                        updated_at=datetime.now(timezone.utc),
                     )
                 )
 
@@ -270,6 +302,7 @@ class DropBucketRepository:
         drop_bucket.buckets = DropBucketRepository.get_buckets(
             db,
             drop_bucket.drop_bucket_id,
+            language_id=drop_bucket.language_id,
         )
 
         return drop_bucket
@@ -279,7 +312,7 @@ class DropBucketRepository:
         db: Session,
         drop_bucket: DropBucketMaster,
     ):
-        drop_bucket.deleted_at = datetime.utcnow()
+        drop_bucket.deleted_at = datetime.now(timezone.utc)
         db.commit()
 
     @staticmethod
@@ -288,7 +321,6 @@ class DropBucketRepository:
         parent_id: int,
         data: DropBucketCreate,
     ):
-        # Check if translation already exists
         drop_bucket = (
             db.query(DropBucketMaster)
             .filter(
@@ -300,7 +332,6 @@ class DropBucketRepository:
         )
 
         if drop_bucket:
-            # Update existing translation
             drop_bucket.drop_bucket_question_title = data.drop_bucket_question_title
             drop_bucket.drop_bucket_question_description = (
                 data.drop_bucket_question_description
@@ -310,13 +341,11 @@ class DropBucketRepository:
             drop_bucket.status = data.status
             drop_bucket.updated_at = datetime.utcnow()
 
-            # Delete old buckets and add new ones
             db.query(DropBucket).filter(
                 DropBucket.drop_bucket_id == drop_bucket.drop_bucket_id
             ).delete(synchronize_session=False)
 
         else:
-            # Create new translation
             drop_bucket = DropBucketMaster(
                 parent_id=parent_id,
                 drop_bucket_question_title=data.drop_bucket_question_title,
@@ -331,7 +360,6 @@ class DropBucketRepository:
             db.add(drop_bucket)
             db.flush()
 
-        # Add buckets
         for bucket in data.buckets:
             db.add(
                 DropBucket(
@@ -350,7 +378,8 @@ class DropBucketRepository:
 
         drop_bucket.buckets = DropBucketRepository.get_buckets(
             db,
-            drop_bucket.drop_bucket_id,
+            cast(int, drop_bucket.drop_bucket_id),
+            language_id=drop_bucket.language_id,
         )
 
         return drop_bucket
@@ -361,15 +390,13 @@ class DropBucketRepository:
         bucket_id: int,
         language_id: Optional[int] = None,
     ):
-        return (
-            db.query(DropBucketItem)
-            .filter(
-                DropBucketItem.bucket_id == bucket_id,
-                DropBucketItem.language_id == language_id,
-                DropBucketItem.deleted_at.is_(None),
-            )
-            .all()
+        query = db.query(DropBucketItem).filter(
+            DropBucketItem.bucket_id == bucket_id,
+            DropBucketItem.deleted_at.is_(None),
         )
+        if language_id is not None:
+            query = query.filter(DropBucketItem.language_id == language_id)
+        return query.all()
 
     @staticmethod
     def update_bucket_items(
@@ -391,43 +418,33 @@ class DropBucketRepository:
         request_ids = []
 
         for item in data.items:
-
-            # Existing item
             if item.drop_bucket_item_id and item.drop_bucket_item_id in existing_map:
-
                 db_item = existing_map[item.drop_bucket_item_id]
 
                 db_item.item_name = item.item_name
                 db_item.item_image = item.item_image
                 db_item.status = item.status
                 db_item.language_id = item.language_id
-                db_item.updated_at = datetime.utcnow()
+                db_item.updated_at = datetime.now(timezone.utc)
 
                 request_ids.append(item.drop_bucket_item_id)
-
-            # New item
             else:
-
                 new_item = DropBucketItem(
                     bucket_id=bucket_id,
                     item_name=item.item_name,
                     item_image=item.item_image,
-                    status=item.status,
                     language_id=item.language_id,
-                    created_at=datetime.utcnow(),
-                    updated_at=datetime.utcnow(),
+                    status=item.status,
+                    created_at=datetime.now(timezone.utc),
+                    updated_at=datetime.now(timezone.utc),
                 )
-
                 db.add(new_item)
                 db.flush()
-
                 request_ids.append(new_item.drop_bucket_item_id)
 
-        # Delete removed items
         for db_item in existing_items:
-
             if db_item.drop_bucket_item_id not in request_ids:
-                db_item.deleted_at = datetime.utcnow()
+                db_item.deleted_at = datetime.now(timezone.utc)
 
         db.commit()
 

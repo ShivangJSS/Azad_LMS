@@ -34,7 +34,6 @@ from .schema import (
 from app.modules.auth.model import User
 from app.shared.dependencies.module_access import Module, require_module_access
 
-
 router = APIRouter(
     prefix="/states",
     tags=["State Masters"],
@@ -138,9 +137,7 @@ def update_state(
 def delete_state(
     state_lgd_code: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(
-        require_roles(UserRole.SUPER_ADMIN)
-    ),
+    current_user: User = Depends(require_roles(UserRole.SUPER_ADMIN)),
 ):
     return delete_state_controller(
         db=db,

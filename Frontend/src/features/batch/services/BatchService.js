@@ -1,14 +1,14 @@
-import API from '../../../api/Api';
+import API from '@/api/Api';
 
 // Reuse the already-working reference-data state/district/centre lookups
 // (same ones used by the Participants module) rather than duplicating them.
-export { getStates, getDistricts, getAllCentres } from '../../participant/services/participantService';
+export { getStates, getDistricts, getAllCentres } from '@/features/participant/services/ParticipantService';
 
 // ==========================================================
 // Batches
 // ==========================================================
 
-export const getBatches = async ({ stateId, districtId, search } = {}) => {
+export const getBatches = async({ stateId, districtId, search } = {}) => {
     try {
         const response = await API.get('/batches', {
             params: {
@@ -24,7 +24,7 @@ export const getBatches = async ({ stateId, districtId, search } = {}) => {
     }
 };
 
-export const createBatch = async ({ batchName, centreId, fyYear, status }) => {
+export const createBatch = async({ batchName, centreId, fyYear, status }) => {
     try {
         const response = await API.post('/batches', {
             batch_name: batchName,
@@ -39,7 +39,7 @@ export const createBatch = async ({ batchName, centreId, fyYear, status }) => {
     }
 };
 
-export const getBatchParticipants = async (batchId) => {
+export const getBatchParticipants = async(batchId) => {
     try {
         const response = await API.get(`/batches/${batchId}/participants`);
         return response.data;
@@ -49,7 +49,7 @@ export const getBatchParticipants = async (batchId) => {
     }
 };
 
-export const updateBatchStatus = async (batchId, newStatus) => {
+export const updateBatchStatus = async(batchId, newStatus) => {
     try {
         const response = await API.patch(`/batches/${batchId}/status`, {
             status: newStatus,
@@ -61,7 +61,7 @@ export const updateBatchStatus = async (batchId, newStatus) => {
     }
 };
 
-export const deleteBatch = async (batchId) => {
+export const deleteBatch = async(batchId) => {
     try {
         const response = await API.delete(`/batches/${batchId}`);
         return response.data;
@@ -71,19 +71,18 @@ export const deleteBatch = async (batchId) => {
     }
 };
 
-export const getBatchById = async (batchId) => {
+export const getBatchById = async(batchId) => {
     try {
         const response = await API.get(`/batches/${batchId}`);
         return response.data;
-    }
-    catch (error) {
+    } catch (error) {
 
         console.error(`Error fetching batch with ID ${batchId}:`, error);
         throw error;
     }
 };
 
-export const updateBatch = async (batchId, { batchName, centreId, fyYear, status }) => {
+export const updateBatch = async(batchId, { batchName, centreId, fyYear, status }) => {
     try {
         const response = await API.put(`/batches/${batchId}`, {
             batch_name: batchName,

@@ -1,8 +1,8 @@
 import { useLocation } from 'react-router-dom';
 
-import AddTraineeForm from '../components/AddTraineeForm';
-import AppLayout from '../../../components/layout/AppLayout';
-import Breadcrumb from '../../../shared/components/Breadcrumbs/Breadcrumbs';
+import AddTraineeForm from '@/features/participant/components/AddTraineeForm';
+import AppLayout from '@/components/layout/AppLayout';
+import Breadcrumb from '@/shared/components/breadcrumbs/Breadcrumbs';
 
 const BRAND = '#732269';
 

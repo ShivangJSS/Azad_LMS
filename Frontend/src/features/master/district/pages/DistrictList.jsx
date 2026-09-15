@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
-import AppLayout from "../../../../components/layout/AppLayout";
-import Breadcrumbs from "../../../../shared/components/breadcrumbs/Breadcrumbs";
-import Pagination from "../../../../shared/components/table/Pagination";
+import AppLayout from "@/components/layout/AppLayout";
+import Breadcrumbs from "@/shared/components/breadcrumbs/Breadcrumbs";
+import Pagination from "@/shared/components/table/Pagination";
 
-import { getAllDistricts, deleteDistrict } from "../services/DistrictService";
-import { getReferenceStates } from "../../state/services/StateService";
+import { getAllDistricts, deleteDistrict } from "@/features/master/district/services/DistrictService";
+import { getReferenceStates } from "@/features/master/state/services/StateService";
 import { FaChevronDown } from "react-icons/fa";
 
 const PER_PAGE = 10;
@@ -14,6 +14,7 @@ const PER_PAGE = 10;
 const EMPTY_FILTERS = {
     state_lgd_code: "",
     district_name: "",
+    status: "",
 };
 
 export default function DistrictList() {
@@ -48,6 +49,10 @@ export default function DistrictList() {
 
             if (appliedFilters.district_name.trim()) {
                 params.district_name = appliedFilters.district_name.trim();
+            }
+
+            if (appliedFilters.status) {
+                params.status = appliedFilters.status;
             }
 
             const response = await getAllDistricts(params);
@@ -205,6 +210,24 @@ export default function DistrictList() {
                         />
                     </div>
 
+                    <div className="relative w-full lg:flex-1">
+                        <select
+                            name="status"
+                            value={filters.status}
+                            onChange={handleFilterChange}
+                            className={selectClass}
+                        >
+                            <option value="">Select Status</option>
+                            <option value="1">Active</option>
+                            <option value="0">Not Active</option>
+                        </select>
+
+                        <FaChevronDown
+                            size={14}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#5E6E82] pointer-events-none z-10"
+                        />
+                    </div>
+
                     <div className="flex gap-[12px]">
                         <button
                             type="button"
@@ -224,6 +247,7 @@ export default function DistrictList() {
                     </div>
                 </div>
 
+                <div className="border-t border-[#4FC3C3] my-[20px]" />
                 {/* ================= COUNT + ADD ================= */}
 
                 <div className="mt-[20px] mb-[14px] flex flex-wrap items-center justify-between gap-[12px]">
@@ -231,13 +255,6 @@ export default function DistrictList() {
                         Total District(s):{" "}
                         <span className="text-[#7b216f]">{totalEntries}</span>
                     </p>
-
-                    <Link
-                        to="/master/districts/create"
-                        className="inline-flex h-[36px] items-center rounded-sm! border-1 border-[#060606] bg-white px-[16px] text-[14px] text-[#070707]! no-underline hover:bg-gray-50 font-medium text-decoration-none"
-                    >
-                        + Add District
-                    </Link>
                 </div>
 
                 {/* ================= TABLE ================= */}

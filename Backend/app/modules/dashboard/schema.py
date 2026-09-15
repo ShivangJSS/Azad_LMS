@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional
- 
+
 from pydantic import BaseModel, ConfigDict
 
 
@@ -27,19 +27,23 @@ class DashboardSummaryResponse(BaseModel):
 
     completion_rate: float
 
+
 class StateWiseParticipant(BaseModel):
     state_id: int
     state_name: str
-    total: int        
+    total: int
+
 
 class ChartItem(BaseModel):
     state_id: int
     state_name: str
-    total: int    
+    total: int
+
 
 class GenderDistributionItem(BaseModel):
     gender: str | None
     total: int
+
 
 class MonthlyLoginTrendItem(BaseModel):
     month: str
@@ -50,9 +54,11 @@ class AgeGroupDistributionItem(BaseModel):
     age_group: str
     total: int
 
+
 class DocumentTypeDistributionItem(BaseModel):
     doc_type: str
-    total: int    
+    total: int
+
 
 class DistrictWiseParticipantItem(BaseModel):
     district_name: str
@@ -100,8 +106,6 @@ class DashboardParticipantDetail(BaseModel):
     district_name: str | None
 
 
-
-
 class DashboardCentreDetail(BaseModel):
     centre_name: str
     address: str | None
@@ -128,6 +132,7 @@ class DashboardLoginDetail(BaseModel):
     mobile_no: str | None
     login_time: datetime
     app_version: str | None
+
 
 class DashboardResponse(BaseModel):
     summary: DashboardSummaryResponse

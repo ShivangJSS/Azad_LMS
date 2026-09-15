@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Eye, EyeOff, RefreshCw, Loader2 } from 'lucide-react';
-import { getParticipantImageUrl } from '../../../shared/utils/mediaUrl';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { getParticipantImageUrl } from '@/shared/utils/mediaUrl';
+import { validateImage, ASPECT_SQUARE } from '@/shared/utils/imageValidation';
+import { sanitizeDigits } from '@/shared/utils/inputValidation';
 import {
   getStates,
   getDistricts,
@@ -12,7 +14,7 @@ import {
   getEnrollment,
   createParticipant,
   updateParticipant,
-} from '../services/ParticipantService';
+} from '@/features/participant/services/ParticipantService';
 
 const BRAND = '#732269';
 
@@ -27,6 +29,10 @@ function Label({ children, required }) {
   );
 }
 
+function FieldError({ message }) {
+  return message ? <p className="mt-1 text-xs text-red-600" role="alert">{message}</p> : null;
+}
+
 function shortCode(name) {
   if (!name) return '';
   const words = name.trim().split(/\s+/);
@@ -36,7 +42,6 @@ function shortCode(name) {
   return name.slice(0, 2).toUpperCase();
 }
 
-// "2026-27" -> "26-27"
 function shortFy(fyYear) {
   if (!fyYear) return '';
   const [start, end] = fyYear.split('-');
@@ -132,11 +137,22 @@ export default function AddTraineeForm({ mode = 'create', initialData = null, pa
   const previewSrc = imagePreview || existingImageUrl;
 
   const [refreshingEnrollment, setRefreshingEnrollment] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [validationErrors, setValidationErrors] = useState({});
   const [showReview, setShowReview] = useState(false);
   const topRef = useRef(null);
+
+  useEffect(() => {
+    if (showReview) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [showReview]);
 
   // ---- load states once ----
   useEffect(() => {
@@ -176,10 +192,11 @@ export default function AddTraineeForm({ mode = 'create', initialData = null, pa
     getBatches(form.centre_id).then(setBatches).catch(() => setBatches([]));
   }, [form.centre_id]);
 
-  // ---- auto-build enrollment number once state/district/centre/batch are
-  // all selected: WWW/<state>/<district>/<fy>/<centre>/<batch name>/<seq> ----
+  // ---- auto-build enrollment number ----
+  // Create mode: generate a new sequence for the selected batch.
+  // Edit mode: keep the OLD unique sequence and rebuild only the
+  // state/district/fy/centre/batch parts.
   useEffect(() => {
-    if (isEdit) return; // enrollment is fixed when editing
     if (!form.state_id || !form.district_id || !form.centre_id || !form.batch_id) {
       return;
     }
@@ -197,12 +214,34 @@ export default function AddTraineeForm({ mode = 'create', initialData = null, pa
 
     async function buildEnrollmentNo() {
       setRefreshingEnrollment(true);
+
       try {
-        // Existing enrollments in this batch tell us the next sequence
-        // number. If this endpoint's contract turns out to mean something
-        // else, this is the one place to change it.
-        const existing = await getEnrollment(form.batch_id).catch(() => []);
-        const sequence = (Array.isArray(existing) ? existing.length : 0) + 1;
+        let sequence = '';
+
+        if (isEdit) {
+          // IMPORTANT:
+          // Never create a new unique sequence while editing.
+          // Reuse the sequence from the original enrollment number.
+          const oldEnrollment = String(initialData?.enrollment_no || '').trim();
+          const oldParts = oldEnrollment.split('/');
+
+          if (oldParts.length > 1) {
+            sequence = oldParts[oldParts.length - 1];
+          }
+        } else {
+          // Create mode gets the next sequence for the selected batch.
+          const existing = await getEnrollment(form.batch_id).catch(() => []);
+          sequence = String(
+            (Array.isArray(existing) ? existing.length : 0) + 1
+          );
+        }
+
+        // If an old enrollment number exists but its format is unexpected,
+        // do not overwrite it with a newly generated unique number.
+        if (isEdit && !sequence) {
+          if (!cancelled) setRefreshingEnrollment(false);
+          return;
+        }
 
         const parts = [
           'WWW',
@@ -215,7 +254,10 @@ export default function AddTraineeForm({ mode = 'create', initialData = null, pa
         ];
 
         if (!cancelled) {
-          setForm((prev) => ({ ...prev, enrollment_no: parts.join('/') }));
+          setForm((prev) => ({
+            ...prev,
+            enrollment_no: parts.join('/'),
+          }));
         }
       } finally {
         if (!cancelled) setRefreshingEnrollment(false);
@@ -223,10 +265,22 @@ export default function AddTraineeForm({ mode = 'create', initialData = null, pa
     }
 
     buildEnrollmentNo();
+
     return () => {
       cancelled = true;
     };
-  }, [form.state_id, form.district_id, form.centre_id, form.batch_id, states, districts, centres, batches, refreshKey]);
+  }, [
+    isEdit,
+    initialData?.enrollment_no,
+    form.state_id,
+    form.district_id,
+    form.centre_id,
+    form.batch_id,
+    states,
+    districts,
+    centres,
+    batches,
+  ]);
 
   // ---- handlers ----
 
@@ -251,8 +305,25 @@ export default function AddTraineeForm({ mode = 'create', initialData = null, pa
     }
   };
 
+  // Numeric fields accept digits only (capped to their max length), so
+  // letters/symbols can't be typed into age/mobile/PIN/Aadhaar at all.
+  const NUMERIC_FIELDS = {
+    age: 3,
+    mobile_no: 10,
+    pin: 6,
+    aadhaar_number: 12,
+  };
+
   const handleChange = (key) => (e) => {
-    const value = e.target.value;
+    const value = Object.prototype.hasOwnProperty.call(NUMERIC_FIELDS, key)
+      ? sanitizeDigits(e.target.value, NUMERIC_FIELDS[key])
+      : e.target.value;
+    setValidationErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
     setForm((prev) => {
       const next = { ...prev, [key]: value };
       // clear dependent fields when a parent selection changes
@@ -261,66 +332,84 @@ export default function AddTraineeForm({ mode = 'create', initialData = null, pa
         next.block_id = '';
         next.centre_id = '';
         next.batch_id = '';
-        next.enrollment_no = '';
+        // Do not clear enrollment_no in edit mode.
+        // It will be regenerated with the same unique sequence once
+        // the new cascading selections are completed.
+        if (!isEdit) next.enrollment_no = '';
       } else if (key === 'district_id') {
         next.block_id = '';
         next.centre_id = '';
         next.batch_id = '';
-        next.enrollment_no = '';
+        if (!isEdit) next.enrollment_no = '';
       } else if (key === 'block_id') {
         next.centre_id = '';
         next.batch_id = '';
-        next.enrollment_no = '';
+        if (!isEdit) next.enrollment_no = '';
       } else if (key === 'centre_id') {
         next.batch_id = '';
-        next.enrollment_no = '';
+        if (!isEdit) next.enrollment_no = '';
       } else if (key === 'batch_id') {
-        next.enrollment_no = '';
+        if (!isEdit) next.enrollment_no = '';
       }
       return next;
     });
   };
 
+  const validateForm = () => {
+    // Address is optional supplementary detail (a long free-text field not
+    // shown on the trainee profile); only Location — the short field used in
+    // reports — is required, to avoid asking for the same info twice.
+    const requiredFields = isEdit
+      ? [
+        ['participant_name', 'Participant Name'],
+        ['gender', 'Gender'],
+        ['age', 'Age'],
+        ['pin', 'PIN'],
+        ['location', 'Location'],
+      ]
+      : [
+        ['state_id', 'State'],
+        ['district_id', 'District'],
+        ['block_id', 'Block'],
+        ['centre_id', 'Centre'],
+        ['batch_id', 'Batch'],
+        ['participant_name', 'Participant Name'],
+        ['enrollment_no', 'Enrollment No'],
+        ['username', 'Username'],
+        ['password', 'Password'],
+        ['gender', 'Gender'],
+        ['age', 'Age'],
+        ['pin', 'PIN'],
+        ['location', 'Location'],
+      ];
+    const nextErrors = {};
+
+    requiredFields.forEach(([key, label]) => {
+      if (String(form[key] ?? '').trim() === '') nextErrors[key] = `${label} is required.`;
+    });
+
+    const age = Number(form.age);
+    if (form.age && (!Number.isInteger(age) || age < 1 || age > 100)) {
+      nextErrors.age = 'Age must be a whole number between 1 and 100.';
+    }
+    if (form.pin && !/^\d{6}$/.test(form.pin)) nextErrors.pin = 'PIN must contain exactly 6 digits.';
+    if (form.mobile_no && !/^\d{10}$/.test(form.mobile_no)) {
+      nextErrors.mobile_no = 'Mobile No must contain exactly 10 digits.';
+    }
+    if (form.aadhaar_number && !/^\d{12}$/.test(form.aadhaar_number)) {
+      nextErrors.aadhaar_number = 'Aadhaar Number must contain exactly 12 digits.';
+    }
+
+    setValidationErrors(nextErrors);
+    return nextErrors;
+  };
+
   const handleSubmit = async () => {
     setError(null);
 
-    // Client-side required-field check so a blank/incomplete form shows a clear
-    // message instead of firing the request and getting a 422 from the server.
-    const requiredFields = isEdit
-      ? [
-          ['participant_name', 'Participant Name'],
-          ['gender', 'Gender'],
-          ['age', 'Age'],
-          ['pin', 'PIN'],
-          ['location', 'Location'],
-          ['address', 'Address'],
-        ]
-      : [
-          ['state_id', 'State'],
-          ['district_id', 'District'],
-          ['block_id', 'Block'],
-          ['centre_id', 'Centre'],
-          ['batch_id', 'Batch'],
-          ['participant_name', 'Participant Name'],
-          ['enrollment_no', 'Enrollment No'],
-          ['username', 'Username'],
-          ['password', 'Password'],
-          ['gender', 'Gender'],
-          ['age', 'Age'],
-          ['pin', 'PIN'],
-          ['location', 'Location'],
-          ['address', 'Address'],
-        ];
-
-    const missing = requiredFields.filter(([key]) => {
-      const value = form[key];
-      return value === undefined || value === null || String(value).trim() === '';
-    });
-
-    if (missing.length > 0) {
-      const message = `Please fill all required fields: ${missing
-        .map(([, label]) => label)
-        .join(', ')}.`;
+    const errors = validateForm();
+    if (Object.keys(errors).length > 0) {
+      const message = `Please correct the highlighted fields: ${Object.values(errors).join(' ')}`;
 
       setError(message);
       toast.error('Please fill all required fields.');
@@ -351,6 +440,9 @@ export default function AddTraineeForm({ mode = 'create', initialData = null, pa
         if (form.state_id) efd.append('state_id', form.state_id);
         if (form.district_id) efd.append('district_id', form.district_id);
         if (form.block_id) efd.append('block_id', form.block_id);
+        if (form.centre_id) efd.append('centre_id', form.centre_id);
+        if (form.batch_id) efd.append('batch_id', form.batch_id);
+        if (form.enrollment_no) efd.append('enrollment_no', form.enrollment_no);
         if (imageFile) efd.append('image', imageFile);
         await updateParticipant(participantId, efd);
         navigate('/participants/list');
@@ -415,6 +507,7 @@ export default function AddTraineeForm({ mode = 'create', initialData = null, pa
                 </option>
               ))}
             </select>
+            <FieldError message={validationErrors.state_id} />
           </div>
 
           <div>
@@ -433,6 +526,7 @@ export default function AddTraineeForm({ mode = 'create', initialData = null, pa
                 </option>
               ))}
             </select>
+            <FieldError message={validationErrors.district_id} />
           </div>
 
           <div>
@@ -451,6 +545,7 @@ export default function AddTraineeForm({ mode = 'create', initialData = null, pa
                 </option>
               ))}
             </select>
+            <FieldError message={validationErrors.block_id} />
           </div>
 
           {/* Row 2: Centre / Select Batch */}
@@ -470,6 +565,7 @@ export default function AddTraineeForm({ mode = 'create', initialData = null, pa
                 </option>
               ))}
             </select>
+            <FieldError message={validationErrors.centre_id} />
           </div>
 
           <div className="col-span-2">
@@ -490,6 +586,7 @@ export default function AddTraineeForm({ mode = 'create', initialData = null, pa
                 </option>
               ))}
             </select>
+            <FieldError message={validationErrors.batch_id} />
           </div>
 
           {/* Row 3: Trainee Name / Enrollment No */}
@@ -502,6 +599,7 @@ export default function AddTraineeForm({ mode = 'create', initialData = null, pa
               value={form.participant_name}
               onChange={handleChange('participant_name')}
             />
+            <FieldError message={validationErrors.participant_name} />
           </div>
 
           <div className="col-span-2">
@@ -512,38 +610,33 @@ export default function AddTraineeForm({ mode = 'create', initialData = null, pa
                 className={FIELD + ' flex-1 bg-gray-50 text-gray-500'}
                 style={focusStyle}
                 placeholder="Select state, district, centre & batch to auto-generate"
-                value={form.enrollment_no}
+                value={refreshingEnrollment ? 'Generating…' : form.enrollment_no}
                 readOnly
               />
-              {!isEdit && (
-                <button
-                  type="button"
-                  onClick={() => setRefreshKey((k) => k + 1)}
-                  disabled={!form.batch_id || refreshingEnrollment}
-                  className="flex items-center gap-1.5 border border-gray-300 text-gray-700 text-sm font-medium px-3 py-2 rounded-md hover:bg-gray-50 whitespace-nowrap disabled:opacity-50"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${refreshingEnrollment ? 'animate-spin' : ''}`} />
-                  Refresh
-                </button>
-              )}
             </div>
             {isEdit && (
               <p className="text-xs text-gray-400 mt-1">
                 Enrollment number cannot be changed after creation.
               </p>
             )}
+            <FieldError message={validationErrors.enrollment_no} />
           </div>
 
           {/* Row 4: Age / Gender / Email */}
           <div>
             <Label required>Age</Label>
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
+              min="1"
+              max="100"
+              maxLength={3}
               className={FIELD}
               style={focusStyle}
               value={form.age}
               onChange={handleChange('age')}
             />
+            <FieldError message={validationErrors.age} />
           </div>
 
           <div>
@@ -559,6 +652,7 @@ export default function AddTraineeForm({ mode = 'create', initialData = null, pa
               <option value="Female">Female</option>
               <option value="Other">Other</option>
             </select>
+            <FieldError message={validationErrors.gender} />
           </div>
 
           <div>
@@ -589,6 +683,7 @@ export default function AddTraineeForm({ mode = 'create', initialData = null, pa
                 ? 'Username cannot be changed after creation.'
                 : '3-255 characters. Letters / digits / . _ -. No spaces.'}
             </p>
+            <FieldError message={validationErrors.username} />
           </div>
 
           <div className="col-span-2">
@@ -617,6 +712,7 @@ export default function AddTraineeForm({ mode = 'create', initialData = null, pa
                 ? 'Password cannot be changed from this screen.'
                 : 'Min 8 chars. Must include uppercase, lowercase, digit & special character.'}
             </p>
+            <FieldError message={validationErrors.password} />
           </div>
 
           {/* Row 6: Mobile No / PIN Code */}
@@ -624,22 +720,28 @@ export default function AddTraineeForm({ mode = 'create', initialData = null, pa
             <Label>Mobile No</Label>
             <input
               type="tel"
+              inputMode="numeric"
+              maxLength={10}
               className={FIELD}
               style={focusStyle}
               value={form.mobile_no}
               onChange={handleChange('mobile_no')}
             />
+            <FieldError message={validationErrors.mobile_no} />
           </div>
 
           <div className="col-span-2">
             <Label required>PIN Code</Label>
             <input
               type="text"
+              inputMode="numeric"
+              maxLength={6}
               className={FIELD}
               style={focusStyle}
               value={form.pin}
               onChange={handleChange('pin')}
             />
+            <FieldError message={validationErrors.pin} />
           </div>
 
           {/* Row 7: Aadhaar Number / Location */}
@@ -647,11 +749,14 @@ export default function AddTraineeForm({ mode = 'create', initialData = null, pa
             <Label>Aadhaar Number</Label>
             <input
               type="text"
+              inputMode="numeric"
+              maxLength={12}
               className={FIELD}
               style={focusStyle}
               value={form.aadhaar_number}
               onChange={handleChange('aadhaar_number')}
             />
+            <FieldError message={validationErrors.aadhaar_number} />
           </div>
 
           <div className="col-span-2">
@@ -663,11 +768,12 @@ export default function AddTraineeForm({ mode = 'create', initialData = null, pa
               value={form.location}
               onChange={handleChange('location')}
             />
+            <FieldError message={validationErrors.location} />
           </div>
 
           {/* Row 8: Address / Profile Image */}
           <div>
-            <Label required>Address</Label>
+            <Label>Address</Label>
             <textarea
               rows={3}
               className={FIELD + ' resize-y'}
@@ -675,6 +781,7 @@ export default function AddTraineeForm({ mode = 'create', initialData = null, pa
               value={form.address}
               onChange={handleChange('address')}
             />
+            <FieldError message={validationErrors.address} />
           </div>
 
           <div className="col-span-2">
@@ -701,8 +808,19 @@ export default function AddTraineeForm({ mode = 'create', initialData = null, pa
                   type="file"
                   accept="image/*"
                   className="hidden"
-                  onChange={(e) => {
+                  onChange={async (e) => {
                     const file = e.target.files?.[0] || null;
+                    e.target.value = '';
+
+                    if (file) {
+                      // Profile photo must be square (1:1), plus type/size.
+                      const result = await validateImage(file, { aspectRatio: ASPECT_SQUARE });
+                      if (!result.ok) {
+                        toast.error(result.error);
+                        return;
+                      }
+                    }
+
                     setImageFile(file);
                     setImageName(file?.name || '');
                     setImagePreview((prev) => {
@@ -762,7 +880,7 @@ export default function AddTraineeForm({ mode = 'create', initialData = null, pa
           "Confirm & Save" closes it and runs the real submit handler. */}
       {showReview && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4"
           onClick={() => setShowReview(false)}
         >
           <div

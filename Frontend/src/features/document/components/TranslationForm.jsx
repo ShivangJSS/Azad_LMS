@@ -1,7 +1,7 @@
 import React from "react";
 
-import { getMediaUrl } from "../../../shared/utils/mediaUrl";
-import PptViewer from "../../../shared/components/PptViewer";
+import { getMediaUrl } from "@/shared/utils/mediaUrl";
+import PptViewer from "@/shared/components/PptViewer";
 
 export default function TranslationForm({
     form,

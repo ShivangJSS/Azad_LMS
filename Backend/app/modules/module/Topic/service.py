@@ -50,7 +50,7 @@ class TopicService:
             raise HTTPException(status_code=404, detail="Topic not found.")
 
         return {
-            "module_id": rows[0].module_id,  
+            "module_id": rows[0].module_id,
             "module_name": rows[0].module_name,
             "status": rows[0].status,
             "translations": [
@@ -88,6 +88,7 @@ class TopicService:
             db=db,
             module_id=request.module_id,
             topics=request.topics,
+            language_id=request.language_id,
         )
 
         return {"topic_ids": [topic.topic_id for topic in topics]}

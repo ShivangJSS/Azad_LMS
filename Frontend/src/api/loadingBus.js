@@ -1,11 +1,3 @@
-/* =========================================================================
-   loadingBus — a tiny module-level pub/sub so the axios interceptors (which
-   live outside React) can drive the global loading indicator.
-
-   It counts in-flight requests; `subscribeLoading` fires with the current
-   active count whenever it changes. The LoadingProvider listens and flips the
-   global loader on while count > 0.
-========================================================================= */
 
 let active = 0;
 const listeners = new Set();
@@ -15,7 +7,7 @@ const emit = () => {
         try {
             cb(active);
         } catch {
-            /* ignore listener errors */
+            /* ignore listener errors */    
         }
     });
 };

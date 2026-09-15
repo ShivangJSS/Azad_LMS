@@ -1,4 +1,4 @@
-import API from "../../../api/Api";
+import API from "@/api/Api";
 
 
 
@@ -29,5 +29,25 @@ export const deleteUser = async (userId) => {
 
 export const getCreatableRoles = async () => {
     const { data } = await API.get("/users/creatable-roles");
+    return data;
+};
+
+export const getStates = async () => {
+    const { data } = await API.get("/participants/states");
+    return data;
+};
+
+export const getDistricts = async (stateLgdCode) => {
+    const { data } = await API.get(`/participants/districts/${stateLgdCode}`);
+    return data;
+};
+
+export const getBlocks = async (districtLgdCode) => {
+    const { data } = await API.get(`/participants/blocks/${districtLgdCode}`);
+    return data;
+};
+
+export const getCentres = async (blockId) => {
+    const { data } = await API.get(`/participants/centres/${blockId}`);
     return data;
 };

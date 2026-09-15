@@ -1,4 +1,4 @@
-import API from "../../../../api/Api";
+import API from "@/api/Api";
 
 
 export const getMainContentList = async (moduleId, languageId) => {
@@ -23,10 +23,15 @@ export const getMainContentList = async (moduleId, languageId) => {
     }
 };
 
-export const getTopicsForMainContent = async (moduleId) => {
+export const getTopicsForMainContent = async (moduleId, languageId) => {
     try {
         const response = await API.get(
-            `/modules/main-content/topics/${moduleId}`
+            `/modules/main-content/topics/${moduleId}`,
+            {
+                params: languageId
+                    ? { language_id: languageId }
+                    : {},
+            }
         );
 
         return response.data;

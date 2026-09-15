@@ -13,7 +13,7 @@ from app.database.database import Base
 class DocumentMaster(Base):
     __tablename__ = "document_masters"
 
-    doc_id = Column(Integer, primary_key=True,autoincrement=True)
+    doc_id = Column(Integer, primary_key=True, autoincrement=True)
 
     parent_id = Column(BigInteger)
 
@@ -50,9 +50,6 @@ class DocumentMaster(Base):
     deleted_at = Column(DateTime)
 
 
-
-
-    
 class LanguageMaster(Base):
     __tablename__ = "language_master"
 
@@ -75,8 +72,6 @@ class DocumentCategory(Base):
     language_id = Column(Integer)
 
 
-
-
 class TopicMaster(Base):
     __tablename__ = "topic_master"
 
@@ -94,11 +89,10 @@ class TopicMaster(Base):
     updated_at = Column(DateTime)
 
 
-
 class PdfMaster(Base):
     __tablename__ = "pdf_masters"
 
-    pdf_id = Column(BigInteger, primary_key=True,autoincrement=True)
+    pdf_id = Column(BigInteger, primary_key=True, autoincrement=True)
 
     pdf_unique_id = Column(String(100))
     pdf_name = Column(String(500))
@@ -110,28 +104,25 @@ class PdfMaster(Base):
     status = Column(Integer)
 
     created_at = Column(
-     DateTime,
-     server_default=func.now(),
-)
+        DateTime,
+        server_default=func.now(),
+    )
 
     updated_at = Column(
-      DateTime,
-      server_default=func.now(),
-      onupdate=func.now(),
-)
+        DateTime,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
 
     deleted_at = Column(DateTime)
 
-    language_id = Column(BigInteger)    
-
-
-
+    language_id = Column(BigInteger)
 
 
 class PptMaster(Base):
     __tablename__ = "ppt_masters"
 
-    ppt_id = Column(BigInteger, primary_key=True,autoincrement=True)
+    ppt_id = Column(BigInteger, primary_key=True, autoincrement=True)
 
     ppt_unique_id = Column(String(100))
     ppt_name = Column(String(500))
@@ -143,29 +134,25 @@ class PptMaster(Base):
     status = Column(Integer)
 
     created_at = Column(
-     DateTime,
-     server_default=func.now(),
-)
+        DateTime,
+        server_default=func.now(),
+    )
 
     updated_at = Column(
-     DateTime,
-     server_default=func.now(),
-     onupdate=func.now(),
-)
+        DateTime,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
 
     deleted_at = Column(DateTime)
 
     language_id = Column(BigInteger)
 
 
-
-
-
-
 class VideoMaster(Base):
     __tablename__ = "video_masters"
 
-    video_id = Column(BigInteger, primary_key=True,autoincrement=True)
+    video_id = Column(BigInteger, primary_key=True, autoincrement=True)
 
     video_unique_id = Column(String(100))
     video_name = Column(String(500))
@@ -177,15 +164,15 @@ class VideoMaster(Base):
     status = Column(Integer)
 
     created_at = Column(
-     DateTime,
-     server_default=func.now(),
-)
+        DateTime,
+        server_default=func.now(),
+    )
 
     updated_at = Column(
-     DateTime,
-     server_default=func.now(),
-     onupdate=func.now(),
-)
+        DateTime,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
 
     deleted_at = Column(DateTime)
 

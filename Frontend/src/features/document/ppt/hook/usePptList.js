@@ -4,7 +4,7 @@ import {
     getPpts,
     deletePpt,
     getArchivedVersions,
-} from "../services/PptService";
+} from "@/features/document/ppt/services/PptService";
 import { PER_PAGE } from "./pptConstants";
 
 /** Normalise the paginated `{ data, total }` envelope into an array. */

@@ -1,7 +1,7 @@
-import AppLayout from "../../../../components/layout/AppLayout";
-import Breadcrumbs from "../../../../shared/components/breadcrumbs/Breadcrumbs";
+import AppLayout from "@/components/layout/AppLayout";
+import Breadcrumbs from "@/shared/components/breadcrumbs/Breadcrumbs";
 
-import MatchMakingForm from "../components/MatchMakingForm";
+import MatchMakingForm from "@/features/assessment/MatchMaking/components/MatchMakingForm";
 
 export default function MatchMakingAdd() {
 

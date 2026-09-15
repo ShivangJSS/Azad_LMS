@@ -26,7 +26,6 @@ from app.modules.batch.schema import (
 )
 from app.modules.batch.services import BatchService
 
-
 router = APIRouter(
     prefix="/batches",
     tags=["Batch Master"],
@@ -61,16 +60,12 @@ def get_batches(
 def create_batch(
     batch: BatchCreateRequest,
     db: Session = Depends(get_db),
-
     # Uncomment after enabling authentication
-    current_user: User = Depends(
-        require_roles(UserRole.SUPER_ADMIN)
-    ),
+    current_user: User = Depends(require_roles(UserRole.SUPER_ADMIN)),
 ):
     return BatchService.create_batch(
         db=db,
         batch=batch,
-
         # Replace with current_user.id after auth
         created_by=current_user.id,
     )
@@ -98,11 +93,8 @@ def update_batch(
     batch_id: int,
     batch: BatchUpdateRequest,
     db: Session = Depends(get_db),
-
     # Uncomment after enabling authentication
-    current_user: User = Depends(
-        require_roles(UserRole.SUPER_ADMIN)
-    ),
+    current_user: User = Depends(require_roles(UserRole.SUPER_ADMIN)),
 ):
     return BatchService.update_batch(
         db=db,
@@ -119,11 +111,8 @@ def update_batch_status(
     batch_id: int,
     request: BatchStatusUpdateRequest,
     db: Session = Depends(get_db),
-
     # Uncomment after enabling authentication
-    current_user: User = Depends(
-        require_roles(UserRole.SUPER_ADMIN)
-    ),
+    current_user: User = Depends(require_roles(UserRole.SUPER_ADMIN)),
 ):
     return BatchService.update_batch_status(
         db=db,
@@ -139,17 +128,13 @@ def update_batch_status(
 def delete_batch(
     batch_id: int,
     db: Session = Depends(get_db),
-
     # Uncomment after enabling authentication
-    current_user: User = Depends(
-        require_roles(UserRole.SUPER_ADMIN)
-    ),
+    current_user: User = Depends(require_roles(UserRole.SUPER_ADMIN)),
 ):
     return BatchService.delete_batch(
         db=db,
         batch_id=batch_id,
     )
-
 
 
 @router.get(

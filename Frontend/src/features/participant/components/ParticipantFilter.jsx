@@ -1,6 +1,7 @@
 import { Search, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { BRAND } from "./ParticipantTable";
+import SearchResetActions from "@/shared/components/table/SearchResetActions";
 
 export default function ParticipantFilter({
     filters,
@@ -22,7 +23,7 @@ export default function ParticipantFilter({
     };
 
     return (
-        <div className="bg-white rounded-lg border border-[#d9dee7] p-4">
+        <div className="bg-white p-4">
             <div className="flex flex-wrap items-center gap-2">
                 <select
                     className="py-1 w-1/7 border border-[#d9e1ec] rounded-md px-4 text-[16px] text-[#253858] bg-white !shadow-inner focus:outline-none"
@@ -90,27 +91,12 @@ export default function ParticipantFilter({
                     />
                 </div>
 
-                <button
-                    type="button"
-                    onClick={onSearch}
-                    style={{ backgroundColor: BRAND }}
-                    className=" text-white text-[15px] font-medium px-4 py-1 !rounded-md hover:opacity-90 transition-opacity"
-                >
-                    Search
-                </button>
-
-                <button
-                    type="button"
-                    onClick={onReset}
-                    className="border py-1 border-[#111827] bg-white hover:bg-gray-50 text-[#111827] text-[15px] font-medium px-4 !rounded-md transition-colors"
-                >
-                    Reset
-                </button>
+                <SearchResetActions onSearch={onSearch} onReset={onReset} />
             </div>
 
-            <div className="border-t border-[#4FC3C3] mt-5 mb-6" />
+            <div className="border-t border-[#4FC3C3] mt-3 mb-3" />
 
-            <div className="flex items-center justify-between px-1">
+            <div className="flex items-center justify-between px-1 ">
                 <p className="text-[16px] font-medium text-[#253858]">
                     Total Trainees:{" "}
                     <span
@@ -129,7 +115,7 @@ export default function ParticipantFilter({
                         color: "#111827",
                         border: "1px solid #111827",
                     }}
-                    className="py-1 flex items-center gap-2 px-4 text-[15px] font-medium !rounded-md hover:bg-gray-50 transition-colors"
+                    className="py-1 flex items-center gap-2 px-4     text-[15px] font-medium !rounded-md hover:bg-gray-50 transition-colors"
                 >
                     <Plus className="w-[18px] h-[18px]" />
                     Add Trainee
