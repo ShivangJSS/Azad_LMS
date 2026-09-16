@@ -1,4 +1,4 @@
-import API from "./Api";
+import API from "@/api/Api";
 
 export const getCaptcha = async () => {
     const { data } = await API.get("/auth/captcha");

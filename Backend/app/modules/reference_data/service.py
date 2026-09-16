@@ -78,7 +78,10 @@ class ReferenceDataService:
                 return []
 
         districts = CentreRepository.get_active_districts(db, effective_state_id)
-        if role in {UserRole.DISTRICT_HEAD, UserRole.PI} and current_user.district_lgd_code:
+        if (
+            role in {UserRole.DISTRICT_HEAD, UserRole.PI}
+            and current_user.district_lgd_code
+        ):
             districts = [
                 district
                 for district in districts
@@ -115,7 +118,9 @@ class ReferenceDataService:
                 return []
 
         if role in {UserRole.DISTRICT_HEAD, UserRole.PI}:
-            _assert_requested_scope(district_id, current_user.district_lgd_code, "district")
+            _assert_requested_scope(
+                district_id, current_user.district_lgd_code, "district"
+            )
             effective_district_id = current_user.district_lgd_code
             if effective_district_id is None:
                 return []

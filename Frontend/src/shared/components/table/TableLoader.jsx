@@ -1,5 +1,7 @@
 import React from "react";
 
+import { Skeleton } from "@/components/ui/skeleton";
+
 export default function TableLoader({ rows = 10, columns = 6 }) {
     return (
         <tbody>
@@ -10,7 +12,7 @@ export default function TableLoader({ rows = 10, columns = 6 }) {
                             key={`loader-cell-${rowIndex}-${colIndex}`}
                             className="border border-[#dee2e6] px-4 py-3"
                         >
-                            <div className="h-4 w-full rounded bg-gray-200 animate-pulse" />
+                            <Skeleton className="h-4 w-full bg-[#732269]/8" />
                         </td>
                     ))}
                 </tr>

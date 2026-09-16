@@ -18,9 +18,7 @@ def _assert_scq_options_unique(options):
     seen = set()
     for option in options or []:
         if not option.scq_option_text.strip():
-            raise HTTPException(
-                status_code=400, detail="Option text cannot be empty."
-            )
+            raise HTTPException(status_code=400, detail="Option text cannot be empty.")
         if option.scq_option_text in seen:
             raise HTTPException(
                 status_code=400,
@@ -132,19 +130,12 @@ class ScqService:
         db: Session,
         data: ScqCreate,
     ):
-        correct = sum(
-            1
-            for option in data.options
-            if option.is_scq_option_correct == 1
-        )
+        correct = sum(1 for option in data.options if option.is_scq_option_correct == 1)
 
         if correct != 1:
             raise HTTPException(
                 status_code=400,
-                detail=(
-                    "Exactly one option must be "
-                    "marked as correct."
-                ),
+                detail=("Exactly one option must be " "marked as correct."),
             )
 
         _assert_scq_options_unique(data.options)
@@ -178,18 +169,13 @@ class ScqService:
         if data.options is not None:
 
             correct = sum(
-                1
-                for option in data.options
-                if option.is_scq_option_correct == 1
+                1 for option in data.options if option.is_scq_option_correct == 1
             )
 
             if correct != 1:
                 raise HTTPException(
                     status_code=400,
-                    detail=(
-                        "Exactly one option must be "
-                        "marked as correct."
-                    ),
+                    detail=("Exactly one option must be " "marked as correct."),
                 )
 
             _assert_scq_options_unique(data.options)
@@ -225,9 +211,7 @@ class ScqService:
             scq=scq,
         )
 
-        return {
-            "message": "SCQ deleted successfully."
-        }
+        return {"message": "SCQ deleted successfully."}
 
     # =========================================================
     # EXPORT
@@ -237,10 +221,12 @@ class ScqService:
     def export(
         db: Session,
         language_id: Optional[int] = None,
+        search: Optional[str] = None,
     ):
         scqs = ScqRepository.get_all(
             db=db,
             language_id=language_id,
+            search=search,
         )
 
         wb = Workbook()
@@ -248,14 +234,16 @@ class ScqService:
         ws = wb.active
         ws.title = "SCQ"
 
-        ws.append([
-            "S.No",
-            "Question",
-            "Description",
-            "Marks",
-            "Language",
-            "Status",
-        ])
+        ws.append(
+            [
+                "S.No",
+                "Question",
+                "Description",
+                "Marks",
+                "Language",
+                "Status",
+            ]
+        )
 
         languages = {
             1: "English",
@@ -269,21 +257,19 @@ class ScqService:
             start=1,
         ):
 
-            ws.append([
-                index,
-                scq.scq_question_title,
-                scq.scq_question_description,
-                float(scq.marks),
-                languages.get(
-                    scq.language_id,
-                    "",
-                ),
-                (
-                    "Active"
-                    if scq.status == 1
-                    else "Inactive"
-                ),
-            ])
+            ws.append(
+                [
+                    index,
+                    scq.scq_question_title,
+                    scq.scq_question_description,
+                    float(scq.marks),
+                    languages.get(
+                        scq.language_id,
+                        "",
+                    ),
+                    ("Active" if scq.status == 1 else "Inactive"),
+                ]
+            )
 
         stream = BytesIO()
 
@@ -294,14 +280,9 @@ class ScqService:
         return StreamingResponse(
             stream,
             media_type=(
-                "application/vnd.openxmlformats-"
-                "officedocument.spreadsheetml.sheet"
+                "application/vnd.openxmlformats-" "officedocument.spreadsheetml.sheet"
             ),
-            headers={
-                "Content-Disposition":
-                    "attachment; "
-                    "filename=scq_list.xlsx"
-            },
+            headers={"Content-Disposition": "attachment; " "filename=scq_list.xlsx"},
         )
 
     # =========================================================
@@ -343,29 +324,19 @@ class ScqService:
         if data.language_id == 1:
             raise HTTPException(
                 status_code=400,
-                detail=(
-                    "English SCQ cannot be saved "
-                    "as a translation."
-                ),
+                detail=("English SCQ cannot be saved " "as a translation."),
             )
 
         # =====================================================
         # VALIDATE CORRECT OPTION
         # =====================================================
 
-        correct = sum(
-            1
-            for option in data.options
-            if option.is_scq_option_correct == 1
-        )
+        correct = sum(1 for option in data.options if option.is_scq_option_correct == 1)
 
         if correct != 1:
             raise HTTPException(
                 status_code=400,
-                detail=(
-                    "Exactly one option must be "
-                    "marked as correct."
-                ),
+                detail=("Exactly one option must be " "marked as correct."),
             )
 
         # =====================================================

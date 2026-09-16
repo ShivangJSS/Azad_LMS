@@ -2,20 +2,20 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
 
-import AppLayout from "../../../../components/layout/AppLayout";
-import Breadcrumbs from "../../../../shared/components/breadcrumbs/Breadcrumbs";
-import LanguageTabs from "../../../../shared/components/language/LanguageTabs";
+import AppLayout from "@/components/layout/AppLayout";
+import Breadcrumbs from "@/shared/components/breadcrumbs/Breadcrumbs";
+import LanguageTabs from "@/shared/components/language/LanguageTabs";
 
 import {
     getLanguageByKey,
-} from "../../../../shared/constants/languageConstants";
+} from "@/shared/constants/languageConstants";
 
 import {
     getBucketById,
     saveBucketTranslation,
-} from "../services/DropBucketServices";
+} from "@/features/assessment/DropBucket/services/DropBucketServices";
 
-import TranslationDropBucket from "../components/TranslationDropBucket";
+import TranslationDropBucket from "@/features/assessment/DropBucket/components/TranslationDropBucket";
 
 
 /* =========================================================
@@ -57,135 +57,6 @@ const isValidImageUrl = (url) => {
 /* =========================================================
    NORMALIZE API RESPONSE
 ========================================================= */
-
-// const normalizeBucketData = (
-//     response,
-//     languageId
-// ) => {
-
-//     let data =
-//         response?.data ?? response;
-
-
-//     // Same as MCQ
-//     if (Array.isArray(data)) {
-//         data =
-//             data.length > 0
-//                 ? data[0]
-//                 : null;
-//     }
-
-
-//     if (!data) {
-//         return null;
-//     }
-
-
-//     // ============================================
-//     // QUESTION DATA
-//     // ============================================
-
-//     const questionTitle =
-//         data.drop_bucket_question_title ??
-//         data.question_title ??
-//         "";
-
-//     const questionDescription =
-//         data.drop_bucket_question_description ??
-//         data.question_description ??
-//         "";
-
-//     const marks =
-//         data.marks ?? "";
-
-//     const imageUrl =
-//         data.image_url ??
-//         "";
-
-
-//     // ============================================
-//     // SAME LOGIC AS MCQ OPTIONS
-//     // ============================================
-
-//     const sourceBuckets =
-//         Array.isArray(data?.buckets)
-//             ? data.buckets
-//             : Array.isArray(data?.drop_buckets)
-//             ? data.drop_buckets
-//             : [];
-
-//     const normalizedBuckets =
-//         sourceBuckets
-//             .filter(
-//                 (bucket) =>
-//                     Number(bucket?.language_id) ===
-//                     Number(languageId)
-//             )
-//             .map(
-//                 (bucket) => ({
-//                     drop_bucket_id:
-//                         bucket?.drop_bucket_id ??
-//                         bucket?.bucket_id ??
-//                         bucket?.id,
-
-//                     bucket_id:
-//                         bucket?.bucket_id ??
-//                         bucket?.id,
-
-//                     bucket_name:
-//                         bucket?.bucket_name ??
-//                         bucket?.name ??
-//                         "",
-
-//                     image_url:
-//                         bucket?.bucket_image ??
-//                         bucket?.image_url ??
-//                         "",
-
-//                     status:
-//                         Number(
-//                             bucket?.status ?? 1
-//                         ),
-
-//                     language_id:
-//                         Number(
-//                             bucket?.language_id
-//                         ),
-//                 })
-//             );
-
-//     console.log(
-//         "SELECTED LANGUAGE ID:",
-//         languageId
-//     );
-
-//     console.log(
-//         "NORMALIZED LANGUAGE BUCKETS:",
-//         normalizedBuckets
-//     );
-
-//     // ============================================
-//     // FINAL FORM
-//     // ============================================
-
-//     return {
-
-//         drop_bucket_question_title:
-//             questionTitle,
-
-//         drop_bucket_question_description:
-//             questionDescription,
-
-//         marks,
-
-//         image_url:
-//             imageUrl,
-
-//         buckets:
-//             normalizedBuckets,
-
-//     };
-// };
 
 const normalizeBucketData = (
     response,
@@ -917,10 +788,7 @@ export default function ViewDropBucket() {
                     `${language?.label} translation saved successfully.`
                 );
 
-
-                navigate(
-                    "/drop-bucket-master"
-                );
+                // Save in place (AJAX) — stay on the page, no redirect.
 
 
             } catch (error) {
@@ -1031,12 +899,7 @@ export default function ViewDropBucket() {
 
         <AppLayout>
 
-            <div
-                className="
-                    mb-3
-                    flex
-                    flex-col
-                    items-start
+            <div className="mb-3 flex flex-col items-start
                     gap-2
                     sm:flex-row
                     sm:items-center
@@ -1082,68 +945,70 @@ export default function ViewDropBucket() {
                     }
                 />
 
+                <div className=" border bg-white">
 
-                <div
-                    className="
+
+                    <div
+                        className="
                         m-3
                         rounded-md
                         border
                         border-[#D8E2EF]
                         bg-white
                     "
-                >
+                    >
 
-                    {loading ? (
+                        {loading ? (
 
-                        <div
-                            className="
+                            <div
+                                className="
                                 py-10
                                 text-center
                                 text-[12px]
                                 text-gray-500
                             "
-                        >
-                            Loading...
-                        </div>
+                            >
+                                Loading...
+                            </div>
 
-                    ) : (
+                        ) : (
 
-                        <TranslationDropBucket
-                            form={
-                                form
-                            }
-                            readOnly={
-                                isEnglish
-                            }
-                            loading={
-                                loading
-                            }
-                            languageName={
-                                language?.label
-                            }
-                            onChange={
-                                handleChange
-                            }
-                            onBucketChange={
-                                handleBucketChange
-                            }
-                            onSubmit={
-                                handleSubmit
-                            }
-                            onCancel={() =>
-                                navigate(
-                                    "/drop-bucket-master"
-                                )
-                            }
-                            isValidImageUrl={
-                                isValidImageUrl
-                            }
-                        />
+                            <TranslationDropBucket
+                                form={
+                                    form
+                                }
+                                readOnly={
+                                    isEnglish
+                                }
+                                loading={
+                                    loading
+                                }
+                                languageName={
+                                    language?.label
+                                }
+                                onChange={
+                                    handleChange
+                                }
+                                onBucketChange={
+                                    handleBucketChange
+                                }
+                                onSubmit={
+                                    handleSubmit
+                                }
+                                onCancel={() =>
+                                    navigate(
+                                        "/drop-bucket-master"
+                                    )
+                                }
+                                isValidImageUrl={
+                                    isValidImageUrl
+                                }
+                            />
 
-                    )}
+                        )}
 
+                    </div>
                 </div>
-
             </div>
 
         </AppLayout>

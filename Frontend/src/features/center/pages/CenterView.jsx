@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
-import AppLayout from "../../../components/layout/AppLayout";
-import { getCentreById } from "../services/centerService";
-import Breadcrumbs from "../../../shared/components/breadcrumbs/Breadcrumbs";
+import AppLayout from "@/components/layout/AppLayout";
+import { getCentreById } from "@/features/center/services/CenterService";
+import Breadcrumbs from "@/shared/components/breadcrumbs/Breadcrumbs";
 
 
 /* ============ CLASSES ============ */

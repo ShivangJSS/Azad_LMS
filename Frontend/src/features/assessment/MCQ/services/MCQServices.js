@@ -1,4 +1,4 @@
-import API from "../../../../api/Api";
+import API from "@/api/Api";
 
 /* ===========================
    IMAGE UPLOAD
@@ -103,11 +103,9 @@ export const updateMCQ = async (mcqId, payload) => {
    EXPORT
 =========================== */
 
-export const exportMCQs = async (languageId) => {
+export const exportMCQs = async (params = {}) => {
     const response = await API.get("/mcqs/export", {
-        params: {
-            language_id: languageId,
-        },
+        params,
         responseType: "blob",
     });
 

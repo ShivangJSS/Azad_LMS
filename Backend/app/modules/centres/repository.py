@@ -136,10 +136,10 @@ class CentreRepository:
         db: Session,
         centre: CentreMaster,
         data: CentreUpdateRequest,
-    ) -> CentreMaster: # type: ignore
-        centre.centre_name = data.centre_name # type: ignore
-        centre.address = data.address # type: ignore
-        centre.location = data.location # type: ignore
+    ) -> CentreMaster:  # type: ignore
+        centre.centre_name = data.centre_name  # type: ignore
+        centre.address = data.address  # type: ignore
+        centre.location = data.location  # type: ignore
         centre.latitude = data.latitude
         centre.longitude = data.longitude
         centre.pin = data.pin
@@ -227,7 +227,7 @@ class CentreRepository:
         block_id: int | None = None,
         search: str | None = None,
         page: int = 1,
-        per_page: int = 25, # type: ignore
+        per_page: int = 25,  # type: ignore
     ) -> tuple[list, int]:
         """Return a page of centres and the total row count."""
         query = CentreRepository._centre_list_query()
@@ -254,7 +254,7 @@ class CentreRepository:
 
         rows = (
             db.execute(
-                query.order_by(CentreMaster.centre_id.desc()) # type: ignore
+                query.order_by(CentreMaster.centre_id.desc())  # type: ignore
                 .limit(per_page)
                 .offset((page - 1) * per_page)
             )

@@ -4,6 +4,7 @@ from typing import Optional
 from fastapi import File, Form, UploadFile
 from pydantic import BaseModel, ConfigDict
 
+
 class DocumentListResponse(BaseModel):
     doc_id: int
     doc_title: str
@@ -79,6 +80,7 @@ class DocumentDetailResponse(BaseModel):
     created_at: Optional[datetime]
     updated_at: Optional[datetime]
 
+
 class DocumentTranslationResponse(BaseModel):
     doc_id: int
     parent_id: int
@@ -91,7 +93,6 @@ class DocumentTranslationResponse(BaseModel):
 class DocumentViewResponse(BaseModel):
     document: DocumentDetailResponse
     translations: list[DocumentTranslationResponse]
-
 
 
 # app/modules/document/schema.py
@@ -123,22 +124,17 @@ class DocumentCreateRequest(BaseModel):
         cls,
         doc_title: str = Form(...),
         doc_description: Optional[str] = Form(None),
-
         doc_category_id: int = Form(...),
         doc_type: str = Form(...),
         status: int = Form(...),
-
         module_id: Optional[int] = Form(None),
         submodule_id: Optional[int] = Form(None),
         topic_id: Optional[int] = Form(None),
-
         language_id: int = Form(1),
-
         self_paced_learning: int = Form(0),
         pre_session_assessment: int = Form(0),
         main_content_of_the_module: int = Form(0),
         post_session_assessment: int = Form(0),
-
         doc_duration: Optional[str] = Form(None),
     ):
         return cls(
@@ -157,53 +153,45 @@ class DocumentCreateRequest(BaseModel):
             post_session_assessment=post_session_assessment,
             doc_duration=doc_duration,
         )
-
-
-
 
 
 class DocumentUpdateRequest(BaseModel):
-     doc_title: str
-     doc_description: Optional[str] = None
+    doc_title: str
+    doc_description: Optional[str] = None
 
-     doc_category_id: int
-     doc_type: str
-     status: int
+    doc_category_id: int
+    doc_type: str
+    status: int
 
-     module_id: Optional[int] = None
-     submodule_id: Optional[int] = None
-     topic_id: Optional[int] = None
+    module_id: Optional[int] = None
+    submodule_id: Optional[int] = None
+    topic_id: Optional[int] = None
 
-     language_id: int = 1
+    language_id: int = 1
 
-     self_paced_learning: int = 0
-     pre_session_assessment: int = 0
-     main_content_of_the_module: int = 0
-     post_session_assessment: int = 0
+    self_paced_learning: int = 0
+    pre_session_assessment: int = 0
+    main_content_of_the_module: int = 0
+    post_session_assessment: int = 0
 
-     doc_duration: Optional[str] = None
+    doc_duration: Optional[str] = None
 
-     @classmethod
-     def as_form(
+    @classmethod
+    def as_form(
         cls,
         doc_title: str = Form(...),
         doc_description: Optional[str] = Form(None),
-
         doc_category_id: int = Form(...),
         doc_type: str = Form(...),
         status: int = Form(...),
-
         module_id: Optional[int] = Form(None),
         submodule_id: Optional[int] = Form(None),
         topic_id: Optional[int] = Form(None),
-
         language_id: int = Form(1),
-
         self_paced_learning: int = Form(0),
         pre_session_assessment: int = Form(0),
         main_content_of_the_module: int = Form(0),
         post_session_assessment: int = Form(0),
-
         doc_duration: Optional[str] = Form(None),
     ):
         return cls(
@@ -222,6 +210,7 @@ class DocumentUpdateRequest(BaseModel):
             post_session_assessment=post_session_assessment,
             doc_duration=doc_duration,
         )
+
 
 class TranslationLanguageResponse(BaseModel):
     language_id: int

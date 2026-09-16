@@ -1,4 +1,4 @@
-import API from "../../../../api/Api";
+import API from "@/api/Api";
 
 export const getTopics = async (params) => {
     try {
@@ -82,4 +82,63 @@ export const saveTopicTranslation = async (topicId, payload) => {
         console.error("Error saving topic translation:", error);
         throw error;
     }
+};
+
+export const getTopicCountByModule = async (moduleId, languageId) => {
+    const response = await API.get("/topics", {
+        params: {
+            module_id: moduleId,
+            language_id: languageId,
+            page: 1,
+            limit: 1,
+        },
+    });
+
+    const data = response.data?.data ?? response.data;
+    return data?.pagination?.total_records ?? data?.pagination?.total ?? 0;
+};
+
+export const getTopicCountsByModule = async (languageId = 1) => {
+    const counts = {};
+    let page = 1;
+    let totalPages = 1;
+
+    do {
+        const response = await getTopics({
+            language_id: languageId,
+            page,
+            limit: 100,
+        });
+
+        const payload = response?.data ?? response;
+
+        const topics = Array.isArray(payload?.topics)
+            ? payload.topics
+            : [];
+
+        topics.forEach((topic) => {
+            const moduleIds = [
+                topic.module_id,
+                topic.fk_module_id,
+                topic.parent_module_id,
+                topic.base_module_id,
+            ]
+                .filter((id) => id != null)
+                .map(String);
+
+            [...new Set(moduleIds)].forEach((key) => {
+                counts[key] = (counts[key] || 0) + 1;
+            });
+
+            if (topic.module_name) {
+                const nameKey = `name:${String(topic.module_name).trim().toLowerCase()}`;
+                counts[nameKey] = (counts[nameKey] || 0) + 1;
+            }
+        });
+
+        totalPages = payload?.pagination?.total_pages ?? page;
+        page += 1;
+    } while (page <= totalPages);
+
+    return counts;
 };

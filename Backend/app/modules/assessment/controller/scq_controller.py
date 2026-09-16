@@ -110,11 +110,13 @@ class ScqController:
     @staticmethod
     def export_scqs(
         language_id: Optional[int] = Query(None),
+        search: Optional[str] = Query(None),
         db: Session = Depends(get_db),
     ):
         return ScqService.export(
             db=db,
             language_id=language_id,
+            search=search,
         )
 
     # =========================================================

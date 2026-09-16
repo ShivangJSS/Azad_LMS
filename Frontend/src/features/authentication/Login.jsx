@@ -1,17 +1,14 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay } from "swiper/modules";
 import { useForm } from "react-hook-form";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
-import { Link } from "react-router-dom";
-import logo from "../../assets/logos/logo.svg";
-import slide1 from "../../assets/images/slide-banner-1.png";
-import slide2 from "../../assets/images/slide-banner-2.png";
-import slide3 from "../../assets/images/slide-banner-3.png";
-import forgotpassword from "./ForgotPassword";
-import NotFound from "./NotFound";
-import { getCaptcha, loginUser } from "../../api/AuthApi";
+import logo from "@/assets/logos/logo.svg";
+import slide1 from "@/assets/images/slide-banner-1.webp";
+import slide2 from "@/assets/images/slide-banner-2.webp";
+import slide3 from "@/assets/images/slide-banner-3.webp";
+import { getCaptcha, loginUser } from "@/api/AuthApi";
 import "swiper/css";
 
 export default function Login() {
@@ -44,11 +41,17 @@ export default function Login() {
     useEffect(() => {
         loadCaptcha();
     }, []);
+
+    // Auto-dismiss the login message after a few seconds so it doesn't
+    // linger; the user can also close it manually via the cross button.
+    useEffect(() => {
+        if (!message) return undefined;
+        const timer = setTimeout(() => setMessage(""), 5000);
+        return () => clearTimeout(timer);
+    }, [message]);
     const {
         register,
         handleSubmit,
-        setValue,
-        setFocus,
         formState: { errors, isSubmitting },
     } = useForm();
 
@@ -56,7 +59,7 @@ export default function Login() {
         let payload;
         try {
             payload = {
-                email: data.username.trim().toLowerCase(),
+                email: data.username.trim(),
                 password: data.password,
                 captcha_answer: Number(data.captcha),
                 captcha_token: captchaToken,
@@ -118,6 +121,8 @@ export default function Login() {
                                         <img
                                             src={image}
                                             alt={`Slide ${index + 1}`}
+                                            loading={index === 0 ? "eager" : "lazy"}
+                                            fetchPriority={index === 0 ? "high" : "low"}
                                             className="w-full h-64 sm:h-80 lg:h-[554px] object-cover"
                                         />
                                     </SwiperSlide>
@@ -137,7 +142,7 @@ export default function Login() {
 
                         {/* Right */}
 
-                        <div className="w-full lg:w-1/2 flex items-center justify-center lg:overflow-y-auto">
+                        <div className="w-full lg:w-1/2 flex items-center justify-center">
 
                             <div className="grow p-6 sm:p-8 md:p-12 w-full">
 
@@ -155,8 +160,16 @@ export default function Login() {
 
                                     <hr className="my-6 border-gray-300" />
                                     {message && (
-                                        <div className="bg-red-100 text-red-700 border border-red-300 rounded-md px-4 py-2 mb-4 text-sm">
-                                            {message}
+                                        <div className="flex items-start justify-between gap-3 bg-red-100 text-red-700 border border-red-300 rounded-md px-4 py-2 mb-4 text-sm">
+                                            <span>{message}</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => setMessage("")}
+                                                aria-label="Dismiss message"
+                                                className="shrink-0 text-red-700/70 hover:text-red-700 text-lg leading-none"
+                                            >
+                                                &times;
+                                            </button>
                                         </div>
                                     )}
 
@@ -164,10 +177,20 @@ export default function Login() {
                                         <div className="mb-2">
                                             <label htmlFor="username" className="form-label">Username <span className="text-danger">*</span></label>
                                             <input type="text" id="username" className={`form-control ${errors.username ? 'border-red-500' : ''}`}
-                                                {...register("username", { required: "Username is required" })}
+                                                {...register("username", {
+                                                    required: "Username is required",
+                                                    maxLength: { value: 255, message: "Username is too long" },
+                                                    // Reject characters used in injection payloads
+                                                    // (quotes, spaces, semicolons, comment markers).
+                                                    pattern: {
+                                                        value: /^[A-Za-z0-9._@+-]+$/,
+                                                        message: "Username may contain only letters, numbers and . _ - @ +",
+                                                    },
+                                                })}
                                                 autoFocus
                                                 placeholder="Enter username"
                                             />
+                                            {errors.username && <p className="text-red-500 text-sm mt-1 mb-0" role="alert">{errors.username.message}</p>}
                                         </div>
                                         <div className="mb-2">
                                             <label htmlFor="pwd" className="form-label">Password <span className="text-danger">*</span></label>
@@ -182,23 +205,38 @@ export default function Login() {
                                                 />
                                                 <button className="btn btn-primary shadow-none ms-0  bg-[#7e2081] rounded-r-lg hover:bg-[#6a1c6d] focus:outline-none focus:ring-2 focus:ring-[#7e2081]" type="button" onClick={() => setShowPassword((prev) => !prev)} id="togglePassword">{showPassword ? <FaEyeSlash /> : <FaEye />}</button>
                                             </div>
-                                            {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>}
+                                            {errors.password && <p className="text-red-500 text-sm mt-1 mb-0" role="alert">{errors.password.message}</p>}
                                         </div>
 
                                         <div className="mb-2">
-                                            <label htmlFor="captcha" className="form-label">Solve: <strong>{captchaQuestion}</strong></label>
+                                            <label htmlFor="captcha" className="form-label">
+                                                Solve: <strong>{captchaQuestion}</strong>
+                                            </label>
+
                                             <input
-                                                type="number"
+                                                type="text"
                                                 id="captcha"
                                                 placeholder="Enter your answer"
-                                                autoComplete="off"
-                                                className={`form-control ${errors.captcha ? 'border-red-500' : ''}`}
+                                                inputMode="numeric"
+                                                pattern="[0-9]*"
+                                                className={`form-control ${errors.captcha ? 'border-red-500' : ''
+                                                    }`}
                                                 {...register("captcha", {
-                                                    required: "Please solve the captcha"
+                                                    required: "Please solve the captcha",
+                                                    validate: (value) =>
+                                                        /^[0-9]+$/.test(value) || "Please enter numbers only"
                                                 })}
+                                                onInput={(e) => {
+                                                    e.target.value = e.target.value.replace(/\D/g, "");
+                                                }}
                                             />
-                                        </div>
 
+                                            {errors.captcha && (
+                                                <p className="text-red-500 text-sm mt-1 mb-0" role="alert">
+                                                    {errors.captcha.message}
+                                                </p>
+                                            )}
+                                        </div>
                                         <button type="submit" className="btn btn-primary w-100 py-2  bg-[#7e2081] text-white font-medium rounded-lg hover:bg-[#6a1c6d] disabled:opacity-50 transition-all duration-300" id="loginBtn" disabled={isSubmitting}>
                                             {isSubmitting ? (
                                                 <div className="flex items-center justify-center">
@@ -230,13 +268,13 @@ export default function Login() {
                                         <div className="text-center">
                                             <ul className="mb-0 d-flex gap-4 flex-center p-0 text-500 justify-center list-unstyled">
                                                 <small>
-                                                    <a href="http://127.0.0.1:8000/disclaimer_Azad_LMS" target="_blank" className="text-decoration-none text-primary">
+                                                    <a href="/disclaimer" target="_blank" className="text-decoration-none text-primary">
                                                         Disclaimer
                                                     </a>
 
                                                 </small> |
 
-                                                <small><a href="http://127.0.0.1:8000/privacy_policy_azad_LMS" target="_blank" className="text-decoration-none text-primary">Privacy Policy</a></small>
+                                                <small><a href="/privacy-policy" target="_blank" className="text-decoration-none text-primary">Privacy Policy</a></small>
                                             </ul>
                                         </div>
                                     </form>

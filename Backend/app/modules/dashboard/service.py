@@ -4,7 +4,6 @@ from sqlalchemy.orm import Session
 
 from app.modules.dashboard.repository import DashboardRepository
 
-
 # Trainee performance categories, in display order. Keys match the frontend
 # donut colour map (DONUT_STATUS); labels come from get_participants.
 _TRAINEE_STATUS_ORDER = [
@@ -116,16 +115,13 @@ class DashboardService:
         )
 
         gender_distribution = DashboardRepository.get_gender_distribution(
-           db=db,
-           state_id=state_id,
-           district_id=district_id,
-           centre_id=centre_id,
-           from_date=from_date,
-           to_date=to_date,
-)
-
-
-
+            db=db,
+            state_id=state_id,
+            district_id=district_id,
+            centre_id=centre_id,
+            from_date=from_date,
+            to_date=to_date,
+        )
 
         total_documents = DashboardRepository.get_total_documents(db)
 
@@ -140,8 +136,6 @@ class DashboardService:
             else 0
         )
 
-
-
         monthly_login_trend = DashboardRepository.get_monthly_login_trend(
             db=db,
             state_id=state_id,
@@ -149,24 +143,49 @@ class DashboardService:
             centre_id=centre_id,
             from_date=from_date,
             to_date=to_date,
-)
-
+        )
 
         age_group_distribution = DashboardRepository.get_age_group_distribution(
-          db=db,
-          state_id=state_id,
-          district_id=district_id,
-          centre_id=centre_id,
-          from_date=from_date,
-          to_date=to_date,
-)
+            db=db,
+            state_id=state_id,
+            district_id=district_id,
+            centre_id=centre_id,
+            from_date=from_date,
+            to_date=to_date,
+        )
 
-            
         # -----------------------------
         # State-wise Participants
         # -----------------------------
-        state_wise_participants = (
-            DashboardRepository.get_state_wise_participants(
+        state_wise_participants = DashboardRepository.get_state_wise_participants(
+            db=db,
+            state_id=state_id,
+            district_id=district_id,
+            centre_id=centre_id,
+            from_date=from_date,
+            to_date=to_date,
+        )
+
+        district_wise_participants = DashboardRepository.get_district_wise_participants(
+            db=db,
+            state_id=state_id,
+            district_id=district_id,
+            centre_id=centre_id,
+            from_date=from_date,
+            to_date=to_date,
+        )
+
+        module_lock_status = DashboardRepository.get_module_lock_status(
+            db=db,
+            state_id=state_id,
+            district_id=district_id,
+            centre_id=centre_id,
+            from_date=from_date,
+            to_date=to_date,
+        )
+
+        module_wise_performance = (
+            DashboardRepository.get_module_wise_performance_details(
                 db=db,
                 state_id=state_id,
                 district_id=district_id,
@@ -174,47 +193,16 @@ class DashboardService:
                 from_date=from_date,
                 to_date=to_date,
             )
-
-
         )
-
-
-        district_wise_participants = DashboardRepository.get_district_wise_participants(
-                  db=db,
-                  state_id=state_id,
-                  district_id=district_id,
-                  centre_id=centre_id,
-                  from_date=from_date,
-                  to_date=to_date,
-)
-
-        module_lock_status = DashboardRepository.get_module_lock_status(
-                db=db,
-                state_id=state_id,
-                district_id=district_id,
-                centre_id=centre_id,
-                from_date=from_date,
-                to_date=to_date,
-)
-
-
-        module_wise_performance = DashboardRepository.get_module_wise_performance_details(
-                         db=db,
-                         state_id=state_id,
-                         district_id=district_id,
-                         centre_id=centre_id,
-                         from_date=from_date,
-                         to_date=to_date,
-)
-        document_type_distribution = DashboardRepository.get_document_type_distribution(db)
+        document_type_distribution = DashboardRepository.get_document_type_distribution(
+            db
+        )
 
         # -----------------------------
         # State-wise Centres
         # -----------------------------
-        state_wise_centres = (
-            DashboardRepository.get_state_wise_centres(
-                db=db,
-            )
+        state_wise_centres = DashboardRepository.get_state_wise_centres(
+            db=db,
         )
 
         trainee_status = _trainee_status_summary(
@@ -232,7 +220,6 @@ class DashboardService:
                 "total_documents": total_documents,
                 "total_assessments": total_assessments,
                 "completion_rate": completion_rate,
-
             },
             "trainee_status": trainee_status,
             "state_wise_participants": [
@@ -251,89 +238,76 @@ class DashboardService:
                 }
                 for row in state_wise_centres
             ],
-
             "gender_distribution": [
-               {
-                  "gender": row.gender,
-                  "total": row.total,
+                {
+                    "gender": row.gender,
+                    "total": row.total,
                 }
                 for row in gender_distribution
             ],
-
             "monthly_login_trend": [
                 {
-                   "month": row.month,
-                   "total": row.total,
+                    "month": row.month,
+                    "total": row.total,
                 }
                 for row in monthly_login_trend
             ],
-
-
-
             "age_group_distribution": [
                 {
-                "age_group": row.age_group,
-                "total": row.total,
+                    "age_group": row.age_group,
+                    "total": row.total,
                 }
                 for row in age_group_distribution
             ],
-
             "document_type_distribution": [
                 {
-                "doc_type": row.doc_type,
-                "total": row.total,
+                    "doc_type": row.doc_type,
+                    "total": row.total,
                 }
-                 for row in document_type_distribution
+                for row in document_type_distribution
             ],
-
-
-            "district_wise_participants": [        # ✅ Add it here
+            "district_wise_participants": [  # ✅ Add it here
                 {
-                     "district_name": row.district_name,
+                    "district_name": row.district_name,
                     "total": row.total,
                 }
                 for row in district_wise_participants
             ],
-            
             "module_lock_status": [
-               {
-                 "lock_status": row.lock_status,
-                 "total": row.total,
+                {
+                    "lock_status": row.lock_status,
+                    "total": row.total,
                 }
                 for row in module_lock_status
             ],
-
-
-             "module_wise_performance": [
-                 {
-                     "module_name": row.module_name,
-                     "total": row.total,
-                  }
-                  for row in module_wise_performance
-                 ],
-
+            "module_wise_performance": [
+                {
+                    "module_name": row.module_name,
+                    "total": row.total,
+                }
+                for row in module_wise_performance
+            ],
         }
 
     @staticmethod
     def get_state_wise_participants(
-      db: Session,
-      clicked_value=None,
-      state_id=None,
-      district_id=None,
-      centre_id=None,
-      from_date=None,
-      to_date=None,
-):
-      return DashboardRepository.get_state_wise_participant_details(
-        db=db,
-        clicked_value=clicked_value,
-        state_id=state_id,
-        district_id=district_id,
-        centre_id=centre_id,
-        from_date=from_date,
-        to_date=to_date,
-    )
-
+        db: Session,
+        clicked_value=None,
+        state_id=None,
+        district_id=None,
+        centre_id=None,
+        from_date=None,
+        to_date=None,
+    ):
+        return DashboardRepository.get_state_wise_participant_details(
+            db=db,
+            clicked_value=clicked_value,
+            state_id=state_id,
+            district_id=district_id,
+            centre_id=centre_id,
+            from_date=from_date,
+            to_date=to_date,
+        )
 
     @staticmethod
     def get_district_wise_participants(

@@ -1,18 +1,7 @@
 import React, { useMemo, useState } from "react";
-import TableLoader from "./TableLoader";
+import TableLoader from "@/shared/components/table/TableLoader";
 import { IoIosArrowUp, IoIosArrowDown } from "react-icons/io";
 
-/* =========================================================================
-   DataTable — shared list table.
-
-   - Dark-purple header with per-column ascending/descending sort icons.
-   - Sorting is built in: if the parent doesn't pass `onSort`, the table
-     sorts the current rows itself (click a sortable header to toggle
-     asc → desc). Mark a column `sortable` and give it a `sortKey` (the
-     row property to sort by; falls back to `field`/`key`).
-   - Pass `onSort` + `sortField` + `sortDirection` to control sorting
-     externally instead (e.g. server-side).
-========================================================================= */
 
 export default function DataTable({
     columns = [],
@@ -81,10 +70,10 @@ export default function DataTable({
     }, [controlled, data, internalSort]);
 
     return (
-        <div className="overflow-x-auto rounded-[6px] border border-[#e6d9e4]">
-            <table className="w-full border-collapse text-left">
+        <div className="overflow-x-auto bg-white">
+            <table className="w-full min-w-[720px] border-collapse text-left">
                 <thead>
-                    <tr className="bg-[#732269] text-white">
+                    <tr className="bg-[#7B216F] text-white">
                         {columns.map((column, index) => {
                             const headerKey =
                                 column.key ||
@@ -101,7 +90,7 @@ export default function DataTable({
                             return (
                                 <th
                                     key={headerKey}
-                                    className={`whitespace-nowrap border border-white/50 px-[16px] py-[15px] text-[13px] font-semibold ${
+                                        className={`whitespace-nowrap border border-[#6D1F5F] px-4 py-3 text-[13px] font-semibold ${
                                         column.className || "text-left"
                                     }`}
                                 >
@@ -166,7 +155,7 @@ export default function DataTable({
                             <tr>
                                 <td
                                     colSpan={columns.length || 1}
-                                    className="py-10 text-center text-[13px] text-[#6c757d]"
+                                    className="border border-[#E3E6ED] px-4 py-10 text-center text-[13px] text-[#5E6E82]"
                                 >
                                     {emptyMessage}
                                 </td>

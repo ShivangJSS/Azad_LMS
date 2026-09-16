@@ -1,5 +1,5 @@
 import React from "react";
-import DataTable from "../../../../shared/components/table/DataTable";
+import DataTable from "@/shared/components/table/DataTable";
 
 // =====================================================
 // TABLE COLUMNS
@@ -122,7 +122,7 @@ export default function ViewBucketItems({
                     relative
                     flex
                     w-full
-                    max-w-[900px]
+                    max-w-[1100px]
                     max-h-[80vh]
                     flex-col
                     overflow-hidden

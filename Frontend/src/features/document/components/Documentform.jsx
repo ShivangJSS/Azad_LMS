@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
-import PptViewer from "../../../shared/components/PptViewer";
+import PptViewer from "@/shared/components/PptViewer";
 
 const DOC_TYPES = ["PDF", "PPT", "Video"];
 

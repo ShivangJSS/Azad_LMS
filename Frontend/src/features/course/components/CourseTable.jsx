@@ -1,12 +1,12 @@
 import { useNavigate } from "react-router-dom";
 
 const th =
-    "border border-white/20 px-3 py-[8px] text-[15px] font-semibold whitespace-nowrap";
+    "border border-white/20 px-4 py-3 text-[14px] font-semibold whitespace-nowrap align-middle";
 
 const td =
-    "border border-[#dee2e6] px-3 py-[8px] text-[15px]";
+    "border border-[#dee2e6] px-4 py-3 text-[14px] align-middle";
 
-const CourseTable = ({ loading, courses, activeTab = "english" }) => {
+const CourseTable = ({ loading, courses, activeTab = "english", startIndex = 0 }) => {
 
     const navigate = useNavigate();
 
@@ -31,10 +31,6 @@ const CourseTable = ({ loading, courses, activeTab = "english" }) => {
                             Number of Modules
                         </th>
 
-                        <th className={`${th} text-center`}>
-                            Number of Users Enrolled
-                        </th>
-
                         <th className={`${th} text-left`}>
                             Language
                         </th>
@@ -56,7 +52,7 @@ const CourseTable = ({ loading, courses, activeTab = "english" }) => {
                     {loading && (
                         <tr>
                             <td
-                                colSpan={7}
+                                colSpan={6}
                                 className={`${td} text-center text-[#8492a6]`}
                             >
                                 Loading...
@@ -67,7 +63,7 @@ const CourseTable = ({ loading, courses, activeTab = "english" }) => {
                     {!loading && courses.length === 0 && (
                         <tr>
                             <td
-                                colSpan={7}
+                                colSpan={6}
                                 className={`${td} text-center text-[#8492a6]`}
                             >
                                 No Courses Found
@@ -80,41 +76,36 @@ const CourseTable = ({ loading, courses, activeTab = "english" }) => {
 
                             <tr
                                 key={course.course_id}
-                                className="hover:bg-[#fafafa]"
                             >
-                                <td className={`${td} text-[#4d5969]`}>
-                                    {index + 1}
+                                <td className={`${td} text-center text-[#4d5969]`}>
+                                    {startIndex + index + 1}
                                 </td>
 
-                                <td className={`${td} text-[#732269]`}>
+                                <td className={`${td} text-left text-[#732269]`}>
                                     {course.course_name}
                                 </td>
 
-                                <td className={`${td} text-[#4d5969]`}>
+                                <td className={`${td} text-center text-[#4d5969]`}>
                                     {course.module_count ?? 0}
                                 </td>
 
-                                <td className={`${td} text-[#4d5969]`}>
-                                    {course.enrolled_count ?? 0}
-                                </td>
-
-                                <td className={`${td} text-[#732269]`}>
+                                <td className={`${td} text-left text-[#732269]`}>
                                     {course.language_name}
                                 </td>
 
-                                <td className={`${td} text-[#732269]`}>
+                                <td className={`${td} text-left text-[#732269]`}>
                                     {course.status === 1 ? "Active" : "Inactive"}
                                 </td>
 
                                 <td className={td}>
-                                    <div className="flex items-center justify-center gap-2">
+                                    <div className="flex items-center justify-center gap-2 whitespace-nowrap">
 
                                         <button
                                             type="button"
                                             onClick={() =>
                                                 navigate(`/courses/view/${course.course_id}?tab=${activeTab}`)
                                             }
-                                            className="px-4 py-1 text-[12px] font-medium text-[#67205e  ] bg-white border-2 border-[#67205e] rounded-sm! hover:bg-[#f7f8fa]"
+                                            className="inline-flex h-8 items-center justify-center rounded-sm! border-2 border-[#67205e] bg-white px-4 text-[12px] font-medium text-[#67205e]"
                                         >
                                             View
                                         </button>
@@ -124,8 +115,7 @@ const CourseTable = ({ loading, courses, activeTab = "english" }) => {
                                             onClick={() =>
                                                 navigate(`/courses/edit/${course.course_id}?tab=${activeTab}`)
                                             }
-                                            className="px-4 py-1 text-[12px] font-medium text-white bg-[#732269]
-                                             rounded-sm! hover:bg-[#67205e]"
+                                            className="inline-flex h-8 items-center justify-center rounded-sm! bg-[#732269] px-4 text-[12px] font-medium text-white"
                                         >
                                             Edit
                                         </button>

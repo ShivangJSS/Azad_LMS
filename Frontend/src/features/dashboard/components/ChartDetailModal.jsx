@@ -1,15 +1,13 @@
+import { useEffect } from "react";
 import { FiX, FiDownload } from "react-icons/fi";
 
-const PURPLE = "#6B2D5B";
+import {
+    GlassCard,
+    GlassCardHeader,
+    GlassCardContent,
+} from "@/components/ui/glass-card";
 
-/* Generic detail modal for a dashboard chart.
-   - title:   modal heading
-   - columns: [{ key, label, render?(row, index) }]
-   - rows:    array of records
-   - loading: shows a loading row
-   - onClose: close handler
-   Renders the table, a "Showing X of Y records" footer, Export (CSV) and
-   Close — matching the production chart drill-down. */
+const PURPLE = "#6B2D5B";
 export default function ChartDetailModal({
     title,
     columns = [],
@@ -18,6 +16,13 @@ export default function ChartDetailModal({
     onClose,
     headerControls = null,
 }) {
+    useEffect(() => {
+        document.body.style.overflow = "hidden";
+        return () => {
+            document.body.style.overflow = "";
+        };
+    }, []);
+
     const handleExport = () => {
         const header = columns.map((c) => `"${c.label}"`).join(",");
         const body = rows
@@ -55,10 +60,10 @@ export default function ChartDetailModal({
     return (
         <div className="fixed inset-0 z-[1100] overflow-y-auto bg-black/40">
             <div className="flex min-h-full items-center justify-center p-4 sm:p-8">
-                <div className="w-full max-w-6xl rounded-[8px] bg-white shadow-xl">
+                <GlassCard variant="solid" className="w-full max-w-6xl rounded-[8px]">
                     {/* Header */}
-                    <div
-                        className="flex items-center justify-between rounded-t-[8px] px-6 py-3"
+                    <GlassCardHeader
+                        className="rounded-t-[8px] px-6 py-3 text-[length:inherit] font-normal tracking-normal"
                         style={{ backgroundColor: PURPLE }}
                     >
                         <div className="text-[20px] font-semibold text-white">
@@ -72,10 +77,10 @@ export default function ChartDetailModal({
                         >
                             <FiX size={22} />
                         </button>
-                    </div>
+                    </GlassCardHeader>
 
                     {/* Table */}
-                    <div className="p-4">
+                    <GlassCardContent className="p-4">
                         {headerControls && (
                             <div className="mb-4">{headerControls}</div>
                         )}
@@ -87,62 +92,62 @@ export default function ChartDetailModal({
                                 </span>
                             </div>
                         ) : (
-                        <div className="overflow-hidden rounded-[6px] border border-[#E3E6ED]">
-                            <div className="max-h-[60vh] overflow-auto">
-                                <div className="overflow-x-auto"><table className="w-full border-collapse">
-                                    <thead className="sticky top-0">
-                                        <tr style={{ backgroundColor: PURPLE }}>
-                                            <th className={th}>#</th>
-                                            {columns.map((c) => (
-                                                <th key={c.key} className={th}>
-                                                    {c.label}
-                                                </th>
-                                            ))}
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {loading && (
-                                            <tr>
-                                                <td
-                                                    className={`${td} text-center text-[#8A94A6]`}
-                                                    colSpan={columns.length + 1}
-                                                >
-                                                    Loading...
-                                                </td>
+                            <div className="overflow-hidden rounded-[6px] border border-[#E3E6ED]">
+                                <div className="max-h-[60vh] overflow-auto">
+                                    <div className="overflow-x-auto"><table className="w-full border-collapse">
+                                        <thead className="sticky top-0">
+                                            <tr style={{ backgroundColor: PURPLE }}>
+                                                <th className={th}>#</th>
+                                                {columns.map((c) => (
+                                                    <th key={c.key} className={th}>
+                                                        {c.label}
+                                                    </th>
+                                                ))}
                                             </tr>
-                                        )}
-
-                                        {!loading && rows.length === 0 && (
-                                            <tr>
-                                                <td
-                                                    className={`${td} text-center text-[#8A94A6]`}
-                                                    colSpan={columns.length + 1}
-                                                >
-                                                    No records found.
-                                                </td>
-                                            </tr>
-                                        )}
-
-                                        {!loading &&
-                                            rows.map((row, index) => (
-                                                <tr
-                                                    key={index}
-                                                    className="hover:bg-[#FAFBFD]"
-                                                >
-                                                    <td className={td}>{index + 1}</td>
-                                                    {columns.map((c) => (
-                                                        <td key={c.key} className={td}>
-                                                            {c.render
-                                                                ? c.render(row, index)
-                                                                : row[c.key] ?? "-"}
-                                                        </td>
-                                                    ))}
+                                        </thead>
+                                        <tbody>
+                                            {loading && (
+                                                <tr>
+                                                    <td
+                                                        className={`${td} text-center text-[#8A94A6]`}
+                                                        colSpan={columns.length + 1}
+                                                    >
+                                                        Loading...
+                                                    </td>
                                                 </tr>
-                                            ))}
-                                    </tbody>
-                                </table></div>
+                                            )}
+
+                                            {!loading && rows.length === 0 && (
+                                                <tr>
+                                                    <td
+                                                        className={`${td} text-center text-[#8A94A6]`}
+                                                        colSpan={columns.length + 1}
+                                                    >
+                                                        No records found.
+                                                    </td>
+                                                </tr>
+                                            )}
+
+                                            {!loading &&
+                                                rows.map((row, index) => (
+                                                    <tr
+                                                        key={index}
+                                                        className="hover:bg-[#FAFBFD]"
+                                                    >
+                                                        <td className={td}>{index + 1}</td>
+                                                        {columns.map((c) => (
+                                                            <td key={c.key} className={td}>
+                                                                {c.render
+                                                                    ? c.render(row, index)
+                                                                    : row[c.key] ?? "-"}
+                                                            </td>
+                                                        ))}
+                                                    </tr>
+                                                ))}
+                                        </tbody>
+                                    </table></div>
+                                </div>
                             </div>
-                        </div>
                         )}
 
                         {/* Footer */}
@@ -172,8 +177,8 @@ export default function ChartDetailModal({
                                 </button>
                             </div>
                         </div>
-                    </div>
-                </div>
+                    </GlassCardContent>
+                </GlassCard>
             </div>
         </div>
     );

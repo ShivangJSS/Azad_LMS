@@ -8,6 +8,7 @@ from app.modules.auth.model import User
 from app.modules.users.service import UserService
 from app.modules.users.repository import UserRepository
 from app.modules.users.schema import ParticipantModuleActionRequest
+from app.shared.dependencies.location_scope import assert_scope_value
 
 from app.modules.users.schema import (
     BatchResponse,
@@ -44,6 +45,7 @@ participants_router = APIRouter(
 # ===========================
 # USER APIs
 # ===========================
+
 
 @user_router.get("/creatable-roles", response_model=list[CreatableRoleResponse])
 def get_creatable_roles(
@@ -121,6 +123,7 @@ def delete_user(
 # LOCATION APIs
 # ===========================
 
+
 @participants_router.get("/states", response_model=list[StateResponse])
 def get_states(
     db: Session = Depends(get_db),
@@ -128,7 +131,9 @@ def get_states(
     return UserService.get_states(db)
 
 
-@participants_router.get("/districts/{state_lgd_code}", response_model=list[DistrictResponse])
+@participants_router.get(
+    "/districts/{state_lgd_code}", response_model=list[DistrictResponse]
+)
 def get_districts(
     state_lgd_code: int,
     db: Session = Depends(get_db),
@@ -136,7 +141,9 @@ def get_districts(
     return UserService.get_districts(db, state_lgd_code)
 
 
-@participants_router.get("/blocks/{district_lgd_code}", response_model=list[BlockResponse])
+@participants_router.get(
+    "/blocks/{district_lgd_code}", response_model=list[BlockResponse]
+)
 def get_blocks(
     district_lgd_code: int,
     db: Session = Depends(get_db),
@@ -158,7 +165,9 @@ def get_centres(
     )
 
 
-@participants_router.get("/participants/all-centres", response_model=list[CentreResponse])
+@participants_router.get(
+    "/participants/all-centres", response_model=list[CentreResponse]
+)
 def get_all_centres(
     db: Session = Depends(get_db),
 ):
@@ -173,7 +182,9 @@ def get_batches(
     return UserService.get_batches(db, centre_id)
 
 
-@participants_router.get("/enrollment/{batch_id}", response_model=list[EnrollmentResponse])
+@participants_router.get(
+    "/enrollment/{batch_id}", response_model=list[EnrollmentResponse]
+)
 def get_enrollment(
     batch_id: int,
     db: Session = Depends(get_db),
@@ -188,6 +199,7 @@ def get_enrollment(
 # PARTICIPANTS
 # ===========================
 
+
 @participants_router.post("/")
 async def create_participant(
     state_id: int = Form(...),
@@ -195,55 +207,31 @@ async def create_participant(
     block_id: int = Form(...),
     centre_id: int = Form(...),
     batch_id: int = Form(...),
-
     participant_name: str = Form(...),
     enrollment_no: str = Form(...),
     username: str = Form(...),
     password: str = Form(...),
-
     gender: str = Form(...),
     age: int = Form(...),
-
     email: str | None = Form(None),
     mobile_no: str | None = Form(None),
     pin: str = Form(...),
     aadhaar_number: str | None = Form(None),
-
     location: str = Form(...),
-    address: str = Form(...),
-
+    address: str | None = Form(None),
     image: UploadFile | None = File(None),
-
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
 
-    # 👇 YE YAHAN ADD KARO
-
-    data = ParticipantCreateRequest(
-        state_id=state_id,
-        district_id=district_id,
-        block_id=block_id,
+    assert_scope_value(
+        current_user,
+        state_lgd_code=state_id,
+        district_lgd_code=district_id,
+        block_lgd_code=block_id,
         centre_id=centre_id,
-        batch_id=batch_id,
-        participant_name=participant_name,
-        enrollment_no=enrollment_no,
-        username=username,
-        password=password,
-        gender=gender,
-        age=age,
-        email=email,
-        mobile_no=mobile_no,
-        pin=pin,
-        aadhaar_number=aadhaar_number,
-        location=location,
-        address=address,
     )
 
-    return await UserService.create_participant(
-        db=db,
-        data=data,
-        image=image,
-    )
     data = ParticipantCreateRequest(
         state_id=state_id,
         district_id=district_id,
@@ -297,7 +285,9 @@ def get_participants(
     )
 
 
-@participants_router.get("/{participant_id}/report", response_model=ParticipantReportResponse)
+@participants_router.get(
+    "/{participant_id}/report", response_model=ParticipantReportResponse
+)
 def get_participant_report(
     participant_id: int,
     db: Session = Depends(get_db),
@@ -308,7 +298,6 @@ def get_participant_report(
         db=db,
         participant_id=participant_id,
     )
-
 
 
 # ===========================
@@ -424,7 +413,7 @@ async def update_participant(
     pin: str = Form(...),
     aadhaar_number: str | None = Form(None),
     location: str = Form(...),
-    address: str = Form(...),
+    address: str | None = Form(None),
     state_id: int | None = Form(None),
     district_id: int | None = Form(None),
     block_id: int | None = Form(None),
@@ -433,6 +422,13 @@ async def update_participant(
     current_user: User = Depends(get_current_user),
 ):
     UserService.assert_participant_access(db, current_user, participant_id)
+    assert_scope_value(
+        current_user,
+        state_lgd_code=state_id or current_user.state_lgd_code,
+        district_lgd_code=district_id or current_user.district_lgd_code,
+        block_lgd_code=block_id or current_user.block_lgd_code,
+        centre_id=current_user.centre_id,
+    )
     data = {
         "participant_name": participant_name,
         "age": age,

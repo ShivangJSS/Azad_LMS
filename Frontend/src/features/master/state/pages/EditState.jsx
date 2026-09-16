@@ -2,14 +2,14 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 
-import AppLayout from "../../../../components/layout/AppLayout";
-import Breadcrumbs from "../../../../shared/components/breadcrumbs/Breadcrumbs";
-import StateForm from "../components/StateForm";
+import AppLayout from "@/components/layout/AppLayout";
+import Breadcrumbs from "@/shared/components/breadcrumbs/Breadcrumbs";
+import StateForm from "@/features/master/state/components/Stateform";
 
 import {
     getStateById,
     updateState,
-} from "../services/StateService";
+} from "@/features/master/state/services/StateService";
 
 export default function EditState() {
     const { state_lgd_code } = useParams();

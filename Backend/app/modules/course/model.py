@@ -45,4 +45,3 @@ class CourseMaster(Base):
     )
 
     deleted_at = Column(DateTime)
-    

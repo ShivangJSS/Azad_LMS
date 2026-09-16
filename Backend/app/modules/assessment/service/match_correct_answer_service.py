@@ -96,6 +96,4 @@ class MatchCorrectAnswerService:
             answer=answer,
         )
 
-        return {
-            "message": "Correct Answer deleted successfully."
-        }
+        return {"message": "Correct Answer deleted successfully."}

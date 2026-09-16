@@ -1,6 +1,6 @@
 import { useParams } from 'react-router-dom';
-import BatchForm from '../components/BatchForm';
-import AppLayout from '../../../components/layout/AppLayout';
+import BatchForm from '@/features/batch/components/BatchForm';
+import AppLayout from '@/components/layout/AppLayout';
 
 const BRAND = '#732269';
 

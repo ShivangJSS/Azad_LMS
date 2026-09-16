@@ -1,4 +1,4 @@
-// import API from "../../../../api/Api";
+// import API from "@/api/Api";
 
 // /* =========================================================
 //    DROP BUCKET LIST
@@ -66,7 +66,7 @@
 
 
 
-import API from "../../../../api/Api";
+import API from "@/api/Api";
 
 /* =========================================================
 IMAGE UPLOAD

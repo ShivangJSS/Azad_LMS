@@ -1,6 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
-
 @theme {
     /* Poppins is the primary Falcon theme font; Open Sans kept as a fallback. */
     --font-sans: "Poppins", "Open Sans", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
@@ -8,8 +5,877 @@
 
 @import "tailwindcss";
 
+/* ---------------------------------------------------------
+   shadcn/ui tokens (components.json: cssVariables: true)
+   Mapped 1:1 onto the colors the app already uses, so shadcn
+   components (src/components/ui/*) render in the existing
+   palette. Deliberately no `@layer base` body/border reset —
+   Bootstrap + theme.css already own those globals.
+   --------------------------------------------------------- */
+:root {
+    --background: #edf2f9;          /* --falcon-body-bg */
+    --foreground: #212529;          /* Bootstrap body text */
+    --card: #ffffff;
+    --card-foreground: #212529;
+    --popover: #ffffff;
+    --popover-foreground: #212529;
+    --primary: #732269;             /* --falcon-primary */
+    --primary-foreground: #ffffff;
+    --secondary: #f0e6f0;           /* existing hover tint */
+    --secondary-foreground: #7e2081;
+    --muted: #edf2f9;
+    --muted-foreground: #5e6e82;
+    --accent: #f9f5f8;
+    --accent-foreground: #732269;
+    --destructive: #de4a4a;
+    --border: #d8e2ef;              /* --falcon-border-color */
+    --input: #d8e2ef;
+    --ring: #732269;
+    --radius: 0.625rem;
+}
+
+@theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-destructive: var(--destructive);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    /* NOTE: shadcn's --radius-* theme tokens are intentionally not mapped —
+       they would re-map Tailwind's rounded-sm/md/lg/xl app-wide. */
+}
+
 /* Apply the theme font globally so plain/custom CSS and non-utility
    elements also render in Poppins, matching the dashboard. */
 body {
     font-family: "Poppins", sans-serif;
+}
+
+/* Standalone policy pages are opened from the login screen rather than inside
+   the application shell, so their width and anchor navigation stay isolated. */
+.policy-page {
+    overflow-x: clip;
+}
+
+.policy-page__content {
+    scroll-behavior: smooth;
+}
+
+.policy-page :target {
+    scroll-margin-top: 6rem;
+}
+
+.policy-page p:last-child {
+    margin-bottom: 0;
+}
+
+:root {
+    --glass-blur-sm: 10px;
+    --glass-blur-md: 16px;
+    --glass-blur-lg: 22px;
+
+    --glass-white-soft: rgba(255, 255, 255, 0.62);
+    --glass-white-card: rgba(255, 255, 255, 0.78);
+    --glass-white-strong: rgba(255, 255, 255, 0.90);
+    --glass-white-solid: rgba(255, 255, 255, 0.97);
+
+    --glass-edge: rgba(255, 255, 255, 0.72);           /* light inner edge */
+    --glass-line: rgba(216, 226, 239, 0.90);           /* = #d8e2ef with alpha */
+    --glass-brand: rgba(115, 34, 105, 0.90);           /* = #732269 with alpha */
+    --glass-brand-ring: rgba(115, 34, 105, 0.16);
+    --glass-brand-border: rgba(115, 34, 105, 0.55);
+
+    --glass-shadow-xs: 0 1px 2px rgba(52, 64, 80, 0.05);
+    --glass-shadow-sm: 0 1px 2px rgba(52, 64, 80, 0.04), 0 8px 24px -12px rgba(52, 64, 80, 0.16);
+    --glass-shadow-md: 0 2px 4px rgba(52, 64, 80, 0.05), 0 14px 36px -14px rgba(52, 64, 80, 0.22);
+    --glass-shadow-lg: 0 24px 64px -20px rgba(45, 34, 53, 0.38), 0 2px 6px rgba(45, 34, 53, 0.08);
+    --glass-shadow-nav: 0 8px 28px -14px rgba(52, 64, 80, 0.28);
+
+    /* Brand border glow (hover) — #732269 with alpha only */
+    --glass-glow: 0 0 0 1px rgba(115, 34, 105, 0.16), 0 0 0 4px rgba(115, 34, 105, 0.05), 0 16px 40px -16px rgba(115, 34, 105, 0.28);
+    --glass-glow-border: rgba(115, 34, 105, 0.32);
+
+    /* Unified radii */
+    --glass-radius-card: 12px;
+    --glass-radius-control: 8px;
+}
+
+/* Registered so the spotlight can fade in/out (unsupported browsers just snap). */
+@property --spot-a {
+    syntax: "<number>";
+    inherits: false;
+    initial-value: 0;
+}
+
+/* ---------- Reusable glass surfaces (safe to add anywhere) ----------
+   Registered in the `components` layer so Tailwind utilities passed via
+   className (e.g. on <GlassCard className="bg-[...]">) can override them. */
+@layer components {
+
+/* Static card: transparency + depth. No blur → safe around fixed children. */
+.glass-card {
+    background-color: var(--glass-white-card);
+    border: 1px solid var(--glass-line);
+    box-shadow: var(--glass-shadow-sm), inset 0 1px 0 var(--glass-edge);
+}
+
+/* Frosted panel: real blur. Use only where no fixed descendants exist. */
+.glass-panel {
+    background-color: var(--glass-white-soft);
+    border: 1px solid var(--glass-edge);
+    box-shadow: var(--glass-shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+    -webkit-backdrop-filter: blur(var(--glass-blur-md)) saturate(1.15);
+    backdrop-filter: blur(var(--glass-blur-md)) saturate(1.15);
+}
+
+/* Floating menus / popovers. */
+.glass-dropdown {
+    background-color: var(--glass-white-strong);
+    border: 1px solid var(--glass-edge);
+    box-shadow: var(--glass-shadow-md), 0 0 0 1px var(--glass-line), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    -webkit-backdrop-filter: blur(var(--glass-blur-lg)) saturate(1.2);
+    backdrop-filter: blur(var(--glass-blur-lg)) saturate(1.2);
+}
+
+/* Dense dialog surface: sits on a frosted overlay, so no blur needed. */
+.glass-solid {
+    background-color: var(--glass-white-solid);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    box-shadow: var(--glass-shadow-lg), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+/* Brand-purple glass (navbar strip, floating action button). */
+.glass-brand {
+    background-color: var(--glass-brand);
+    -webkit-backdrop-filter: blur(var(--glass-blur-md)) saturate(1.2);
+    backdrop-filter: blur(var(--glass-blur-md)) saturate(1.2);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+/* Optional lift on hover for static cards (transform-free → fixed-safe). */
+/* .glass-hover {
+    transition: box-shadow 0.22s ease, border-color 0.22s ease, background-color 0.22s ease;
+} */
+
+/* .glass-hover:hover {
+    border-color: var(--glass-glow-border);
+    box-shadow: var(--glass-glow), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+} */
+
+/* Mouse-tracked spotlight. Painted as the element's own background layer:
+   nothing is stacked above the content and no stacking context is created,
+   so fixed/absolute children (export menus, modals) are unaffected.
+   --spot-x / --spot-y are written by useSpotlight() in glass-card.jsx. */
+.glass-spotlight {
+    --spot-x: 50%;
+    --spot-y: 0px;
+    --spot-a: 0;
+    background-image: radial-gradient(
+        420px circle at var(--spot-x) var(--spot-y),
+        rgba(115, 34, 105, calc(0.11 * var(--spot-a))),
+        rgba(115, 34, 105, 0) 62%
+    );
+    transition: --spot-a 0.35s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+}
+
+.glass-spotlight:hover {
+    --spot-a: 1;
+}
+
+/* Inner spotlight layer for elements that already use a gradient background
+   (e.g. the stat tiles): drop a <span class="glass-spot" /> inside a
+   `relative overflow-hidden` parent, before the content. */
+.glass-spot {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    --spot-x: 50%;
+    --spot-y: 0px;
+    --spot-a: 0;
+    background-image: radial-gradient(
+        260px circle at var(--spot-x) var(--spot-y),
+        rgba(255, 255, 255, calc(0.22 * var(--spot-a))),
+        rgba(255, 255, 255, 0) 65%
+    );
+    transition: --spot-a 0.35s ease;
+}
+
+*:hover > .glass-spot {
+    --spot-a: 1;
+}
+
+/* Frosted icon containers */
+.glass-icon {
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+    transition: transform 0.25s ease, background-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.glass-icon--light {
+    background-color: rgba(255, 255, 255, 0.18);
+    box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, 0.35),
+        inset 0 1px 0 rgba(255, 255, 255, 0.45),
+        0 4px 12px -4px rgba(0, 0, 0, 0.28);
+}
+
+.glass-icon--brand {
+    background-color: rgba(115, 34, 105, 0.08);
+    color: #732269;
+    box-shadow:
+        inset 0 0 0 1px rgba(115, 34, 105, 0.16),
+        inset 0 1px 0 rgba(255, 255, 255, 0.8),
+        0 4px 12px -6px rgba(115, 34, 105, 0.35);
+}
+
+/* Tasteful 3D tilt for the stat tiles. Angles come from useSpotlight(tilt).
+   Uses `transform` only, so it composes with Tailwind's `translate`/`scale`
+   utilities (v4 sets those as separate properties). */
+.glass-tilt {
+    --tilt-x: 0deg;
+    --tilt-y: 0deg;
+    transform-style: preserve-3d;
+    will-change: transform;
+}
+
+.glass-tilt:hover {
+    transform: perspective(900px) rotateX(var(--tilt-x)) rotateY(var(--tilt-y));
+}
+
+/* Entrance micro-interactions (opacity/translate on the element itself only —
+   never on a container of fixed-position children). */
+.glass-anim-fade-up {
+    animation: glass-fade-up 0.18s ease-out both;
+}
+
+.glass-anim-fade {
+    animation: glass-fade 0.18s ease-out both;
+}
+
+/* Navbar: sheen on the brand strip + animated accent underline on items.
+   The underline uses the existing hover/link accent (#00d4c7). */
+.glass-nav-strip {
+    background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0) 60%);
+}
+
+.glass-nav-link[data-active="true"] {
+    color: #00d4c7 !important;
+}
+} /* @layer components */
+
+@keyframes glass-fade-up {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes glass-fade {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+/* Entrance animation for the Privacy Policy / Disclaimer page sections.
+   These pages reference `animate-[fadeUp_...]`; without this keyframe the
+   sections rendered with no reveal (and any opacity:0 start would stick). */
+@keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- Global polish for existing markup (no JSX edits) ---------- */
+
+/* 1. Page cards & form panels: every existing "white surface with a
+      border or shadow" inside the app shell becomes a soft glass card.
+      Uses the existing classes as the hook, so pages stay untouched.  */
+main :where(div, form, section)[class*="bg-white"]:not([class*="bg-white/"]):where([class*="border"], [class*="shadow"]) {
+    background-color: var(--glass-white-card) !important;
+    box-shadow: var(--glass-shadow-sm), inset 0 1px 0 var(--glass-edge) !important;
+    transition: box-shadow 0.22s ease, border-color 0.22s ease;
+}
+
+/* 1b. Brand border glow on hover — skipped for header/footer strips
+       (border-b / border-t) and tab-attached panels, which are not cards. */
+main :where(div, form, section)[class*="bg-white"]:not([class*="bg-white/"]):where([class*="border"], [class*="shadow"]):not([class*="border-b"]):not([class*="border-t"]):not([class*="rounded-b-"]):not([class*="rounded-t-"]):hover {
+    border-color: var(--glass-glow-border);
+    box-shadow: var(--glass-glow), inset 0 1px 0 var(--glass-edge) !important;
+}
+
+/* 1c. One card radius everywhere (Bootstrap's .rounded is !important, hence ours).
+       Strips and tab-attached panels keep their own corners. */
+main :where(div, form, section)[class*="bg-white"]:not([class*="bg-white/"]):where([class*="border"], [class*="shadow"]):not([class*="border-b"]):not([class*="border-t"]):not([class*="rounded-b-"]):not([class*="rounded-t-"]):not([class*="rounded-full"]):not([class*="shadow-2xl"]):not([class*="shadow-xl"]):not([class*="shadow-lg"]) {
+    border-radius: var(--glass-radius-card) !important;
+}
+
+/* 2. Modal panels (rendered anywhere): denser glass, deeper shadow.
+      No blur here on purpose — some panels host fixed-position menus.  */
+body :where(div, section)[class*="bg-white"]:not([class*="bg-white/"]):where([class*="shadow-2xl"], [class*="shadow-xl"], [class*="shadow-lg"]) {
+    background-color: var(--glass-white-solid) !important;
+    box-shadow: var(--glass-shadow-lg), 0 0 0 1px rgba(255, 255, 255, 0.55) inset !important;
+}
+
+/* 3. Modal / dialog backdrops: frost what sits behind the dialog. */
+div[class*="fixed"][class*="inset-0"][class*="bg-black/"] {
+    -webkit-backdrop-filter: blur(6px) saturate(1.05);
+    backdrop-filter: blur(6px) saturate(1.05);
+}
+
+/* 4. Form controls: slightly translucent field, brand-tinted focus ring. */
+main :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), select, textarea) {
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+main :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), select, textarea)[class*="bg-white"]:not([class*="bg-white/"]) {
+    background-color: rgba(255, 255, 255, 0.86) !important;
+}
+
+main :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), select, textarea):focus-visible {
+    outline: none;
+    border-color: var(--glass-brand-border);
+    box-shadow: 0 0 0 3px var(--glass-brand-ring);
+}
+
+/* 5. Buttons & links: smooth state changes only (no new animations). */
+main :where(button, a[class*="hover:"]):not([class*="transition"]) {
+    transition-property: background-color, border-color, color, box-shadow, opacity;
+    transition-duration: 0.15s;
+    transition-timing-function: ease;
+}
+
+main button:not(:disabled):focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--glass-brand-ring);
+}
+
+/* 5b. Consistent control radius (inputs, selects, textareas). */
+main :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), select, textarea):not([class*="rounded-full"]) {
+    border-radius: var(--glass-radius-control) !important;
+}
+
+main :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), select, textarea):not(:disabled):not(:focus-visible):hover {
+    border-color: rgba(115, 34, 105, 0.35);
+}
+
+/* 5c. Buttons: one radius (pills and `!`-forced shapes excluded), a 1px lift on
+       hover, and a brand glow for primary (purple) buttons. */
+main button:not([class*="rounded-full"]):not([class*="!rounded"]):not([class*="rounded-sm!"]):not([class*="rounded-md!"]):not([class*="rounded-none"]) {
+    border-radius: var(--glass-radius-control) !important;
+}
+
+main button:not(:disabled):not([class*="transition"]):not([class*="rounded-full"]):not([class*="text-left"]):not([class*="w-full"]):not([class*="glass-pager-btn"]):not([class*="glass-legend-item"]):not([class*="glass-plain"]) {
+    transition-property: background-color, border-color, color, box-shadow, opacity, transform;
+    transition-duration: 0.15s;
+    transition-timing-function: ease;
+}
+
+main button:not(:disabled):not([class*="transition"]):not([class*="rounded-full"]):not([class*="text-left"]):not([class*="w-full"]):not([class*="glass-pager-btn"]):not([class*="glass-legend-item"]):not([class*="glass-plain"]):not([class*="rounded-b-none"]):hover {
+    transform: translateY(-1px);
+}
+
+main button:not(:disabled):not([class*="transition"]):not([class*="rounded-full"]):not([class*="text-left"]):not([class*="w-full"]):not([class*="glass-pager-btn"]):not([class*="glass-legend-item"]):not([class*="glass-plain"]):not([class*="rounded-b-none"]):active {
+    transform: translateY(0);
+}
+
+main button:not(:disabled):where([class*="bg-[#732269]"], [class*="bg-[#7b216f]"], [class*="bg-[#7B216F]"], [class*="bg-[#6B2D5B]"], [class*="bg-[#7e2081]"], [class*="bg-[#67205e]"]):hover {
+    box-shadow: 0 8px 18px -8px rgba(115, 34, 105, 0.55);
+}
+
+/* 5d. Tables: soft brand tint on row hover, rounded table frames. */
+main table tbody tr:hover > td {
+    background-color: rgba(115, 34, 105, 0.035);
+}
+
+main table tbody tr > td {
+    transition: background-color 0.15s ease;
+}
+
+/* Course list keeps its controls and table visually static. */
+.course-list-page .course-list-card,
+.course-list-page .course-list-card:hover,
+.course-list-page .course-list-panel,
+.course-list-page .course-list-panel:hover {
+    border-color: #dee2e6 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    transition: none !important;
+}
+
+.course-list-page table tbody tr:hover > td {
+    background-color: transparent !important;
+}
+
+.course-list-page button:hover {
+    box-shadow: none !important;
+    transform: none !important;
+}
+
+.course-list-page input:hover:not(:focus-visible) {
+    border-color: #e3e6ed !important;
+}
+
+.course-list-page .glass-tabs button:not([data-tab-active="true"]):hover {
+    background-color: white !important;
+    color: #4d5969 !important;
+}
+
+/* Every course-page card uses a deliberately flat surface: no rounded corners
+   or hover elevation. This is limited to card-like divs/sections/forms so
+   controls, badges and buttons retain their own intended shapes. */
+main .course-list-page :is(div, section, form)[class*="bg-white"]:is([class*="border"], [class*="shadow"], [class*="rounded"]),
+main .course-list-page :is(div, section, form)[class*="bg-white"]:is([class*="border"], [class*="shadow"], [class*="rounded"]):hover,
+main .course-page :is(div, section, form)[class*="bg-white"]:is([class*="border"], [class*="shadow"], [class*="rounded"]),
+main .course-page :is(div, section, form)[class*="bg-white"]:is([class*="border"], [class*="shadow"], [class*="rounded"]):hover {
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    transition: none !important;
+}
+
+/* The global "brand border glow on hover" (rule 1b) out-specifies the plain
+   overrides above, so its box-shadow glow still showed on the course cards.
+   Re-scope that exact selector under the course pages so it wins and cancels
+   the hover glow entirely (flat card, no elevation on hover). */
+main .course-list-page :where(div, form, section)[class*="bg-white"]:not([class*="bg-white/"]):where([class*="border"], [class*="shadow"]):not([class*="border-b"]):not([class*="border-t"]):not([class*="rounded-b-"]):not([class*="rounded-t-"]):hover,
+main .course-page :where(div, form, section)[class*="bg-white"]:not([class*="bg-white/"]):where([class*="border"], [class*="shadow"]):not([class*="border-b"]):not([class*="border-t"]):not([class*="rounded-b-"]):not([class*="rounded-t-"]):hover {
+    border-color: #dee2e6 !important;
+    box-shadow: none !important;
+    transform: none !important;
+}
+
+/* 5e. Typography: page titles share one style — the 22px / medium / #344050
+       used by most pages. Modal titles (white on purple) keep their own
+       styling; 22px stat figures are not targeted. */
+main :where(p, span, div, h1, h2, h3):where([class*="text-[20px]"], [class*="text-[21px]"], [class*="text-[24px]"], [class*="text-[25px]"]):not([class*="text-white"]):not([class*="text-white"] *) {
+    font-size: 22px;
+    font-weight: 500;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    color: #344050;
+}
+
+main :where(p, span, div, h1, h2, h3)[class*="text-[22px]"]:not([class*="text-white"]) {
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+}
+
+/* 5e-2. BUTTON SYSTEM — one size & shape for action buttons.
+   Standard: 36px tall, 13px/500 text, 0 16px padding, 8px radius, 6px icon gap.
+   Compact (inside tables): 28px, 12px text, 0 12px, 6px radius.
+   Excluded (word-matched so `gap-2` never matches `p-2`): round icon buttons,
+   fixed icon boxes (w-7/8/9, h-7/9, p-1/1.5/2), tabs (rounded-b-none,
+   border-b-*), menu items (text-left), nav items (h-full), FAB (fixed).
+   Size/shape live in Tailwind's `utilities` layer with !important so they
+   outrank both `rounded-sm!`-style forced utilities and Bootstrap's
+   !important padding helpers; layout props stay unlayered.                */
+main :is(button, a[class*="px-"]:where([class*="border"], [class*="bg-[#"])):not([class*="rounded-full"]):not([class*="text-left"]):not([class*="rounded-b-none"]):not([class*="border-b-"]):not([class~="w-7"]):not([class~="w-8"]):not([class~="w-9"]):not([class~="h-7"]):not([class~="h-9"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class*="h-full"]):not([class*="fixed"]):not([class*="glass-pager-btn"]):not([class*="glass-legend-item"]):not([class*="glass-plain"]) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    line-height: 1.2;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+@layer utilities {
+    main :is(button, a[class*="px-"]:where([class*="border"], [class*="bg-[#"])):not([class*="rounded-full"]):not([class*="text-left"]):not([class*="rounded-b-none"]):not([class*="border-b-"]):not([class~="w-7"]):not([class~="w-8"]):not([class~="w-9"]):not([class~="h-7"]):not([class~="h-9"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class*="h-full"]):not([class*="fixed"]):not([class*="glass-pager-btn"]):not([class*="glass-legend-item"]):not([class*="glass-plain"]) {
+        height: 36px !important;
+        min-height: 36px !important;
+        min-width: 84px !important;
+        padding: 0 16px !important;
+        font-size: 13px !important;
+        font-weight: 500 !important;
+        border-radius: var(--glass-radius-control) !important;
+    }
+
+    /* Buttons inside tables (View / Edit / Delete): same height as the system,
+       natural width, slightly larger label as on the reference screens. */
+    main table :is(button, a[class*="px-"]):not([class*="rounded-full"]):not([class*="text-left"]):not([class*="rounded-b-none"]):not([class*="border-b-"]):not([class~="w-7"]):not([class~="w-8"]):not([class~="w-9"]):not([class~="h-7"]):not([class~="h-9"]):not([class~="p-1"]):not([class~="p-1.5"]):not([class~="p-2"]):not([class*="h-full"]):not([class*="fixed"]):not([class*="glass-pager-btn"]):not([class*="glass-legend-item"]):not([class*="glass-plain"]) {
+        min-width: 0 !important;
+        padding: 0 14px !important;
+        font-size: 14px !important;
+        border-radius: 6px !important;
+    }
+
+    /* Pager: joined 40px boxes, chevron prev/next, solid brand active page. */
+    main .glass-pager .glass-pager-btn {
+        box-shadow: none;
+        height: 40px !important;
+        min-height: 40px !important;
+        min-width: 40px !important;
+        padding: 0 12px !important;
+        font-size: 14px !important;
+        border-radius: 0 !important;
+        margin-left: -1px;
+        border: 1px solid #d8e2ef !important;
+        background-color: rgba(255, 255, 255, 0.9);
+        color: #344050;
+        transition: background-color 0.15s ease, color 0.15s ease;
+    }
+
+    main .glass-pager .glass-pager-btn > span {
+        font-size: 20px;
+        line-height: 1;
+        position: relative;
+        top: -1px;
+    }
+
+    main .glass-pager .glass-pager-btn:first-child {
+        margin-left: 0;
+        border-radius: 8px 0 0 8px !important;
+    }
+
+    main .glass-pager .glass-pager-btn:last-child {
+        border-radius: 0 8px 8px 0 !important;
+    }
+
+    main .glass-pager .glass-pager-btn:hover:not(:disabled):not([aria-current="page"]) {
+        background-color: #f7f0f5;
+        color: #732269;
+    }
+
+    main .glass-pager .glass-pager-btn[aria-current="page"] {
+        background-color: #732269;
+        border-color: #732269 !important;
+        color: #fff;
+    }
+
+    /* Heavy 2px outlines become the standard 1px stroke (color unchanged). */
+    main button[class*="border-2"] {
+        border-width: 1px !important;
+    }
+}
+
+/* Icons inside buttons never squash. */
+main button > svg,
+main a[class*="px-"] > svg {
+    flex-shrink: 0;
+}
+
+/* Toolbar rows: inputs/selects next to buttons share the 36px height. */
+main :is(div, form)[class*="flex"]:not([class*="flex-col"]):has(> button:not([class*="rounded-full"])) > :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select),
+main :is(div, form)[class*="flex"]:not([class*="flex-col"]):has(> button:not([class*="rounded-full"])) > div > :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select) {
+    height: 36px;
+    min-height: 36px;
+}
+
+/* Button groups without an explicit gap get a consistent one. */
+main :is(div, form)[class*="flex"]:not([class*="gap"]):not([class*="space-x"]):has(> button + button):not(:has(> button[class*="rounded-b-none"])),
+main :is(div, form)[class*="flex"]:not([class*="gap"]):not([class*="space-x"]):has(> button + a),
+main :is(div, form)[class*="flex"]:not([class*="gap"]):not([class*="space-x"]):has(> a + button) {
+    column-gap: 10px;
+    row-gap: 8px;
+}
+
+/* 5e-3. Language tab strip: joined tabs, flush with the panel below. */
+main .glass-tabs > button {
+    margin-bottom: -1px;
+}
+
+/* 5f. Charts (Recharts): 3D bars are drawn as SVG blocks (see Bar3D in
+       DashboardCharts.jsx) — no per-element filters, so the grow-in
+       animation and hover stay cheap to paint. Hover lifts the block. */
+[data-chart-panel] .recharts-bar-rectangle .glass-bar3d {
+    transform-box: fill-box;
+    transform-origin: bottom center;
+    transition: transform 0.28s cubic-bezier(0.22, 0.61, 0.36, 1), opacity 0.2s ease;
+}
+
+[data-chart-panel] .recharts-bar-rectangle:hover .glass-bar3d {
+    transform: scaleY(1.04) scaleX(1.03);
+}
+
+[data-chart-panel] .recharts-bar-rectangles:hover .recharts-bar-rectangle:not(:hover) .glass-bar3d {
+    opacity: 0.6;
+}
+
+[data-chart-panel] .recharts-area-dots circle,
+[data-chart-panel] .recharts-active-dot circle {
+    transform-box: fill-box;
+    transform-origin: center;
+    transition: transform 0.2s ease;
+}
+
+[data-chart-panel] .recharts-active-dot circle {
+    transform: scale(1.35);
+}
+
+/* Entrance: charts fade in while Recharts animates the series; the map
+   settles in with a slight zoom. Opacity-only on containers. */
+[data-chart-panel] .recharts-wrapper {
+    animation: glass-fade 0.35s ease-out both;
+}
+
+[data-chart-panel] .rsm-svg {
+    animation: glass-map-in 0.5s ease-out both;
+}
+
+@keyframes glass-map-in {
+    from { opacity: 0; transform: scale(0.96); }
+    to   { opacity: 1; transform: scale(1); }
+}
+
+/* Donut slices: smooth pop-out on hover. The scale runs from the chart
+   centre (view-box origin = pie centre), a white halo grows via the stroke
+   (paint-order keeps it outside the fill), and sibling slices ease back. */
+[data-chart-panel] .recharts-pie:not(.pie-depth) .recharts-pie-sector path {
+    stroke: rgba(255, 255, 255, 0.9);
+    stroke-width: 1.5;
+    paint-order: stroke;
+    transform-box: view-box;
+    transform-origin: 50% 50%;
+    transition:
+        transform 0.28s cubic-bezier(0.22, 0.61, 0.36, 1),
+        stroke-width 0.28s ease,
+        stroke 0.28s ease,
+        fill-opacity 0.28s ease;
+}
+
+[data-chart-panel] .recharts-pie:not(.pie-depth) .recharts-pie-sector:hover path {
+    transform: scale(1.07);
+    stroke: rgba(255, 255, 255, 0.85);
+    stroke-width: 12;
+}
+
+[data-chart-panel] .recharts-pie:not(.pie-depth):hover .recharts-pie-sector:not(:hover) path {
+    fill-opacity: 0.3;
+}
+
+/* 3D depth ring under the donut (second Pie, className "pie-depth"):
+   never interactive, fades back while a slice is hovered. */
+[data-chart-panel] .recharts-pie.pie-depth {
+    pointer-events: none;
+    transition: opacity 0.28s ease;
+}
+
+[data-chart-panel] .recharts-surface:has(.recharts-pie:not(.pie-depth):hover) .recharts-pie.pie-depth {
+    opacity: 0.35;
+}
+
+/* Filter refetch: slim indeterminate brand bar along the top of the page. */
+.glass-progress-bar {
+    animation: glass-progress 1.1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes glass-progress {
+    from { transform: translateX(-100%); }
+    to   { transform: translateX(300%); }
+}
+
+/* Tooltip cards fade/slide in. */
+[data-chart-panel] .recharts-tooltip-wrapper {
+    transition: transform 0.2s ease-out, opacity 0.2s ease-out, visibility 0.2s !important;
+}
+
+[data-chart-panel] .recharts-area-curve {
+    filter: drop-shadow(0 4px 6px rgba(115, 34, 105, 0.28));
+}
+
+[data-chart-panel] .recharts-area-dot,
+[data-chart-panel] .recharts-area-dots circle {
+    filter: drop-shadow(0 2px 3px rgba(45, 34, 53, 0.3));
+}
+
+[data-chart-panel] .recharts-cartesian-grid line {
+    stroke: rgba(45, 34, 53, 0.08);
+}
+
+/* 5g. Map (react-simple-maps): the map sits on a soft brand-tinted ground
+       and states lift slightly on hover. Real data/colors are untouched. */
+[data-chart-panel] .rsm-svg {
+    background: radial-gradient(60% 55% at 50% 55%, rgba(115, 34, 105, 0.06), rgba(115, 34, 105, 0) 100%);
+    filter: drop-shadow(0 10px 14px rgba(107, 45, 91, 0.16)) drop-shadow(0 1px 1px rgba(255, 255, 255, 0.6));
+}
+
+[data-chart-panel] .rsm-geography {
+    transition: fill 0.2s ease, filter 0.2s ease;
+}
+
+[data-chart-panel] .rsm-geography:hover {
+    filter: drop-shadow(0 4px 6px rgba(107, 45, 91, 0.35)) brightness(1.04);
+}
+
+/* 5h. Empty & loading states: consistent, quiet, on-brand. */
+main table td[colspan] {
+    color: #8a94a6;
+    font-size: 13px;
+    padding-top: 40px;
+    padding-bottom: 40px;
+    text-align: center;
+}
+
+main table td[colspan]::before {
+    content: "";
+    display: block;
+    width: 34px;
+    height: 34px;
+    margin: 0 auto 10px;
+    opacity: 0.55;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23732269' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 12h4l2 3h6l2-3h4'/%3E%3Cpath d='M5 5h14l2 7v7H3v-7z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+main .animate-spin {
+    filter: drop-shadow(0 4px 8px rgba(115, 34, 105, 0.2));
+}
+
+/* 5i. Modal / dropdown entrances (opacity only on containers). */
+div[class*="fixed"][class*="inset-0"][class*="bg-black/"] {
+    animation: glass-fade 0.18s ease-out both;
+}
+
+/* 5j. Reduced motion: keep every effect static. */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+
+    .glass-tilt:hover {
+        transform: none;
+    }
+
+    .glass-spotlight,
+    .glass-spot {
+        --spot-a: 0;
+    }
+}
+
+/* 5k. Ambient background: some pages paint their own opaque page-root
+       background in the shell color (#edf2f9 / #eef3f9), which hides the
+       blurred brand blobs rendered by AppLayout. The shell already paints
+       that exact color, so making the page roots transparent changes
+       nothing visible except letting the ambient layer show through.
+       (Overlays such as the dashboard loading screen are excluded.) */
+main :where(div, main)[class*="min-h-screen"][class*="bg-[#e" i]:not([class*="absolute"]):not([class*="fixed"]):not([class*="glass-pager-btn"]):not([class*="glass-legend-item"]):not([class*="glass-plain"]) {
+    background-color: transparent;
+}
+
+/* 6. Alignment: Bootstrap's reboot gives every <p> a 1rem bottom margin.
+      Inside a centered flex header row (title + breadcrumb) that margin
+      shifts the title ~8px above the breadcrumb. Zero it there only.      */
+main :where(div[class*="items-center"][class*="justify-between"]) > p {
+    margin-bottom: 0;
+}
+
+/* 7. Native selects inside glass keep a crisp, solid option list. */
+main select option {
+    background-color: #fff;
+}
+
+/* 8. Popups: while a dialog is open the page behind stays put, and neither
+      the overlay nor the dialog's scroll areas show a scrollbar (content
+      still scrolls with the wheel / touch). */
+html:has(div[class*="fixed"][class*="inset-0"][class*="bg-black/"]) {
+    overflow: hidden;
+}
+
+div[class*="fixed"][class*="inset-0"][class*="bg-black/"],
+div[class*="fixed"][class*="inset-0"][class*="bg-black/"] [class*="overflow-"] {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+div[class*="fixed"][class*="inset-0"][class*="bg-black/"]::-webkit-scrollbar,
+div[class*="fixed"][class*="inset-0"][class*="bg-black/"] [class*="overflow-"]::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+}
+
+/* 9. Tables: unsized body cells read at 14px (the size used by the
+      reference screens) instead of the 17px document default. */
+main table tbody td:not([class*="text-["]):not([class*="text-xs"]):not([class*="text-sm"]):not([class*="text-base"]):not([class*="text-lg"]) {
+    font-size: 14px;
+    line-height: 1.45;
+}
+
+/* Shared list-table rhythm: headers and cells align on the same vertical
+   baseline, with one consistent amount of breathing room across every module.
+   Explicit `text-center` / `text-right` utilities continue to control column
+   alignment; this only normalizes cell layout and spacing. */
+main table:not(.no-standard-table) {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+main table:not(.no-standard-table) > :not(caption) > * > :is(th, td) {
+    vertical-align: middle;
+}
+
+main table:not(.no-standard-table) > thead > tr > th {
+    padding: 12px 16px !important;
+    line-height: 1.35;
+}
+
+main table:not(.no-standard-table) > tbody > tr > td {
+    padding: 11px 16px !important;
+    line-height: 1.45;
+}
+
+main table:not(.no-standard-table) > :is(thead, tbody) > tr > :is(th, td) > div[class*="flex"] {
+    align-items: center;
+}
+
+/* 10. Dashboard chart panels: each row declares its own chart height in
+       DashboardCharts.jsx and the grid stretches the cards, so no forced
+       min-height is needed here any more. */
+
+/* Donut legend (reference look): plain text rows, not action buttons. */
+[data-chart-panel] .glass-legend {
+    padding-top: 2px;
+}
+
+@layer utilities {
+    [data-chart-panel] .glass-legend .glass-legend-item {
+        height: auto !important;
+        min-height: 0 !important;
+        min-width: 0 !important;
+        width: auto !important;
+        padding: 2px 0 !important;
+        font-size: 12.5px !important;
+        font-weight: 400 !important;
+        line-height: 1.3 !important;
+        border-radius: 0 !important;
+        background: transparent !important;
+        border: 0 !important;
+        box-shadow: none !important;
+        transform: none !important;
+    }
+}
+
+@layer utilities {
+    /* Tab-hosted cards (list pages): the language strip sits on top, the card
+       below has square top corners, and its inner "border bg-white" panel
+       is flat — one card, not a card inside a card. */
+    main div[class*="rounded-b-"][class*="border-t-0"] > div[class*="border"][class*="bg-white"]:first-child {
+        background-color: transparent !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+    }
+
+    /* Dense action cells (five or more buttons): one line, tighter buttons. */
+    main table td > div[class*="flex"]:has(> button:nth-child(5)) {
+        flex-wrap: nowrap !important;
+        gap: 6px !important;
+    }
+
+    main table td > div[class*="flex"]:has(> button:nth-child(5)) > button {
+        padding: 0 10px !important;
+        font-size: 13px !important;
+    }
 }

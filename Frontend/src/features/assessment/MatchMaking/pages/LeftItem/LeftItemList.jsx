@@ -2,13 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 
-import AppLayout from "../../../../../components/layout/AppLayout";
-import Breadcrumbs from "../../../../../shared/components/breadcrumbs/Breadcrumbs";
-import DataTable from "../../../../../shared/components/table/DataTable";
-import EntriesDropdown from "../../../../../shared/components/table/EntriesDropdown";
-import Pagination from "../../../../../shared/components/table/Pagination";
+import AppLayout from "@/components/layout/AppLayout";
+import Breadcrumbs from "@/shared/components/breadcrumbs/Breadcrumbs";
+import DataTable from "@/shared/components/table/DataTable";
+import EntriesDropdown from "@/shared/components/table/EntriesDropdown";
+import Pagination from "@/shared/components/table/Pagination";
 
-import { getLeftItems, deleteLeftItem } from "../../services/MatchingMakingService";
+import { getLeftItems, deleteLeftItem } from "@/features/assessment/MatchMaking/services/MatchingMakingService";
 
 export default function LeftItemList() {
     const { matchMakingId } = useParams();

@@ -52,12 +52,7 @@ class PptRepository:
 
         total = query.count()
 
-        rows = (
-            query.order_by(PptMaster.ppt_id.desc())
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        rows = query.order_by(PptMaster.ppt_id.desc()).offset(skip).limit(limit).all()
 
         return rows, total
 
@@ -198,11 +193,7 @@ class PptRepository:
 
     @staticmethod
     def get_archived_versions(db: Session, ppt_id: int):
-        current = (
-            db.query(PptMaster)
-            .filter(PptMaster.ppt_id == ppt_id)
-            .first()
-        )
+        current = db.query(PptMaster).filter(PptMaster.ppt_id == ppt_id).first()
 
         if not current:
             return []
@@ -226,8 +217,6 @@ class PptRepository:
         )
 
         if current.ppt_unique_id:
-            query = query.filter(
-                PptMaster.ppt_unique_id == current.ppt_unique_id
-            )
+            query = query.filter(PptMaster.ppt_unique_id == current.ppt_unique_id)
 
         return query.order_by(PptMaster.ppt_id.desc()).all()

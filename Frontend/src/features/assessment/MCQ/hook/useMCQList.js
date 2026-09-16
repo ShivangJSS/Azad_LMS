@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import {
     getMCQs,
     deleteMCQ,
-} from "../services/MCQServices";
+} from "@/features/assessment/MCQ/services/MCQServices";
 
 export const mcqColumns = [
     {

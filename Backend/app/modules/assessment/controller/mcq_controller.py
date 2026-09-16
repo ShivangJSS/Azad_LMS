@@ -26,7 +26,6 @@ class McqController:
             search=search,
         )
 
-
     @staticmethod
     def get_mcq(
         parent_id: int,
@@ -38,13 +37,14 @@ class McqController:
             parent_id=parent_id,
             language_id=language_id,
         )
+
     @staticmethod
     def create_mcq(
         request: McqCreate,
         db: Session = Depends(get_db),
     ) -> McqResponse:
         return McqService.create(
-            db=db,  
+            db=db,
             data=request,
         )
 
@@ -72,23 +72,24 @@ class McqController:
 
     @staticmethod
     def export_mcqs(
-     language_id: int | None = Query(None),
-     db: Session = Depends(get_db),
-):
-     return McqService.export_mcqs(
-        db=db,
-        language_id=language_id,
-    )
-
+        language_id: int | None = Query(None),
+        search: str | None = Query(None),
+        db: Session = Depends(get_db),
+    ):
+        return McqService.export_mcqs(
+            db=db,
+            language_id=language_id,
+            search=search,
+        )
 
     @staticmethod
     def save_translation(
-     parent_id: int,
-     payload: McqCreate,
-     db: Session = Depends(get_db),
-):
-     return McqService.save_translation(
-        db=db,
-        parent_id=parent_id,
-        data=payload,
-    )
+        parent_id: int,
+        payload: McqCreate,
+        db: Session = Depends(get_db),
+    ):
+        return McqService.save_translation(
+            db=db,
+            parent_id=parent_id,
+            data=payload,
+        )

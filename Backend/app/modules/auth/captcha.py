@@ -1,41 +1,13 @@
-import json
-import os
-import random
 import secrets
-from typing import TypedDict, cast
-
-import redis
-from dotenv import load_dotenv
-
-
-# ==========================================================
-# Environment Configuration
-# ==========================================================
-
-load_dotenv()
-
-
-def get_required_env(name: str) -> str:
-    value = os.getenv(name)
-
-    if not value:
-        raise RuntimeError(f"{name} is not configured")
-
-    return value
-
-
-REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
-REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
-REDIS_DB = int(os.getenv("REDIS_DB", "0"))
-REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", "")
-
+import threading
+import time
+from typing import TypedDict
 
 # ==========================================================
 # Captcha Configuration
 # ==========================================================
 
-CAPTCHA_EXPIRY_SECONDS = 5 * 60
-CAPTCHA_PREFIX = "captcha:"
+CAPTCHA_EXPIRY_SECONDS = 1 * 60
 
 
 # ==========================================================
@@ -45,6 +17,7 @@ CAPTCHA_PREFIX = "captcha:"
 
 class CaptchaData(TypedDict):
     answer: int
+    expires_at: float
 
 
 class CaptchaResponse(TypedDict):
@@ -53,18 +26,23 @@ class CaptchaResponse(TypedDict):
 
 
 # ==========================================================
-# Redis Client
+# In-Memory Store
 # ==========================================================
 
-redis_client = redis.Redis(
-    host=REDIS_HOST,
-    port=REDIS_PORT,
-    db=REDIS_DB,
-    password=REDIS_PASSWORD,
-    decode_responses=True,
-    socket_connect_timeout=5,
-    socket_timeout=5,
-)
+_store: dict[str, CaptchaData] = {}
+_store_lock = threading.Lock()
+
+
+# ==========================================================
+# Remove Expired Captcha
+# ==========================================================
+
+
+def _evict(token: str) -> None:
+    """Remove an expired captcha token from memory."""
+
+    with _store_lock:
+        _store.pop(token, None)
 
 
 # ==========================================================
@@ -74,15 +52,17 @@ redis_client = redis.Redis(
 
 def generate_captcha() -> CaptchaResponse:
     """
-    Generate a simple math captcha and store its answer in Redis.
+    Generate a simple math captcha and store its answer
+    in application memory.
 
-    The captcha:
-    - expires automatically after 5 minutes
-    - is identified by a cryptographically secure token
+    Captcha:
+    - expires after 5 minutes
+    - uses a secure random token
+    - can only be verified once
     """
 
-    num1 = random.randint(1, 9)
-    num2 = random.randint(1, 9)
+    num1 = secrets.randbelow(9) + 1
+    num2 = secrets.randbelow(9) + 1
 
     answer = num1 + num2
 
@@ -90,15 +70,21 @@ def generate_captcha() -> CaptchaResponse:
 
     captcha_data: CaptchaData = {
         "answer": answer,
+        "expires_at": time.monotonic() + CAPTCHA_EXPIRY_SECONDS,
     }
 
-    key = f"{CAPTCHA_PREFIX}{token}"
+    with _store_lock:
+        _store[token] = captcha_data
 
-    redis_client.set(
-        key,
-        json.dumps(captcha_data),
-        ex=CAPTCHA_EXPIRY_SECONDS,
+    # Automatically remove captcha after expiry
+    timer = threading.Timer(
+        CAPTCHA_EXPIRY_SECONDS,
+        _evict,
+        args=(token,),
     )
+
+    timer.daemon = True
+    timer.start()
 
     return {
         "captcha_token": token,
@@ -116,37 +102,33 @@ def verify_captcha(
     answer: int,
 ) -> bool:
     """
-    Verify the captcha token and answer.
+    Verify captcha token and answer.
 
     Returns False when:
     - token does not exist
     - token has expired
-    - stored data is invalid
     - answer is incorrect
 
-    A successfully verified captcha is deleted so that
-    it cannot be reused.
+    Successfully verified captcha is deleted
+    so it cannot be reused.
     """
 
-    key = f"{CAPTCHA_PREFIX}{token}"
+    with _store_lock:
+        captcha_data = _store.get(token)
 
-    captcha_json = redis_client.get(key)
+        if captcha_data is None:
+            return False
 
-    if captcha_json is None:
-        return False
+        # Check expiry even if timer hasn't executed yet
+        if time.monotonic() > captcha_data["expires_at"]:
+            _store.pop(token, None)
+            return False
 
-    try:
-        raw_data = json.loads(captcha_json)
-        captcha_data = cast(CaptchaData, raw_data)
+        # Wrong answer
+        if captcha_data["answer"] != answer:
+            return False
 
-    except (json.JSONDecodeError, TypeError):
-        redis_client.delete(key)
-        return False
-
-    if captcha_data.get("answer") != answer:
-        return False
-
-    # Successful captcha -> consume it
-    redis_client.delete(key)
+        # Correct answer -> consume captcha
+        _store.pop(token, None)
 
     return True

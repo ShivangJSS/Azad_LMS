@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 
-import AppLayout from "../../../components/layout/AppLayout";
-import Breadcrumbs from "../../../shared/components/breadcrumbs/Breadcrumbs";
-import AddTraineeForm from "../components/AddTraineeForm";
-import { getParticipantEdit } from "../services/ParticipantService";
+import AppLayout from "@/components/layout/AppLayout";
+import Breadcrumbs from "@/shared/components/breadcrumbs/Breadcrumbs";
+import AddTraineeForm from "@/features/participant/components/AddTraineeForm";
+import { getParticipantEdit } from "@/features/participant/services/ParticipantService";
 
 const breadcrumbItems = [
     { label: "Home", path: "/dashboard" },

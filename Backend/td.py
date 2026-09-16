@@ -6,11 +6,7 @@ from fastapi.security import HTTPAuthorizationCredentials
 db = SessionLocal()
 
 try:
-    token = create_access_token(
-        {
-            "sub": "1"
-        }
-    )
+    token = create_access_token({"sub": "1"})
 
     credentials = HTTPAuthorizationCredentials(
         scheme="Bearer",
@@ -37,11 +33,7 @@ from fastapi.security import HTTPAuthorizationCredentials
 db = SessionLocal()
 
 try:
-    token = create_access_token(
-        {
-            "sub": "1"
-        }
-    )
+    token = create_access_token({"sub": "1"})
 
     credentials = HTTPAuthorizationCredentials(
         scheme="Bearer",

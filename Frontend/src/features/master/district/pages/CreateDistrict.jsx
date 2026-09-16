@@ -2,12 +2,12 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
-import AppLayout from "../../../../components/layout/AppLayout";
-import Breadcrumbs from "../../../../shared/components/breadcrumbs/Breadcrumbs";
-import DistrictForm from "../components/DistrictForm";
+import AppLayout from "@/components/layout/AppLayout";
+import Breadcrumbs from "@/shared/components/breadcrumbs/Breadcrumbs";
+import DistrictForm from "@/features/master/district/components/DistrictForm";
 
-import { createDistrict } from "../services/DistrictService";
-import { getAllStates } from "../../state/services/StateService";
+import { createDistrict } from "@/features/master/district/services/DistrictService";
+import { getAllStates } from "@/features/master/state/services/StateService";
 
 const breadcrumbItems = [
   { label: "Home", path: "/dashboard" },

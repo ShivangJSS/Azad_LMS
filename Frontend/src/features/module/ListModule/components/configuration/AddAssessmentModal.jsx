@@ -6,26 +6,7 @@ import {
     ASSESSMENT_TYPES,
     getAssessmentQuestions,
     saveAssessmentMapping,
-} from "../../services/ConfigurationService";
-
-/* =========================================================
-   AddAssessmentModal
-
-   Full assessment question picker matching the design:
-   - dark purple header ("Add <title>" + "Module Name: <x>")
-   - MCQ | SCQ | Drop Bucket | Match Making tabs INSIDE the modal
-   - question table with a select-all header checkbox + per-row
-     checkboxes (already-assigned rows are pre-checked & disabled)
-   - Save / Cancel footer
-
-   Reuses the existing ConfigurationService endpoints. Loads the
-   active tab's question bank itself and, on save, sends only the
-   newly-selected questions to POST /modules/assessment-mapping.
-
-   Scroll behaviour: the background page is locked while open and
-   only the question list scrolls (overscroll contained), so the
-   header and footer stay put and the page never moves.
-========================================================= */
+} from "@/features/module/ListModule/services/ConfigurationService";
 
 const TABS = [
     { key: "MCQ", label: "MCQ" },
@@ -34,10 +15,21 @@ const TABS = [
     { key: "MM", label: "Match Making" },
 ];
 
+// Stable empty set for tabs with no selections yet (read-only use).
+const EMPTY_SET = new Set();
+
 export default function AddAssessmentModal({
+    // open,
+    // onClose,
+    // assessmentId,
+    // languageId = null,
+    // moduleName = "",
+    // title = "Assessment",
+    // onSaved,
     open,
     onClose,
     assessmentId,
+    assessmentIds = [],
     languageId = null,
     moduleName = "",
     title = "Assessment",
@@ -46,10 +38,16 @@ export default function AddAssessmentModal({
     const [activeTab, setActiveTab] = useState("MCQ");
     const [questions, setQuestions] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [selected, setSelected] = useState(() => new Set());
+    // Selections are kept PER TAB (MCQ/SCQ/DB/MM) so switching tabs never
+    // resets or overwrites another tab's choices.
+    const [selectedByTab, setSelectedByTab] = useState({});
     const [saving, setSaving] = useState(false);
 
     const cfg = ASSESSMENT_TYPES[activeTab] || {};
+
+    // The active tab's user selections (already-assigned questions are handled
+    // separately via `alreadyChecked`).
+    const selected = selectedByTab[activeTab] || EMPTY_SET;
 
     const alreadyChecked = useMemo(() => {
         const set = new Set();
@@ -59,44 +57,147 @@ export default function AddAssessmentModal({
         return set;
     }, [questions, cfg.refKey]);
 
+    const resolvedAssessmentIds = useMemo(() => {
+        const ids = [
+            ...assessmentIds,
+            assessmentId,
+        ];
+
+        return [
+            ...new Set(
+                ids
+                    .map((id) => Number(id))
+                    .filter(Boolean)
+            ),
+        ];
+    }, [assessmentIds, assessmentId]);
+
     // Load the question bank for the active tab.
+    // const loadQuestions = useCallback(async () => {
+    //     if (!open || !assessmentId) {
+    //         setQuestions([]);
+    //         return;
+    //     }
+    //     try {
+    //         setLoading(true);
+    //         const data = await getAssessmentQuestions(
+    //             assessmentId,
+    //             activeTab,
+    //             languageId
+    //         );
+    //         setQuestions(Array.isArray(data) ? data : []);
+    //     } catch (error) {
+    //         setQuestions([]);
+    //     } finally {
+    //         setLoading(false);
+    //     }
+    // }, [open, assessmentId, activeTab, languageId]);
+
+
     const loadQuestions = useCallback(async () => {
-        if (!open || !assessmentId) {
+        if (
+            !open ||
+            resolvedAssessmentIds.length === 0
+        ) {
             setQuestions([]);
             return;
         }
+
         try {
             setLoading(true);
-            const data = await getAssessmentQuestions(
-                assessmentId,
-                activeTab,
-                languageId
+
+            const responses = await Promise.allSettled(
+                resolvedAssessmentIds.map((id) =>
+                    getAssessmentQuestions(
+                        id,
+                        activeTab,
+                        languageId
+                    )
+                )
             );
-            setQuestions(Array.isArray(data) ? data : []);
+
+            const merged = new Map();
+
+            responses.forEach((result) => {
+                if (result.status !== "fulfilled") {
+                    return;
+                }
+
+                const response = result.value;
+                const data = response?.data ?? response;
+
+                if (!Array.isArray(data)) {
+                    return;
+                }
+
+                data.forEach((question) => {
+                    const refKey = cfg?.refKey;
+
+                    if (!refKey) {
+                        return;
+                    }
+
+                    const questionId = question?.[refKey];
+
+                    if (
+                        questionId === undefined ||
+                        questionId === null
+                    ) {
+                        return;
+                    }
+
+                    const key = String(questionId);
+
+                    if (!merged.has(key)) {
+                        merged.set(key, question);
+                        return;
+                    }
+
+                    const existing = merged.get(key);
+
+                    merged.set(key, {
+                        ...existing,
+                        ...question,
+                        is_checked:
+                            Boolean(existing?.is_checked) ||
+                            Boolean(question?.is_checked),
+                    });
+                });
+            });
+
+            setQuestions(
+                Array.from(merged.values())
+            );
         } catch (error) {
             setQuestions([]);
         } finally {
             setLoading(false);
         }
-    }, [open, assessmentId, activeTab, languageId]);
+    }, [
+        open,
+        resolvedAssessmentIds,
+        activeTab,
+        languageId,
+        cfg,
+    ]);
 
     useEffect(() => {
         loadQuestions();
     }, [loadQuestions]);
 
-    // Pre-check already-assigned questions each time the bank (re)loads.
+    // Start each time the modal opens on the first (MCQ) tab with a clean
+    // per-tab selection state. Already-assigned questions are always shown
+    // checked+disabled via `alreadyChecked`, so they don't need seeding here.
     useEffect(() => {
-        setSelected(new Set(alreadyChecked));
-    }, [alreadyChecked]);
-
-    // Always open on the first (MCQ) tab.
-    useEffect(() => {
-        if (open) setActiveTab("MCQ");
+        if (open) {
+            setActiveTab("MCQ");
+            setSelectedByTab({});
+        }
     }, [open]);
 
     // Lock the background scroll + close on Escape while the modal is open.
     // The page scrolls on the window (AppLayout uses min-h-screen), so locking
-    // <body> alone doesn't stop it — lock <html> as well. A right-side padding
+    // <body> alone doesn't stop it â€” lock <html> as well. A right-side padding
     // equal to the scrollbar width keeps the page from shifting when the bar
     // disappears.
     useEffect(() => {
@@ -133,11 +234,11 @@ export default function AddAssessmentModal({
     if (!open) return null;
 
     const toggle = (refId) => {
-        setSelected((prev) => {
-            const next = new Set(prev);
+        setSelectedByTab((prev) => {
+            const next = new Set(prev[activeTab] || []);
             if (next.has(refId)) next.delete(refId);
             else next.add(refId);
-            return next;
+            return { ...prev, [activeTab]: next };
         });
     };
 
@@ -151,31 +252,45 @@ export default function AddAssessmentModal({
         selectableIds.every((id) => selected.has(id));
 
     const toggleAll = () => {
-        setSelected((prev) => {
-            const next = new Set(prev);
+        setSelectedByTab((prev) => {
+            const next = new Set(prev[activeTab] || []);
             if (allSelected) selectableIds.forEach((id) => next.delete(id));
             else selectableIds.forEach((id) => next.add(id));
-            return next;
+            return { ...prev, [activeTab]: next };
         });
     };
 
     const handleSave = async () => {
-        const toAdd = [...selected].filter((id) => !alreadyChecked.has(id));
+        // Save selections from EVERY tab (MCQ/SCQ/Drop Bucket/Match Making),
+        // not just the active one. Each tab's set holds only newly-selected
+        // questions (already-assigned ones are disabled and can't be toggled).
+        const tabsToSave = Object.entries(selectedByTab)
+            .map(([tabKey, set]) => ({
+                cfg: ASSESSMENT_TYPES[tabKey],
+                ids: [...(set || [])],
+            }))
+            .filter((entry) => entry.cfg && entry.ids.length > 0);
 
-        if (toAdd.length === 0) {
+        if (tabsToSave.length === 0) {
             toast("No new questions selected.");
             return;
         }
 
         try {
             setSaving(true);
-            await saveAssessmentMapping({
-                assessment_type: cfg.type,
-                assessments: toAdd.map((refId) => ({
-                    assessment_id: assessmentId,
-                    assessment_ref_id: refId,
-                })),
-            });
+
+            for (const { cfg: tabCfg, ids } of tabsToSave) {
+                await saveAssessmentMapping({
+                    assessment_type: tabCfg.type,
+                    assessments: resolvedAssessmentIds.flatMap(
+                        (id) =>
+                            ids.map((refId) => ({
+                                assessment_id: id,
+                                assessment_ref_id: refId,
+                            }))
+                    ),
+                });
+            }
 
             toast.success("Questions assigned successfully.");
             onSaved?.();
@@ -248,11 +363,10 @@ export default function AddAssessmentModal({
                                 key={tab.key}
                                 type="button"
                                 onClick={() => setActiveTab(tab.key)}
-                                className={`rounded-t-[6px] px-[22px] py-[10px] text-[14px] font-semibold transition ${
-                                    isActive
-                                        ? "bg-[#732269] text-white"
-                                        : "text-[#5a3a54] hover:bg-[#f6edf5]"
-                                }`}
+                                className={`rounded-t-[6px] px-[22px] py-[10px] text-[14px] font-semibold transition ${isActive
+                                    ? "bg-[#732269] text-white"
+                                    : "text-[#5a3a54] hover:bg-[#f6edf5]"
+                                    }`}
                             >
                                 {tab.label}
                             </button>
@@ -298,7 +412,7 @@ export default function AddAssessmentModal({
                                             colSpan={2}
                                             className="py-[28px] text-center text-[13px] text-[#6c757d]"
                                         >
-                                            Loading questions…
+                                            Loading questionsâ€¦
                                         </td>
                                     </tr>
                                 ) : questions.length === 0 ? (
@@ -311,20 +425,20 @@ export default function AddAssessmentModal({
                                         </td>
                                     </tr>
                                 ) : (
-                                    questions.map((q) => {
+                                    questions.map((q, index) => {
                                         const refId = q[cfg.refKey];
                                         const isMapped = alreadyChecked.has(refId);
 
                                         return (
                                             <tr
-                                                key={refId}
+                                                key={`${refId ?? cfg.refKey}-${index}`}
                                                 className="border-b border-[#eef0f3] last:border-b-0 hover:bg-[#faf6f9]"
                                             >
                                                 <td className="px-[16px] py-[12px] text-center">
                                                     <input
                                                         type="checkbox"
                                                         className="h-[15px] w-[15px] accent-[#732269]"
-                                                        checked={selected.has(refId)}
+                                                        checked={isMapped || selected.has(refId)}
                                                         disabled={isMapped}
                                                         onChange={() => toggle(refId)}
                                                     />
@@ -333,7 +447,7 @@ export default function AddAssessmentModal({
                                                     {q[cfg.titleKey] || "(untitled)"}
                                                     {isMapped && (
                                                         <span className="ml-[8px] text-[11px] text-[#8a94a6]">
-                                                            • already assigned
+                                                            â€¢ already assigned
                                                         </span>
                                                     )}
                                                 </td>
@@ -354,7 +468,7 @@ export default function AddAssessmentModal({
                         disabled={saving || loading}
                         className="h-[36px] rounded-[4px] bg-[#732269] px-[22px] text-[13px] font-semibold text-white hover:bg-[#611c58] disabled:opacity-60"
                     >
-                        {saving ? "Saving…" : "Save"}
+                        {saving ? "Savingâ€¦" : "Save"}
                     </button>
                     <button
                         type="button"

@@ -179,7 +179,5 @@ class PdfService:
         return StreamingResponse(
             iter([buffer.getvalue()]),
             media_type="text/csv",
-            headers={
-                "Content-Disposition": "attachment; filename=pdfs.csv"
-            },
+            headers={"Content-Disposition": "attachment; filename=pdfs.csv"},
         )

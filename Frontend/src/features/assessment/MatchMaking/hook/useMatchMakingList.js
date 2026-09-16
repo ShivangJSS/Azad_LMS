@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import {
     getMatchMakings,
     deleteMatchMaking,
-} from "../services/MatchingMakingService";
+} from "@/features/assessment/MatchMaking/services/MatchingMakingService";
 
 // =====================================================
 // TABLE COLUMNS

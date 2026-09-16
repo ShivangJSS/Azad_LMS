@@ -1,22 +1,35 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
 
-import AppLayout from "../../../../components/layout/AppLayout";
-import Breadcrumbs from "../../../../shared/components/breadcrumbs/Breadcrumbs";
-import TopicForm from "../components/TopicForm";
+import AppLayout from "@/components/layout/AppLayout";
+import Breadcrumbs from "@/shared/components/breadcrumbs/Breadcrumbs";
+import TopicForm from "@/features/module/Topic/components/TopicForm";
 
-import { createTopic } from "../services/TopicService";
-import { getModules } from "../../ListModule/services/ListService";
+import { createTopic } from "@/features/module/Topic/services/TopicService";
+import { getModules } from "@/features/module/ListModule/services/ListService";
 
+import { LANGUAGES, getLanguageByKey } from "@/shared/constants/languageConstants";
+
+// Topics are always added in English — HI/BN/TA content comes from
+// translating an existing English topic, not from a fresh add here.
 export default function AddTopic() {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
 
     /* =========================
        STATE
     ========================= */
 
-    const [moduleId, setModuleId] = useState("");
+    // Get current language from URL tab parameter, default to English
+    const [language, setLanguage] = useState(
+        (searchParams.get("tab") || LANGUAGES[0].key).toLowerCase()
+    );
+
+    // Preselect the module the "Add Topic" button was clicked from, if any.
+    const [moduleId, setModuleId] = useState(
+        searchParams.get("module_id") || ""
+    );
 
     const [modules, setModules] = useState([]);
 
@@ -37,7 +50,7 @@ export default function AddTopic() {
         const loadModules = async () => {
             try {
                 const response = await getModules({
-                    language_id: 1,
+                    language_id: 1, // Modules are always loaded in English for consistency
                     page: 1,
                     limit: 100,
                 });
@@ -151,6 +164,7 @@ export default function AddTopic() {
                     topic_name: topic.topic_name.trim(),
                     is_active: topic.status,
                 })),
+                language_id: LANGUAGES.find(lang => lang.key === language)?.id || 1,
             };
 
             await createTopic(payload);
@@ -228,6 +242,7 @@ export default function AddTopic() {
                 onSubmit={handleSubmit}
                 onCancel={handleCancel}
                 loading={loading}
+                currentLanguage={language}
             />
         </AppLayout>
     );

@@ -3,11 +3,11 @@ import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { FiUpload } from "react-icons/fi";
 
-import AppLayout from "../../../../components/layout/AppLayout";
-import Breadcrumbs from "../../../../shared/components/breadcrumbs/Breadcrumbs";
-import { LANGUAGE_OPTIONS } from "../../../../shared/constants/languageConstants";
+import AppLayout from "@/components/layout/AppLayout";
+import Breadcrumbs from "@/shared/components/breadcrumbs/Breadcrumbs";
+import { LANGUAGE_OPTIONS } from "@/shared/constants/languageConstants";
 
-import { createPpt } from "../services/PptService";
+import { createPpt } from "@/features/document/ppt/services/PptService";
 
 const breadcrumbItems = [
     { label: "Home", path: "/dashboard" },

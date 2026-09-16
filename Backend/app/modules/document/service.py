@@ -1,7 +1,8 @@
 from typing import Optional
-from fastapi import HTTPException,status, UploadFile
+from fastapi import HTTPException, status, UploadFile
 from sqlalchemy.orm import Session
 from sqlalchemy.engine.row import Row
+from app.database import db
 from app.modules.document.model import DocumentMaster
 from app.utils.file_upload import save_file
 from app.modules.document.repository import DocumentRepository
@@ -13,6 +14,7 @@ from app.modules.document.schema import (
     DocumentCreateRequest,
     DocumentUpdateRequest,
 )
+
 
 class DocumentService:
 
@@ -55,72 +57,62 @@ class DocumentService:
             "total_pages": (total + per_page - 1) // per_page if total else 0,
         }
 
-
-
     @staticmethod
     def get_document_by_id(
-     db: Session,
-     doc_id: int,
-):
+        db: Session,
+        doc_id: int,
+    ):
 
-     document = DocumentRepository.get_document_by_id(
-        db=db,
-        doc_id=doc_id,
-    )
-
-     if not document:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Document not found",
+        document = DocumentRepository.get_document_by_id(
+            db=db,
+            doc_id=doc_id,
         )
 
-     parent_id = (
-     document.parent_id
-     if document.parent_id != document.doc_id
-     else document.doc_id
-)
+        if not document:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Document not found",
+            )
 
-     translations = DocumentRepository.get_document_translations(
-     db=db,
-     parent_id=parent_id,
-)
+        parent_id = (
+            document.parent_id
+            if document.parent_id != document.doc_id
+            else document.doc_id
+        )
 
-     return {
-      "document": document,
-      "translations": translations,
-}
+        translations = DocumentRepository.get_document_translations(
+            db=db,
+            parent_id=parent_id,
+        )
 
-
-
+        return {
+            "document": document,
+            "translations": translations,
+        }
 
     @staticmethod
     def delete_document(
-     db: Session,
-     doc_id: int,
-):
+        db: Session,
+        doc_id: int,
+    ):
 
-     document = DocumentRepository.get_document(
-        db=db,
-        doc_id=doc_id,
-    )
-
-     if not document:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Document not found",
+        document = DocumentRepository.get_document(
+            db=db,
+            doc_id=doc_id,
         )
 
-     DocumentRepository.delete_document(
-        db=db,
-        document=document,
-    )
+        if not document:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Document not found",
+            )
 
-     return {
-        "message": "Document deleted successfully"
-    }
+        DocumentRepository.delete_document(
+            db=db,
+            document=document,
+        )
 
-
-
+        return {"message": "Document deleted successfully"}
 
     @staticmethod
     async def create_document(
@@ -157,10 +149,7 @@ class DocumentService:
             # PDF
             if request.doc_type.upper() == "PDF":
                 if not media_file:
-                    raise HTTPException(
-                        status_code=400,
-                        detail="PDF file is required."
-                    )
+                    raise HTTPException(status_code=400, detail="PDF file is required.")
 
                 pdf_path = await save_file(media_file, "pdfs")
 
@@ -178,10 +167,7 @@ class DocumentService:
             # PPT
             elif request.doc_type.upper() == "PPT":
                 if not media_file:
-                    raise HTTPException(
-                        status_code=400,
-                        detail="PPT file is required."
-                    )
+                    raise HTTPException(status_code=400, detail="PPT file is required.")
 
                 ppt_path = await save_file(media_file, "ppts")
 
@@ -200,8 +186,7 @@ class DocumentService:
             elif request.doc_type.upper() == "VIDEO":
                 if not media_file:
                     raise HTTPException(
-                        status_code=400,
-                        detail="Video file is required."
+                        status_code=400, detail="Video file is required."
                     )
 
                 video_path = await save_file(media_file, "videos")
@@ -219,8 +204,7 @@ class DocumentService:
 
             else:
                 raise HTTPException(
-                    status_code=400,
-                    detail="Invalid document type: {request.doc_type}"
+                    status_code=400, detail="Invalid document type: {request.doc_type}"
                 )
 
             document = DocumentRepository.create_document(
@@ -239,158 +223,151 @@ class DocumentService:
             db.rollback()
             raise
 
-
     @staticmethod
     async def update_document(
-     db: Session,
-     doc_id: int,
-     request: DocumentUpdateRequest,
-     document_image: UploadFile | None,
-     media_file: UploadFile | None,
-):
+        db: Session,
+        doc_id: int,
+        request: DocumentUpdateRequest,
+        document_image: UploadFile | None,
+        media_file: UploadFile | None,
+    ):
 
-     document = DocumentRepository.get_document(
-        db=db,
-        doc_id=doc_id,
-    )
-
-     if not document:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Document not found",
+        document = DocumentRepository.get_document(
+            db=db,
+            doc_id=doc_id,
         )
 
-     try:
-
-        # ---------------- IMAGE ---------------- #
-
-        doc_image = None
-
-        if document_image:
-            doc_image = await save_file(document_image, "documents")
-
-        # ---------------- PDF ---------------- #
-
-        if request.doc_type.upper() == "PDF":
-
-            if media_file:
-
-                pdf = DocumentRepository.get_pdf(
-                    db=db,
-                    pdf_id=document.doc_ref_id,
-                )
-
-                if not pdf:
-                    raise HTTPException(
-                        status_code=404,
-                        detail="PDF record not found."
-                    )
-
-                pdf_path = await save_file(
-                    media_file,
-                    "pdfs",
-                )
-
-                DocumentRepository.update_pdf(
-                    pdf=pdf,
-                    pdf_name=request.doc_title,
-                    pdf_description=request.doc_description,
-                    pdf_url=pdf_path,
-                    status=request.status,
-                    language_id=request.language_id,
-                )
-
-        # ---------------- PPT ---------------- #
-
-        elif request.doc_type.upper() == "PPT":
-
-            if media_file:
-
-                ppt = DocumentRepository.get_ppt(
-                    db=db,
-                    ppt_id=document.doc_ref_id,
-                )
-
-                if not ppt:
-                    raise HTTPException(
-                        status_code=404,
-                        detail="PPT record not found."
-                    )
-
-                ppt_path = await save_file(
-                    media_file,
-                    "ppts",
-                )
-
-                DocumentRepository.update_ppt(
-                    ppt=ppt,
-                    ppt_name=request.doc_title,
-                    ppt_description=request.doc_description,
-                    ppt_url=ppt_path,
-                    status=request.status,
-                    language_id=request.language_id,
-                )
-
-        # ---------------- VIDEO ---------------- #
-
-        elif request.doc_type.upper() == "VIDEO":
-
-            if media_file:
-
-                video = DocumentRepository.get_video(
-                    db=db,
-                    video_id=document.doc_ref_id,
-                )
-
-                if not video:
-                    raise HTTPException(
-                        status_code=404,
-                        detail="Video record not found."
-                    )
-
-                video_path = await save_file(
-                    media_file,
-                    "videos",
-                )
-
-                DocumentRepository.update_video(
-                    video=video,
-                    video_name=request.doc_title,
-                    video_description=request.doc_description,
-                    video_url=video_path,
-                    status=request.status,
-                    language_id=request.language_id,
-                )
-
-        else:
+        if not document:
             raise HTTPException(
-                status_code=400,
-                detail="Invalid document type."
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Document not found",
             )
 
-        # ---------------- DOCUMENT ---------------- #
+        try:
 
-        DocumentRepository.update_document(
-            document=document,
-            request=request,
-            doc_image=doc_image,
-        )
+            # ---------------- IMAGE ---------------- #
 
-        db.commit()
-        db.refresh(document)
+            doc_image = None
 
-        return {
-            "message": "Document updated successfully.",
-            "document": document,
-        }
+            if document_image:
+                doc_image = await save_file(document_image, "documents")
 
-     except HTTPException:
-        db.rollback()
-        raise
+            # ---------------- PDF ---------------- #
 
-     except Exception:
-        db.rollback()
-        raise   
+            if request.doc_type.upper() == "PDF":
+
+                if media_file:
+
+                    pdf = DocumentRepository.get_pdf(
+                        db=db,
+                        pdf_id=document.doc_ref_id,
+                    )
+
+                    if not pdf:
+                        raise HTTPException(
+                            status_code=404, detail="PDF record not found."
+                        )
+
+                    pdf_path = await save_file(
+                        media_file,
+                        "pdfs",
+                    )
+
+                    DocumentRepository.update_pdf(
+                        pdf=pdf,
+                        pdf_name=request.doc_title,
+                        pdf_description=request.doc_description,
+                        pdf_url=pdf_path,
+                        status=request.status,
+                        language_id=request.language_id,
+                    )
+
+            # ---------------- PPT ---------------- #
+
+            elif request.doc_type.upper() == "PPT":
+
+                if media_file:
+
+                    ppt = DocumentRepository.get_ppt(
+                        db=db,
+                        ppt_id=document.doc_ref_id,
+                    )
+
+                    if not ppt:
+                        raise HTTPException(
+                            status_code=404, detail="PPT record not found."
+                        )
+
+                    ppt_path = await save_file(
+                        media_file,
+                        "ppts",
+                    )
+
+                    DocumentRepository.update_ppt(
+                        ppt=ppt,
+                        ppt_name=request.doc_title,
+                        ppt_description=request.doc_description,
+                        ppt_url=ppt_path,
+                        status=request.status,
+                        language_id=request.language_id,
+                    )
+
+            # ---------------- VIDEO ---------------- #
+
+            elif request.doc_type.upper() == "VIDEO":
+
+                if media_file:
+
+                    video = DocumentRepository.get_video(
+                        db=db,
+                        video_id=document.doc_ref_id,
+                    )
+
+                    if not video:
+                        raise HTTPException(
+                            status_code=404, detail="Video record not found."
+                        )
+
+                    video_path = await save_file(
+                        media_file,
+                        "videos",
+                    )
+
+                    DocumentRepository.update_video(
+                        video=video,
+                        video_name=request.doc_title,
+                        video_description=request.doc_description,
+                        video_url=video_path,
+                        status=request.status,
+                        language_id=request.language_id,
+                    )
+
+            else:
+                raise HTTPException(status_code=400, detail="Invalid document type.")
+
+            # ---------------- DOCUMENT ---------------- #
+
+            DocumentRepository.update_document(
+                document=document,
+                request=request,
+                doc_image=doc_image,
+            )
+
+            db.commit()
+            db.refresh(document)
+
+            return {
+                "message": "Document updated successfully.",
+                "document": document,
+            }
+
+        except HTTPException:
+            db.rollback()
+            raise
+
+        except Exception:
+            db.rollback()
+            raise
 
     @staticmethod
     def get_translation(
@@ -424,11 +401,19 @@ class DocumentService:
 
         if not translation:
             return {
-                "success": False,
-                "data": None,
+                "success": True,
+                "data": {
+                    "title": "",
+                    "description": "",
+                    "image_url": parent.doc_image,
+                    "file_url": None,
+                    "file_name": None,
+                    "ppt_viewer_url": None,
+                    "doc_type": (parent.doc_type or "").upper(),
+                },
             }
 
-        image_url = translation.doc_image
+        image_url = translation.doc_image or parent.doc_image
         file_url = None
         file_name = None
         ppt_viewer_url = None
@@ -475,402 +460,471 @@ class DocumentService:
             },
         }
 
-
     @staticmethod
     async def save_translation(
-     db: Session,
-     document_id: int,
-     language_id: int,
-     title: str,
-     description: str | None,
-     document_image: UploadFile | None,
-     media_file: UploadFile | None,
-  ):
-     parent = DocumentRepository.get_document(
-        db=db,
-        doc_id=document_id,
-    )
-
-     if not parent:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Document not found",
+        db: Session,
+        document_id: int,
+        language_id: int,
+        title: str,
+        description: str | None,
+        document_image: UploadFile | None,
+        media_file: UploadFile | None,
+    ):
+        parent = DocumentRepository.get_document(
+            db=db,
+            doc_id=document_id,
         )
 
-     translation = DocumentRepository.get_translation(
-        db=db,
-        parent_id=parent.parent_id,
-        language_id=language_id,
-    )
-
-     try:
-
-        # ---------------- IMAGE ---------------- #
-
-        doc_image = None
-
-        if document_image:
-            doc_image = await save_file(
-                document_image,
-                "documents",
+        if not parent:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Document not found",
             )
 
-        doc_ref_id = None
+        translation = DocumentRepository.get_translation(
+            db=db,
+            parent_id=parent.parent_id,
+            language_id=language_id,
+        )
 
-        # ---------------- PDF ---------------- #
+        try:
 
-        if parent.doc_type.upper() == "PDF":
+            # ---------------- IMAGE ---------------- #
 
-            if translation:
+            doc_image = None
 
-                pdf = DocumentRepository.get_pdf(
-                    db=db,
-                    pdf_id=translation.doc_ref_id,
+            if document_image:
+                doc_image = await save_file(
+                    document_image,
+                    "documents",
                 )
 
-                if media_file:
+            doc_ref_id = None
+
+            # ---------------- PDF ---------------- #
+
+            if parent.doc_type.upper() == "PDF":
+
+                if translation:
+
+                    pdf = DocumentRepository.get_pdf(
+                        db=db,
+                        pdf_id=translation.doc_ref_id,
+                    )
+
+                    if media_file:
+
+                        pdf_path = await save_file(
+                            media_file,
+                            "pdfs",
+                        )
+
+                        if pdf:
+
+                            DocumentRepository.update_pdf(
+                                pdf=pdf,
+                                pdf_name=title,
+                                pdf_description=description,
+                                pdf_url=pdf_path,
+                                status=parent.status,
+                                language_id=language_id,
+                            )
+
+                            doc_ref_id = pdf.pdf_id
+
+                        else:
+
+                            pdf = DocumentRepository.create_pdf(
+                                db=db,
+                                pdf_name=title,
+                                pdf_description=description,
+                                pdf_url=pdf_path,
+                                status=parent.status,
+                                language_id=language_id,
+                            )
+
+                            doc_ref_id = pdf.pdf_id
+
+                    else:
+                        doc_ref_id = translation.doc_ref_id
+
+                else:
+
+                    if not media_file:
+                        raise HTTPException(
+                            status_code=400,
+                            detail="PDF file is required.",
+                        )
 
                     pdf_path = await save_file(
                         media_file,
                         "pdfs",
                     )
 
-                    if pdf:
-
-                        DocumentRepository.update_pdf(
-                            pdf=pdf,
-                            pdf_name=title,
-                            pdf_description=description,
-                            pdf_url=pdf_path,
-                            status=parent.status,
-                            language_id=language_id,
-                        )
-
-                        doc_ref_id = pdf.pdf_id
-
-                    else:
-
-                        pdf = DocumentRepository.create_pdf(
-                            db=db,
-                            pdf_name=title,
-                            pdf_description=description,
-                            pdf_url=pdf_path,
-                            status=parent.status,
-                            language_id=language_id,
-                        )
-
-                        doc_ref_id = pdf.pdf_id
-
-                else:
-                    doc_ref_id = translation.doc_ref_id
-
-            else:
-
-                if not media_file:
-                    raise HTTPException(
-                        status_code=400,
-                        detail="PDF file is required.",
+                    pdf = DocumentRepository.create_pdf(
+                        db=db,
+                        pdf_name=title,
+                        pdf_description=description,
+                        pdf_url=pdf_path,
+                        status=parent.status,
+                        language_id=language_id,
                     )
 
-                pdf_path = await save_file(
-                    media_file,
-                    "pdfs",
-                )
+                    doc_ref_id = pdf.pdf_id
 
-                pdf = DocumentRepository.create_pdf(
-                    db=db,
-                    pdf_name=title,
-                    pdf_description=description,
-                    pdf_url=pdf_path,
-                    status=parent.status,
-                    language_id=language_id,
-                )
+            # ---------------- PPT ---------------- #
 
-                doc_ref_id = pdf.pdf_id
+            elif parent.doc_type.upper() == "PPT":
 
-        # ---------------- PPT ---------------- #
+                if translation:
 
-        elif parent.doc_type.upper() == "PPT":
+                    ppt = DocumentRepository.get_ppt(
+                        db=db,
+                        ppt_id=translation.doc_ref_id,
+                    )
 
-            if translation:
+                    if media_file:
 
-                ppt = DocumentRepository.get_ppt(
-                    db=db,
-                    ppt_id=translation.doc_ref_id,
-                )
+                        ppt_path = await save_file(
+                            media_file,
+                            "ppts",
+                        )
 
-                if media_file:
+                        if ppt:
+
+                            DocumentRepository.update_ppt(
+                                ppt=ppt,
+                                ppt_name=title,
+                                ppt_description=description,
+                                ppt_url=ppt_path,
+                                status=parent.status,
+                                language_id=language_id,
+                            )
+
+                            doc_ref_id = ppt.ppt_id
+
+                        else:
+
+                            ppt = DocumentRepository.create_ppt(
+                                db=db,
+                                ppt_name=title,
+                                ppt_description=description,
+                                ppt_url=ppt_path,
+                                status=parent.status,
+                                language_id=language_id,
+                            )
+
+                            doc_ref_id = ppt.ppt_id
+
+                    else:
+                        doc_ref_id = translation.doc_ref_id
+
+                else:
+
+                    if not media_file:
+                        raise HTTPException(
+                            status_code=400,
+                            detail="PPT file is required.",
+                        )
 
                     ppt_path = await save_file(
                         media_file,
                         "ppts",
                     )
 
-                    if ppt:
-
-                        DocumentRepository.update_ppt(
-                            ppt=ppt,
-                            ppt_name=title,
-                            ppt_description=description,
-                            ppt_url=ppt_path,
-                            status=parent.status,
-                            language_id=language_id,
-                        )
-
-                        doc_ref_id = ppt.ppt_id
-
-                    else:
-
-                        ppt = DocumentRepository.create_ppt(
-                            db=db,
-                            ppt_name=title,
-                            ppt_description=description,
-                            ppt_url=ppt_path,
-                            status=parent.status,
-                            language_id=language_id,
-                        )
-
-                        doc_ref_id = ppt.ppt_id
-
-                else:
-                    doc_ref_id = translation.doc_ref_id
-
-            else:
-
-                if not media_file:
-                    raise HTTPException(
-                        status_code=400,
-                        detail="PPT file is required.",
+                    ppt = DocumentRepository.create_ppt(
+                        db=db,
+                        ppt_name=title,
+                        ppt_description=description,
+                        ppt_url=ppt_path,
+                        status=parent.status,
+                        language_id=language_id,
                     )
 
-                ppt_path = await save_file(
-                    media_file,
-                    "ppts",
-                )
+                    doc_ref_id = ppt.ppt_id
 
-                ppt = DocumentRepository.create_ppt(
-                    db=db,
-                    ppt_name=title,
-                    ppt_description=description,
-                    ppt_url=ppt_path,
-                    status=parent.status,
-                    language_id=language_id,
-                )
+            # ---------------- VIDEO ---------------- #
 
-                doc_ref_id = ppt.ppt_id
+            elif parent.doc_type.upper() == "VIDEO":
 
-        # ---------------- VIDEO ---------------- #
+                if translation:
 
-        elif parent.doc_type.upper() == "VIDEO":
+                    video = DocumentRepository.get_video(
+                        db=db,
+                        video_id=translation.doc_ref_id,
+                    )
 
-            if translation:
+                    if media_file:
 
-                video = DocumentRepository.get_video(
-                    db=db,
-                    video_id=translation.doc_ref_id,
-                )
+                        video_path = await save_file(
+                            media_file,
+                            "videos",
+                        )
 
-                if media_file:
+                        if video:
+
+                            DocumentRepository.update_video(
+                                video=video,
+                                video_name=title,
+                                video_description=description,
+                                video_url=video_path,
+                                status=parent.status,
+                                language_id=language_id,
+                            )
+
+                            doc_ref_id = video.video_id
+
+                        else:
+
+                            video = DocumentRepository.create_video(
+                                db=db,
+                                video_name=title,
+                                video_description=description,
+                                video_url=video_path,
+                                status=parent.status,
+                                language_id=language_id,
+                            )
+
+                            doc_ref_id = video.video_id
+
+                    else:
+                        doc_ref_id = translation.doc_ref_id
+
+                else:
+
+                    if not media_file:
+                        raise HTTPException(
+                            status_code=400,
+                            detail="Video file is required.",
+                        )
 
                     video_path = await save_file(
                         media_file,
                         "videos",
                     )
 
-                    if video:
+                    video = DocumentRepository.create_video(
+                        db=db,
+                        video_name=title,
+                        video_description=description,
+                        video_url=video_path,
+                        status=parent.status,
+                        language_id=language_id,
+                    )
 
-                        DocumentRepository.update_video(
-                            video=video,
-                            video_name=title,
-                            video_description=description,
-                            video_url=video_path,
-                            status=parent.status,
-                            language_id=language_id,
-                        )
-
-                        doc_ref_id = video.video_id
-
-                    else:
-
-                        video = DocumentRepository.create_video(
-                            db=db,
-                            video_name=title,
-                            video_description=description,
-                            video_url=video_path,
-                            status=parent.status,
-                            language_id=language_id,
-                        )
-
-                        doc_ref_id = video.video_id
-
-                else:
-                    doc_ref_id = translation.doc_ref_id
+                    doc_ref_id = video.video_id
 
             else:
 
-                if not media_file:
-                    raise HTTPException(
-                        status_code=400,
-                        detail="Video file is required.",
-                    )
-
-                video_path = await save_file(
-                    media_file,
-                    "videos",
+                raise HTTPException(
+                    status_code=400,
+                    detail="Invalid document type.",
                 )
 
-                video = DocumentRepository.create_video(
+            # ---------------- DOCUMENT ---------------- #
+
+            if translation:
+
+                DocumentRepository.update_translation_document(
+                    translation=translation,
+                    title=title,
+                    description=description,
+                    doc_image=doc_image,
+                    doc_ref_id=doc_ref_id,
+                )
+
+                document = translation
+
+            else:
+
+                document = DocumentRepository.create_translation_document(
                     db=db,
-                    video_name=title,
-                    video_description=description,
-                    video_url=video_path,
-                    status=parent.status,
+                    parent=parent,
                     language_id=language_id,
+                    title=title,
+                    description=description,
+                    doc_image=doc_image,
+                    doc_ref_id=doc_ref_id,
                 )
 
-                doc_ref_id = video.video_id
+            db.commit()
+            db.refresh(document)
 
-        else:
+            return {
+                "message": "Translation saved successfully.",
+                "document": document,
+            }
 
-            raise HTTPException(
-                status_code=400,
-                detail="Invalid document type.",
-            )
+        except HTTPException:
+            db.rollback()
+            raise
 
-        # ---------------- DOCUMENT ---------------- #
-
-        if translation:
-
-            DocumentRepository.update_translation_document(
-                translation=translation,
-                title=title,
-                description=description,
-                doc_image=doc_image,
-                doc_ref_id=doc_ref_id,
-            )
-
-            document = translation
-
-        else:
-
-            document = DocumentRepository.create_translation_document(
-                db=db,
-                parent=parent,
-                language_id=language_id,
-                title=title,
-                description=description,
-                doc_image=doc_image,
-                doc_ref_id=doc_ref_id,
-            )
-
-        db.commit()
-        db.refresh(document)
-
-        return {
-            "message": "Translation saved successfully.",
-            "document": document,
-        }
-
-     except HTTPException:
-        db.rollback()
-        raise
-
-     except Exception:
-        db.rollback()
-        raise
+        except Exception:
+            db.rollback()
+            raise
 
     @staticmethod
     def get_translation_form(
-     db: Session,
-     document_id: int,
-):
-     document = DocumentRepository.get_document_by_id(
-        db=db,
-        doc_id=document_id,
-    )
-
-     if not document:
-        raise HTTPException(
-            status_code=404,
-            detail="Document not found",
+        db: Session,
+        document_id: int,
+    ):
+        document = DocumentRepository.get_document_by_id(
+            db=db,
+            doc_id=document_id,
         )
 
-     languages = DocumentRepository.get_active_languages(db)
+        if not document:
+            raise HTTPException(
+                status_code=404,
+                detail="Document not found",
+            )
 
-     translations = DocumentRepository.get_existing_translations(
-        db=db,
-        parent_id=document.parent_id,
-        base_language=document.language_id,
-    )
+        languages = DocumentRepository.get_active_languages(db)
 
-     return {
-        "document": document,
-        "languages": languages,
-        "translations": translations,
-    }
+        translations = DocumentRepository.get_existing_translations(
+            db=db,
+            parent_id=document.parent_id,
+            base_language=document.language_id,
+        )
 
+        return {
+            "document": document,
+            "languages": languages,
+            "translations": translations,
+        }
 
+    #     @staticmethod
+    #     def export_csv(
+    #      db: Session,
+    #      status: int | None = None,
+    #      doc_category_id: int | None = None,
+    #      doc_ref_id: int | None = None,
+    # ):
 
+    #      rows = DocumentRepository.export_documents(
+    #         db=db,
+    #         status=status,
+    #         doc_category_id=doc_category_id,
+    #         doc_ref_id=doc_ref_id,
+    #     )
 
+    #      output = io.StringIO()
+
+    #      writer = csv.writer(output)
+
+    #      writer.writerow([
+    #         "ID",
+    #         "Document Title",
+    #         "Description",
+    #         "Document Type Name",
+    #         "Document Category",
+    #         "Reference ID",
+    #         "Status",
+    #         "Created At",
+    #         "Updated At",
+    #     ])
+
+    #      for row in rows:
+
+    #         writer.writerow([
+    #             row.doc_id,
+    #             row.doc_title,
+    #             row.doc_description,
+    #             row.category_name or "",
+    #             row.doc_type,
+    #             row.doc_ref_id,
+    #             "Active" if row.status == 1 else "Inactive",
+    #             row.created_at.strftime("%d/%m/%Y %H:%M:%S")
+    #             if row.created_at else "",
+    #             row.updated_at.strftime("%d/%m/%Y %H:%M:%S")
+    #             if row.updated_at else "",
+    #         ])
+
+    #      output.seek(0)
+
+    #      filename = (
+    #         f"documentmasters_export_"
+    #         f"{datetime.now().strftime('%Y_%m_%d_%H_%M_%S')}.csv"
+    #     )
+
+    #      return StreamingResponse(
+    #         iter([output.getvalue()]),
+    #         media_type="text/csv",
+    #         headers={
+    #             "Content-Disposition":
+    #             f'attachment; filename="{filename}"'
+    #         },
+    #     )
     @staticmethod
     def export_csv(
-     db: Session,
-     status: int | None = None,
-     doc_category_id: int | None = None,
-     doc_ref_id: int | None = None,
-):
+        db: Session,
+        status: int | None = None,
+        doc_category_id: int | None = None,
+        doc_ref_id: int | None = None,
+        language_id: int | None = None,
+        search: str | None = None,
+        doc_type: str | None = None,
+    ):
+        rows = DocumentRepository.export_documents(
+            db=db,
+            status=status,
+            doc_category_id=doc_category_id,
+            doc_ref_id=doc_ref_id,
+            language_id=language_id,
+            search=search,
+            doc_type=doc_type,
+        )
 
-     rows = DocumentRepository.export_documents(
-        db=db,
-        status=status,
-        doc_category_id=doc_category_id,
-        doc_ref_id=doc_ref_id,
-    )
+        output = io.StringIO()
 
-     output = io.StringIO()
+        writer = csv.writer(output)
 
-     writer = csv.writer(output)
+        writer.writerow(
+            [
+                "ID",
+                "Document Title",
+                "Description",
+                "Document Type Name",
+                "Document Category",
+                "Reference ID",
+                "Status",
+                "Created At",
+                "Updated At",
+            ]
+        )
 
-     writer.writerow([
-        "ID",
-        "Document Title",
-        "Description",
-        "Document Type Name",
-        "Document Category",
-        "Reference ID",
-        "Status",
-        "Created At",
-        "Updated At",
-    ])
+        for row in rows:
+            writer.writerow(
+                [
+                    row.doc_id,
+                    row.doc_title,
+                    row.doc_description,
+                    row.category_name or "",
+                    row.doc_type or "",
+                    row.doc_ref_id or "",
+                    "Active" if row.status == 1 else "Inactive",
+                    (
+                        row.created_at.strftime("%d/%m/%Y %H:%M:%S")
+                        if row.created_at
+                        else ""
+                    ),
+                    (
+                        row.updated_at.strftime("%d/%m/%Y %H:%M:%S")
+                        if row.updated_at
+                        else ""
+                    ),
+                ]
+            )
 
-     for row in rows:
+        output.seek(0)
 
-        writer.writerow([
-            row.doc_id,
-            row.doc_title,
-            row.doc_description,
-            row.category_name or "",
-            row.doc_type,
-            row.doc_ref_id,
-            "Active" if row.status == 1 else "Inactive",
-            row.created_at.strftime("%d/%m/%Y %H:%M:%S")
-            if row.created_at else "",
-            row.updated_at.strftime("%d/%m/%Y %H:%M:%S")
-            if row.updated_at else "",
-        ])
+        filename = (
+            f"documentmasters_export_"
+            f"{datetime.now().strftime('%Y_%m_%d_%H_%M_%S')}.csv"
+        )
 
-     output.seek(0)
-
-     filename = (
-        f"documentmasters_export_"
-        f"{datetime.now().strftime('%Y_%m_%d_%H_%M_%S')}.csv"
-    )
-
-     return StreamingResponse(
-        iter([output.getvalue()]),
-        media_type="text/csv",
-        headers={
-            "Content-Disposition":
-            f'attachment; filename="{filename}"'
-        },
-    )
+        return StreamingResponse(
+            iter([output.getvalue()]),
+            media_type="text/csv",
+            headers={"Content-Disposition": (f'attachment; filename="{filename}"')},
+        )

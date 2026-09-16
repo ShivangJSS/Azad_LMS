@@ -4,7 +4,16 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
-from app.modules.dashboard.schema import DashboardCentreDetail, DashboardDocumentDetail, DashboardLoginDetail, DashboardModuleDetail, DashboardParticipantDetail, DashboardResponse, MonthlyLoginTrendItem, TraineeStatusDetail
+from app.modules.dashboard.schema import (
+    DashboardCentreDetail,
+    DashboardDocumentDetail,
+    DashboardLoginDetail,
+    DashboardModuleDetail,
+    DashboardParticipantDetail,
+    DashboardResponse,
+    MonthlyLoginTrendItem,
+    TraineeStatusDetail,
+)
 from app.modules.dashboard.service import DashboardService
 from app.shared.dependencies.module_access import Module, require_module_access
 from app.modules.auth.dependencies import get_current_user
@@ -92,6 +101,7 @@ def get_state_wise_participants(
         from_date=from_date,
         to_date=to_date,
     )
+
 
 @router.get(
     "/district-wise-participants",
@@ -271,7 +281,6 @@ def get_monthly_logins(
         from_date=from_date,
         to_date=to_date,
     )
-
 
 
 @router.get(

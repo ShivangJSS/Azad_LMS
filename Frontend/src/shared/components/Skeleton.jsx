@@ -1,14 +1,3 @@
-/* =========================================================================
-   Skeleton — reusable shimmering placeholder blocks for loading states.
-
-   Usage:
-     {loading ? <SkeletonText lines={4} /> : <RealContent />}
-     {loading ? <SkeletonCard /> : <Card />}
-
-   Every block uses the same pulse animation so loading states read as one
-   system across the app.
-========================================================================= */
-
 export function Skeleton({ className = "" }) {
     return (
         <div

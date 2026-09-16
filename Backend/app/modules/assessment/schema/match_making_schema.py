@@ -4,8 +4,8 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict
 
-
 # ---------------- Match Making Master ---------------- #
+
 
 class MatchMakingBase(BaseModel):
     parent_id: int = 0
@@ -45,8 +45,6 @@ class MatchMakingResponse(MatchMakingBase):
     model_config = ConfigDict(from_attributes=True)
 
 
-
-
 class MatchLeftItemBase(BaseModel):
     match_left_text: str
     sort_order: Optional[str] = None
@@ -72,7 +70,6 @@ class MatchLeftItemResponse(MatchLeftItemBase):
     deleted_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
-
 
 
 class MatchRightItemBase(BaseModel):

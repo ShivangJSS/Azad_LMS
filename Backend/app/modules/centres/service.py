@@ -109,9 +109,7 @@ class CentreService:
         db: Session,
         centre: CentreCreateRequest,
     ) -> CentreMaster:
-        _assert_centre_name_available(
-            db, centre.centre_name, centre.district_id
-        )
+        _assert_centre_name_available(db, centre.centre_name, centre.district_id)
         try:
             created = CentreRepository.create_centre(db=db, data=centre)
 

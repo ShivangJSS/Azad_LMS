@@ -1,17 +1,16 @@
 import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import { FiDownload } from "react-icons/fi";
 
-import AppLayout from "../../../../components/layout/AppLayout";
-import Breadcrumbs from "../../../../shared/components/breadcrumbs/Breadcrumbs";
-import LanguageTabs from "../../../../shared/components/language/LanguageTabs";
-import Pagination from "../../../../shared/components/table/Pagination";
+import AppLayout from "@/components/layout/AppLayout";
+import Breadcrumbs from "@/shared/components/breadcrumbs/Breadcrumbs";
+import LanguageTabs from "@/shared/components/language/LanguageTabs";
+import Pagination from "@/shared/components/table/Pagination";
 
-import ListTable from "../components/ListTable";
-import ListFilters from "../components/ListFilters";
-import useList from "../hook/useList";
+import ListTable from "@/features/module/ListModule/components/ListTable";
+import ListFilters from "@/features/module/ListModule/components/ListFilters";
+import useList from "@/features/module/ListModule/hook/useList";
 
-import { MODULE_COLUMNS, PER_PAGE, } from "../hook/Listconstants";
+import { MODULE_COLUMNS, PER_PAGE, } from "@/features/module/ListModule/hook/Listconstants";
 
 const breadcrumbItems = [
     { label: "Home", path: "/dashboard" },
@@ -114,7 +113,11 @@ export default function ModuleList() {
                             type="button"
                             onClick={() =>
                                 navigate(
-                                    `/module-master/configure/${module.module_id}`
+                                    // Configuration lives on the base (English)
+                                    // module; configure the parent even from a
+                                    // translation tab. Carry the current
+                                    // language so Configure opens on that tab.
+                                    `/module-master/configure/${module.parent_id || module.module_id}?tab=${language}`
                                 )
                             }
                             className="h-[32px] rounded-[4px] border border-[#732269] bg-white px-[14px] text-[14px] font-medium text-[#732269]"
@@ -189,7 +192,7 @@ export default function ModuleList() {
 
             {/* ================= CARD ================= */}
 
-            <div className="rounded-b-[6px] border border-t-0 border-[#D8E2EF] bg-white">
+            <div className="rounded-b-[6px] bg-white">
 
                 {/* ================= SEARCH ================= */}
 
@@ -219,19 +222,23 @@ export default function ModuleList() {
                             </span>
                         </p>
 
-                        <Link
-                            to="/module-master/add"
-                            className="inline-flex h-[35px] items-center justify-center rounded-[4px] border-1 border-[#344050] bg-white px-[16px] text-[14px] font-medium !text-[#344050] !no-underline hover:bg-[#F8F9FA]"
-                        >
-                            + Add Module
-                        </Link>
+                        {/* Add Module — English only; HI/BN/TA modules are
+                            added via translation, not created fresh. */}
+                        {language === "english" && (
+                            <Link
+                                to="/module-master/add"
+                                className="inline-flex h-[35px] items-center justify-center rounded-[4px] border-1 border-[#344050] bg-white px-[16px] text-[14px] font-medium !text-[#344050] !no-underline hover:bg-[#F8F9FA]"
+                            >
+                                + Add Module
+                            </Link>
+                        )}
 
                     </div>
 
                     {/* TABLE */}
 
                     <ListTable
-                        columns={MODULE_COLUMNS}
+                        columns={columns}
                         data={modules}
                         loading={loading}
                         rowKey="module_id"
@@ -243,15 +250,8 @@ export default function ModuleList() {
 
                     {/* BOTTOM */}
 
-                    <div className="mt-[16px] flex items-center justify-between">
+                    <div className="mt-[16px] flex items-center justify-end">
 
-                        <button
-                            type="button"
-                            className="inline-flex h-[32px] items-center gap-[8px] rounded-[4px] border border-[#732269] bg-white px-[14px] text-[14px] font-medium text-[#732269]"
-                        >
-                            <FiDownload size={14} />
-                            Export
-                        </button>
 
                         {totalPages > 1 && (
                             <Pagination

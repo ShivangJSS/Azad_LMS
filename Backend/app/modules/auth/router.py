@@ -13,7 +13,7 @@ from app.modules.auth.schema import (
     LogoutResponse,
     RefreshTokenRequest,
     RefreshTokenResponse,
-     ResetPasswordRequest,
+    ResetPasswordRequest,
     ResetPasswordResponse,
 )
 from app.database.session import get_db
@@ -27,15 +27,13 @@ router = APIRouter(
 
 ##get captcha endpoint
 
+
 @router.get("/captcha")
 def get_captcha():
     """
     Generate a new captcha.
     """
     return generate_captcha()
-
-
-
 
 
 @router.post(
@@ -56,8 +54,6 @@ def login(
     )
 
 
-
-
 @router.post(
     "/refresh",
     response_model=RefreshTokenResponse,
@@ -70,7 +66,6 @@ def refresh_token(
         db,
         request.refresh_token,
     )
-
 
 
 @router.post(
@@ -86,10 +81,10 @@ def logout():
     return AuthService.logout()
 
 
+# ==========================================================
+# forgot password router
+# =========================================================
 
-#==========================================================
-#forgot password router
-#=========================================================
 
 @router.post(
     "/forgot-password",
@@ -104,6 +99,7 @@ def forgot_password(
         db=db,
         request=request,
     )
+
 
 @router.post(
     "/reset-password",

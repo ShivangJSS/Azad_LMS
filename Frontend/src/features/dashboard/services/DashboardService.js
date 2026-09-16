@@ -1,4 +1,4 @@
-import API from "../../../api/Api";
+import API from "@/api/Api";
 
 const cleanParams = (params = {}) =>
     Object.fromEntries(

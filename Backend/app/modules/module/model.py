@@ -102,7 +102,6 @@ class ModuleType(Base):
     deleted_at = Column(DateTime)
 
 
-
 class TopicMapping(Base):
     __tablename__ = "topic_mapping"
 
@@ -123,9 +122,8 @@ class TopicMapping(Base):
 
     updated_at = Column(
         DateTime,
-        
         server_default=text("CURRENT_TIMESTAMP"),
-    )    
+    )
 
 
 class PreSessionAssessment(Base):
@@ -154,11 +152,7 @@ class PreSessionAssessment(Base):
 class SelfPacedLearning(Base):
     __tablename__ = "self_paced_learning"
 
-    self_paced_learning_id = Column(
-        BigInteger,
-        primary_key=True,
-        autoincrement=True
-    )
+    self_paced_learning_id = Column(BigInteger, primary_key=True, autoincrement=True)
 
     module_id = Column(BigInteger)
 

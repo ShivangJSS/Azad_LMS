@@ -1,6 +1,7 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import toast from "react-hot-toast";
 import { IoIosArrowUp, IoIosArrowDown } from "react-icons/io";
+import { useParams } from "react-router-dom";
 
 import ConfigSection from "./ConfigSection";
 import AddAssessmentModal from "./AddAssessmentModal";
@@ -8,7 +9,7 @@ import {
     ASSESSMENT_TYPES,
     getAssessmentQuestions,
     deactivateAssessmentMapping,
-} from "../../services/ConfigurationService";
+} from "@/features/module/ListModule/services/ConfigurationService";
 
 /* =========================================================
    AssessmentSection
@@ -31,11 +32,21 @@ const TABS = [
 ];
 
 export default function AssessmentSection({
+    // title,
+    // assessmentId = null,
+    // available = true,
+    // languageId = null,
+    // moduleName = "",
+    // // Questions are assigned once on the English tab and apply to every
+    // // language, so the "+" add control shows on English only.
+    // canAdd = true,
     title,
     assessmentId = null,
+    assessmentIds = [],
     available = true,
     languageId = null,
     moduleName = "",
+    canAdd = true,
 }) {
     // The modal header shows just the assessment name (e.g.
     // "Post-Session Assessment"), without the "(Optional)"/"(Compulsory)"
@@ -51,26 +62,159 @@ export default function AssessmentSection({
 
     const cfg = ASSESSMENT_TYPES[activeTab];
 
+    // const loadQuestions = useCallback(async () => {
+    //     if (!available || !assessmentId) {
+    //         setQuestions([]);
+    //         return;
+    //     }
+
+    //     try {
+    //         setLoading(true);
+    //         const data = await getAssessmentQuestions(
+    //             assessmentId,
+    //             activeTab,
+    //             languageId
+    //         );
+    //         setQuestions(Array.isArray(data) ? data : []);
+    //     } catch (error) {
+    //         setQuestions([]);
+    //     } finally {
+    //         setLoading(false);
+    //     }
+    // }, [available, assessmentId, activeTab, languageId]);
+
+
+
+    // const resolvedAssessmentIds = useMemo(() => {
+    //     const ids = [
+    //         ...assessmentIds,
+    //         assessmentId,
+    //     ];
+
+    //     return [
+    //         ...new Set(
+    //             ids
+    //                 .map((id) => Number(id))
+    //                 .filter(Boolean)
+    //         ),
+    //     ];
+    // }, [assessmentIds, assessmentId]);
+
+    const assessmentIdKey = useMemo(() => {
+        return [...new Set(
+            [...assessmentIds, assessmentId]
+                .map((id) => Number(id))
+                .filter(Boolean)
+        )]
+            .sort((a, b) => a - b)
+            .join(",");
+    }, [assessmentIds, assessmentId]);
+
+    const resolvedAssessmentIds = useMemo(() => {
+        if (!assessmentIdKey) return [];
+
+        return assessmentIdKey
+            .split(",")
+            .map(Number)
+            .filter(Boolean);
+    }, [assessmentIdKey]);
+
     const loadQuestions = useCallback(async () => {
-        if (!available || !assessmentId) {
+        if (
+            !available ||
+            resolvedAssessmentIds.length === 0
+        ) {
             setQuestions([]);
             return;
         }
 
         try {
             setLoading(true);
-            const data = await getAssessmentQuestions(
-                assessmentId,
-                activeTab,
-                languageId
+
+            const responses = await Promise.allSettled(
+                resolvedAssessmentIds.map((id) =>
+                    getAssessmentQuestions(
+                        id,
+                        activeTab,
+                        languageId
+                    )
+                )
             );
-            setQuestions(Array.isArray(data) ? data : []);
+
+            const merged = new Map();
+
+            responses.forEach((result) => {
+                if (result.status !== "fulfilled") {
+                    return;
+                }
+
+                const response = result.value;
+                const data = response?.data ?? response;
+
+                if (!Array.isArray(data)) {
+                    return;
+                }
+
+                data.forEach((question) => {
+                    const refKey = cfg?.refKey;
+
+                    if (!refKey) {
+                        return;
+                    }
+
+                    const questionId = question?.[refKey];
+
+                    if (
+                        questionId === undefined ||
+                        questionId === null
+                    ) {
+                        return;
+                    }
+
+                    const key = String(questionId);
+
+                    if (!merged.has(key)) {
+                        merged.set(key, question);
+                        return;
+                    }
+
+                    const existing = merged.get(key);
+
+                    merged.set(key, {
+                        ...existing,
+                        ...question,
+                        is_checked:
+                            Boolean(existing?.is_checked) ||
+                            Boolean(question?.is_checked),
+                    });
+                });
+            });
+
+            setQuestions(
+                Array.from(merged.values())
+            );
         } catch (error) {
+            console.error(
+                "Error loading assessment questions:",
+                error?.response?.data ?? error
+            );
+
             setQuestions([]);
         } finally {
             setLoading(false);
         }
-    }, [available, assessmentId, activeTab, languageId]);
+    }, [
+        // available,
+        // resolvedAssessmentIds,
+        // activeTab,
+        // languageId,
+        // cfg,
+        available,
+        assessmentIdKey,
+        activeTab,
+        languageId,
+        cfg,
+    ]);
 
     useEffect(() => {
         loadQuestions();
@@ -85,7 +229,13 @@ export default function AssessmentSection({
             );
             return;
         }
-        if (!assessmentId) {
+        // if (!assessmentId) {
+        //     toast(
+        //         "No assessment is linked to this module yet."
+        //     );
+        //     return;
+        // }
+        if (resolvedAssessmentIds.length === 0) {
             toast(
                 "No assessment is linked to this module yet."
             );
@@ -94,20 +244,47 @@ export default function AssessmentSection({
         setModalOpen(true);
     };
 
+    // const handleDeactivate = async (row) => {
+    //     const confirmed = window.confirm(
+    //         "Deactivate this question from the module?"
+    //     );
+    //     if (!confirmed) return;
+
+    //     try {
+    //         await deactivateAssessmentMapping({
+    //             assessment_id: assessmentId,
+    //             assessment_type: cfg.type,
+    //             assessment_ref_id: row[cfg.refKey],
+    //         });
+    //         toast.success("Question deactivated.");
+    //         loadQuestions();
+    //     } catch (error) {
+    //         toast.error(
+    //             error?.response?.data?.detail ||
+    //             "Unable to deactivate question."
+    //         );
+    //     }
+    // };
+
+
     const handleDeactivate = async (row) => {
         const confirmed = window.confirm(
             "Deactivate this question from the module?"
         );
+
         if (!confirmed) return;
 
         try {
-            await deactivateAssessmentMapping({
-                assessment_id: assessmentId,
-                assessment_type: cfg.type,
-                assessment_ref_id: row[cfg.refKey],
-            });
+            for (const id of resolvedAssessmentIds) {
+                await deactivateAssessmentMapping({
+                    assessment_id: id,
+                    assessment_type: cfg.type,
+                    assessment_ref_id: row[cfg.refKey],
+                });
+            }
+
             toast.success("Question deactivated.");
-            loadQuestions();
+            await loadQuestions();
         } catch (error) {
             toast.error(
                 error?.response?.data?.detail ||
@@ -115,7 +292,6 @@ export default function AssessmentSection({
             );
         }
     };
-
     const activeEmptyLabel =
         TABS.find((t) => t.key === activeTab)?.emptyLabel || activeTab;
 
@@ -124,6 +300,7 @@ export default function AssessmentSection({
             title={title}
             onAdd={handleAdd}
             addTitle="Assign question"
+            showAdd={canAdd}
         >
 
             {/* ================= TAB BAR ================= */}
@@ -138,11 +315,10 @@ export default function AssessmentSection({
                             onClick={() => setActiveTab(tab.key)}
                             className={`flex-1 px-[14px] py-[10px] text-center text-[13px] font-semibold transition
                             ${index !== 0 ? "border-l border-[#e3d3e0]" : ""}
-                            ${
-                                isActive
+                            ${isActive
                                     ? "bg-[#732269] text-white"
                                     : "bg-transparent text-[#5a3a54] hover:bg-[#efe1ec]"
-                            }`}
+                                }`}
                         >
                             {tab.label}
                         </button>
@@ -212,9 +388,17 @@ export default function AssessmentSection({
             {/* ================= ADD MODAL ================= */}
 
             <AddAssessmentModal
+                // open={modalOpen}
+                // onClose={() => setModalOpen(false)}
+                // assessmentId={assessmentId}
+                // languageId={languageId}
+                // moduleName={moduleName}
+                // title={modalTitle}
+                // onSaved={loadQuestions}
                 open={modalOpen}
                 onClose={() => setModalOpen(false)}
                 assessmentId={assessmentId}
+                assessmentIds={resolvedAssessmentIds}
                 languageId={languageId}
                 moduleName={moduleName}
                 title={modalTitle}

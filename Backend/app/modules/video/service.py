@@ -177,7 +177,5 @@ class VideoService:
         return StreamingResponse(
             iter([buffer.getvalue()]),
             media_type="text/csv",
-            headers={
-                "Content-Disposition": "attachment; filename=videos.csv"
-            },
+            headers={"Content-Disposition": "attachment; filename=videos.csv"},
         )

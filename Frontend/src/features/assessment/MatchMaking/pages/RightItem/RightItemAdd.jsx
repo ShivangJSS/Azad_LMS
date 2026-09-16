@@ -2,13 +2,13 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 
-import Breadcrumbs from "../../../../../shared/components/breadcrumbs/Breadcrumbs";
-import AppLayout from "../../../../../components/layout/AppLayout";
-import AddItemForm from "../../components/AddItemForm";
+import Breadcrumbs from "@/shared/components/breadcrumbs/Breadcrumbs";
+import AppLayout from "@/components/layout/AppLayout";
+import AddItemForm from "@/features/assessment/MatchMaking/components/AddItemForm";
 
 import {
     createRightItem,
-} from "../../services/MatchingMakingService";
+} from "@/features/assessment/MatchMaking/services/MatchingMakingService";
 
 export default function RightItemAdd() {
     const { matchMakingId } = useParams();

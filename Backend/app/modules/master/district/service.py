@@ -127,7 +127,7 @@ def create_district_service(
             action="CREATE",
             entity="District",
             entity_id=str(request.district_lgd_code),
-            details={"new_district": request.model_dump(mode="json")}, # type: ignore
+            details={"new_district": request.model_dump(mode="json")},  # type: ignore
         )
 
         db.commit()
@@ -222,7 +222,6 @@ def get_district_service(
 
     user_role = _get_user_role(current_user)
 
-
     if user_role not in PRIVILEGED_ROLES:
 
         if user_role == UserRole.STATE_HEAD.value:
@@ -250,8 +249,6 @@ def get_district_service(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You don't have permission to access this district.",
             )
-
-
 
     return _map_district(district)
 
@@ -294,7 +291,7 @@ def update_district_service(
             action="UPDATE",
             entity="District",
             entity_id=str(district_lgd_code),
-            details={ # type: ignore
+            details={  # type: ignore
                 "old_district": old_district_data,
                 "new_district": request.model_dump(mode="json"),
             },

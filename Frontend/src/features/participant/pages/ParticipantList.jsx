@@ -1,33 +1,34 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Download } from 'lucide-react';
 import {
     getParticipants,
+    exportParticipants,
     getStates,
     getDistricts,
     getAllCentres,
     getBatches,
-} from '../services/participantService';
-import ParticipantTable, { BRAND } from '../components/ParticipantTable';
-import ParticipantFilter from '../components/ParticipantFilter';
-import AppLayout from '../../../components/layout/AppLayout';
-import Pagination from '../../../shared/components/table/Pagination';
-import ManageModuleModal from '../components/ManageModuleModal';
-import TimeSpentModal from '../components/TimeSpentModal';
-import CredentialsModal from '../components/CredentialsModal';
-import Breadcrumbs from '../../../shared/components/breadcrumbs/Breadcrumbs';
+} from '@/features/participant/services/ParticipantService';
+import ParticipantTable, { BRAND } from '@/features/participant/components/ParticipantTable';
+import ParticipantFilter from '@/features/participant/components/ParticipantFilter';
+import AppLayout from '@/components/layout/AppLayout';
+import Pagination from '@/shared/components/table/Pagination';
+import ExportButton from '@/shared/components/table/ExportButton';
+import ManageModuleModal from '@/features/participant/components/ManageModuleModal';
+import TimeSpentModal from '@/features/participant/components/TimeSpentModal';
+import CredentialsModal from '@/features/participant/components/CredentialsModal';
+import Breadcrumbs from '@/shared/components/breadcrumbs/Breadcrumbs';
 import { useNavigate } from "react-router-dom";
 
 const PAGE_SIZE = 10;
 
 export default function ParticipantList() {
-    // Filter dropdown data
+    // Filter dropdown data 
     const [states, setStates] = useState([]);
     const [districts, setDistricts] = useState([]);
     const [centres, setCentres] = useState([]);
     const [batches, setBatches] = useState([]);
     const navigate = useNavigate();
 
-    // Selected filters (pending vs applied so Search/Reset behave predictably)
+    // Selected filters (pending vs applied so Search/Reset behave predictably) 
     const [filters, setFilters] = useState({
         state_id: '',
         district_id: '',
@@ -37,17 +38,17 @@ export default function ParticipantList() {
     });
     const [appliedFilters, setAppliedFilters] = useState(filters);
 
-    // Table data
+    // Table data 
     const [participants, setParticipants] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [page, setPage] = useState(1);
 
-    // Row-action modals
-    const [activeModal, setActiveModal] = useState(null); // 'modules' | 'time' | 'creds'
+    // Row-action modals 
+    const [activeModal, setActiveModal] = useState(null); // 'modules' | 'time' | 'creds' 
     const [activeParticipant, setActiveParticipant] = useState(null);
 
-    // ---- load dropdown data ----
+    // ---- load dropdown data ---- 
 
     useEffect(() => {
         getStates().then(setStates).catch(() => setStates([]));
@@ -71,7 +72,7 @@ export default function ParticipantList() {
             .catch(() => setBatches([]));
     }, [filters.centre_id]);
 
-    // ---- load participants whenever applied filters change ----
+    // ---- load participants whenever applied filters change ---- 
 
     const loadParticipants = useCallback(async () => {
         setLoading(true);
@@ -96,13 +97,13 @@ export default function ParticipantList() {
         loadParticipants();
     }, [loadParticipants]);
 
-    // ---- handlers ----
+    // ---- handlers ---- 
 
     const handleFilterChange = (key) => (e) => {
         const value = e.target.value;
         setFilters((prev) => {
             const next = { ...prev, [key]: value };
-            if (key === 'state_id') next.district_id = ''; // clear dependent filter
+            if (key === 'state_id') next.district_id = ''; // clear dependent filter 
             return next;
         });
     };
@@ -119,24 +120,9 @@ export default function ParticipantList() {
         setPage(1);
     };
 
-    const handleExport = () => {
-        const rows = [
-            ['S. No.', 'Trainee Name', 'Enrollment Id', 'Status'],
-            ...participants.map((p, i) => [i + 1, p.participant_name, p.enrollment_no, p.status]),
-        ];
-        const csv = rows.map((r) => r.join(',')).join('\n');
-        const blob = new Blob([csv], { type: 'text/csv' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'trainees.csv';
-        a.click();
-        URL.revokeObjectURL(url);
-    };
+    const handleAddTrainee = () => { };
 
-    const handleAddTrainee = () => {};
-
-    // ---- action handlers passed down to the table (wire these to real routes) ----
+    // ---- action handlers passed down to the table (wire these to real routes) ---- 
 
     const handleEdit = (p) => {
         navigate(`/participants/${p.participant_id}/edit`);
@@ -162,7 +148,7 @@ export default function ParticipantList() {
         setActiveParticipant(null);
     };
 
-    // ---- client-side pagination (backend doesn't paginate yet) ----
+    // ---- client-side pagination (backend doesn't paginate yet) ---- 
 
     const totalPages = Math.max(1, Math.ceil(participants.length / PAGE_SIZE));
     const startIndex = (page - 1) * PAGE_SIZE;
@@ -215,14 +201,13 @@ export default function ParticipantList() {
                 />
 
                 {/* Export + pagination */}
-                <div className="flex items-center justify-between mt-4 px-3">
-                    <button
-                        onClick={handleExport}
-                        style={{ borderColor: BRAND, color: BRAND }}
-                        className="flex items-center gap-1 border text-sm font-medium px-4 py-2 rounded-md hover:bg-gray-50"
-                    >
-                        <Download className="w-4 h-4" /> Export
-                    </button>
+                <div className="flex items-center justify-between mt-4 px-3 pb-2 "  >
+                    <ExportButton
+                        exportFunction={exportParticipants}
+                        params={appliedFilters}
+                        filename="trainees.xlsx"
+                        sheetName="Trainees"
+                    />
                     <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
                 </div>
             </div>
@@ -252,4 +237,4 @@ export default function ParticipantList() {
             )}
         </AppLayout>
     );
-}
+} 

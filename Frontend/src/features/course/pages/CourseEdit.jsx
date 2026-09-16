@@ -1,17 +1,19 @@
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import toast from "react-hot-toast";
 
-import AppLayout from "../../../components/layout/AppLayout";
-import Breadcrumbs from "../../../shared/components/breadcrumbs/Breadcrumbs";
+import AppLayout from "@/components/layout/AppLayout";
+import Breadcrumbs from "@/shared/components/breadcrumbs/Breadcrumbs";
 
-import useCourseEdit from "../hook/useCourseEdit";
-import { getCourseImageUrl } from "../services/CourseService";
-import {LANGUAGES,getLanguageById} from "../../../shared/constants/languageConstants";
+import useCourseEdit from "@/features/course/hook/useCourseEdit";
+import { getCourseImageUrl } from "@/features/course/services/CourseService";
+import {LANGUAGES,getLanguageById} from "@/shared/constants/languageConstants";
+import { validateImage, ASPECT_SQUARE } from "@/shared/utils/imageValidation";
 
 /* STATUS_OPTIONS currently lives in useCourse.js - see the note below,
    it belongs in shared/constants/statusConstants.js */
-import { STATUS_OPTIONS } from "../hook/useCourse";
+import { STATUS_OPTIONS } from "@/features/course/hook/useCourse";
 
 
 /* shared field styles */
@@ -68,16 +70,31 @@ export default function CourseEdit() {
 
         reset({
             course_name: course.course_name || "",
-            description: course.description || "",
+            // Backend returns the field as `course_description`; reading
+            // `course.description` left the box empty on edit. Blank stays
+            // blank for a language that has no translation yet.
+            description: course.course_description || "",
             status: String(course.status ?? ""),
         });
 
     }, [course, reset]);
 
+    
 
-    const handleFileChange = (event) => {
+    const handleFileChange = async (event) => {
 
-        const file = event.target.files?.[0] || null;
+        const input = event.target;
+        const file = input.files?.[0] || null;
+
+        if (file) {
+            // Course image must be square (1:1), plus type/size checks.
+            const result = await validateImage(file, { aspectRatio: ASPECT_SQUARE });
+            if (!result.ok) {
+                toast.error(result.error);
+                input.value = "";
+                return;
+            }
+        }
 
         setValue("image", file);
 
@@ -108,7 +125,7 @@ export default function CourseEdit() {
 
         <AppLayout>
 
-            <div className="min-h-screen w-full bg-[#eef3f9]">
+            <div className="course-page min-h-screen w-full bg-[#eef3f9]">
 
 
                 {/* ================= PAGE HEADING ================= */}
@@ -132,7 +149,7 @@ export default function CourseEdit() {
 
                 {/* ================= CARD ================= */}
 
-                <div className="bg-white rounded-[4px] border border-[#dee2e6] shadow-sm p-4">
+                <div className="course-page-card bg-white  border  p-4">
 
                     {loading ? (
 
@@ -152,7 +169,7 @@ export default function CourseEdit() {
 
 
                             {message && (
-                                <div className="mb-4 rounded-[4px] border border-red-200 bg-red-50 px-4 py-2 text-[14px] text-red-700">
+                                <div className="mb-4  border border-red-200 bg-red-50 px-4 py-2 text-[14px] text-red-700">
                                     {message}
                                 </div>
                             )}
@@ -167,8 +184,7 @@ export default function CourseEdit() {
                                 </label>
 
                                 <div
-                                    className="w-full h-[38px] px-3 flex items-center text-[14px] text-[#4d5969] bg-[#eef2f7] rounded-[4px] border-2
-                                        border-[#000000d1] shadow-inner"
+                                    className="w-full h-[38px] px-3 flex items-center text-[14px] text-[#4d5969] bg-[#eef2f7] border-[#000000d1] shadow-inner"
                                     style={CONTROL_BORDER} 
                                 >
                                     {languageLabel}
@@ -343,7 +359,7 @@ export default function CourseEdit() {
                                 <button
                                     type="button"
                                     onClick={() => navigate("/courses")}
-                                    className="px-4 py-1 text-[12px] font-medium text-[#5E6E82] bg-white rounded-sm border-2 border-black hover:bg-[#f7f8fa]"
+                                    className="px-4 py-1 text-[12px] font-medium text-[#5E6E82] bg-white rounded-sm border-2 border-black"
                                     style={CONTROL_BORDER}
                                 >
                                     Cancel
@@ -352,7 +368,7 @@ export default function CourseEdit() {
                                 <button
                                     type="submit" 
                                     disabled={saving}
-                                    className="px-3 py-1 text-[12px] font-semibold text-white bg-[#732269] rounded-sm hover:bg-[#6e1b6e] disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="px-3 py-1 text-[12px] font-semibold text-white bg-[#732269] rounded-sm disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     {saving ? "Updating..." : "Update Course"}
                                 </button>

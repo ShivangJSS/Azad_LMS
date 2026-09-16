@@ -3,10 +3,10 @@ from typing import List, Optional
 
 from pydantic import BaseModel
 
-
 # =========================================================
 # PDF Update
 # =========================================================
+
 
 class PdfUpdateRequest(BaseModel):
     pdf_name: Optional[str] = None

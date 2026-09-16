@@ -5,12 +5,13 @@ import {
     getTopicsForMainContent,
     getDocumentsForMainContent,
     createMainContent,
-} from "../../services/ConfigurationService";
+} from "@/features/module/ListModule/services/ConfigurationService";
 
 export default function AddContentModal({
     open,
     onClose,
     moduleId,
+    languageId,
     onSaved,
     title = "Add Content",
     createContent = createMainContent,
@@ -25,16 +26,32 @@ export default function AddContentModal({
     useEffect(() => {
         if (!open) return;
 
+        document.body.style.overflow = "hidden";
+        return () => {
+            document.body.style.overflow = "";
+        };
+    }, [open]);
+
+    useEffect(() => {
+        if (!open) return;
+
         setTopicId("");
         setDocId("");
 
         const load = async () => {
             try {
                 setLoading(true);
-                const [topicData, docData] = await Promise.all([
-                    getTopicsForMainContent(moduleId),
+                const [languageTopicData, docData] = await Promise.all([
+                    getTopicsForMainContent(moduleId, languageId),
                     getDocumentsForMainContent(),
                 ]);
+                let topicData = languageTopicData;
+                if (
+                    languageId !== 1 &&
+                    (!Array.isArray(topicData) || topicData.length === 0)
+                ) {
+                    topicData = await getTopicsForMainContent(moduleId);
+                }
                 setTopics(Array.isArray(topicData) ? topicData : []);
                 setDocuments(Array.isArray(docData) ? docData : []);
             } catch (error) {
@@ -45,7 +62,7 @@ export default function AddContentModal({
         };
 
         load();
-    }, [open, moduleId]);
+    }, [open, moduleId, languageId]);
 
     if (!open) return null;
 
@@ -82,7 +99,7 @@ export default function AddContentModal({
     };
 
     return (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/40 px-4">
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/40 px-4">
             <div className="w-full max-w-[520px] overflow-hidden rounded-[6px] bg-white shadow-lg">
 
                 {/* HEADER */}

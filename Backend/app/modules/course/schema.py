@@ -5,12 +5,9 @@ class CourseListResponse(BaseModel):
     course_id: int
     course_name: str
     module_count: int
-    users_enrolled: int
     language_id: int
     language_name: str
     status: int
-
-
 
 
 class CourseUpdateRequest(BaseModel):

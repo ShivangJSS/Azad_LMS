@@ -2,12 +2,12 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { FiDownload } from "react-icons/fi";
 
-import AppLayout from "../../../../components/layout/AppLayout";
-import Breadcrumbs from "../../../../shared/components/breadcrumbs/Breadcrumbs";
+import AppLayout from "@/components/layout/AppLayout";
+import Breadcrumbs from "@/shared/components/breadcrumbs/Breadcrumbs";
 
-import { getPpt } from "../services/PptService";
-import { toMediaUrl } from "../hook/pptConstants";
-import PptViewer from "../../../../shared/components/PptViewer";
+import { getPpt } from "@/features/document/ppt/services/PptService";
+import { toMediaUrl } from "@/features/document/ppt/hook/pptConstants";
+import PptViewer from "@/shared/components/PptViewer";
 
 const breadcrumbItems = [
     { label: "Home", path: "/dashboard" },

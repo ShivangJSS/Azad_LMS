@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 
 
-import DataTable from "../../../shared/components/table/DataTable";
-import Pagination from "../../../shared/components/table/Pagination";
-import EntriesDropdown from "../../../shared/components/table/EntriesDropdown";
+import DataTable from "@/shared/components/table/DataTable";
+import Pagination from "@/shared/components/table/Pagination";
+import EntriesDropdown from "@/shared/components/table/EntriesDropdown";
 
-import { getBatchParticipants } from "../services/batchService";
+import { getBatchParticipants } from "@/features/batch/services/BatchService";
 
 const td = "border border-[#dee2e6] px-3 py-[8px] text-[15px]";
 
@@ -144,7 +144,7 @@ export default function BatchView({ batchId }) {
         <div className="bg-white border border-[#D8E2EF] rounded-md shadow-sm mt-6">
 
             {/* Header */}
-            <div className="px-5 py-4 border-b border-[#D8E2EF]">
+            <div className="px-4 py-4 border-b border-[#D8E2EF]">
                 <span className="text-[20px] font-medium text-[#5E6E82]">
                     Assigned Trainees
                 </span>

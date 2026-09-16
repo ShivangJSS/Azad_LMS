@@ -2,15 +2,15 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 
-import AppLayout from "../../../../components/layout/AppLayout";
-import Breadcrumbs from "../../../../shared/components/breadcrumbs/Breadcrumbs";
+import AppLayout from "@/components/layout/AppLayout";
+import Breadcrumbs from "@/shared/components/breadcrumbs/Breadcrumbs";
 
 import {
     getMatchMakingById,
     updateMatchMaking,
-} from "../services/MatchingMakingService";
+} from "@/features/assessment/MatchMaking/services/MatchingMakingService";
 
-import MatchMakingForm from "../components/MatchMakingForm";
+import MatchMakingForm from "@/features/assessment/MatchMaking/components/MatchMakingForm";
 
 
 export default function MatchMakingEdit() {

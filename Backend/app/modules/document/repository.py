@@ -2,12 +2,12 @@ from datetime import datetime
 from typing import Optional
 
 from app.modules.document.schema import DocumentCreateRequest
-from sqlalchemy import and_, cast, func, BigInteger
-from sqlalchemy.orm import Session
+from sqlalchemy import and_, cast, func, BigInteger, literal
+from sqlalchemy.orm import Session, aliased
 from app.modules.module.model import ModuleMaster, ModuleType
 import csv
 import io
-from app.modules.document.model import ( # Corrected import path for DocumentCategory
+from app.modules.document.model import (  # Corrected import path for DocumentCategory
     DocumentMaster,
     TopicMaster,
     LanguageMaster,
@@ -61,12 +61,29 @@ class DocumentRepository:
         per_page: int = 10,
     ) -> tuple[list, int]:
 
+        base_document = DocumentMaster
+        translated_document = None
+        if language_id and language_id != 1:
+            base_document = aliased(DocumentMaster)
+            translated_document = aliased(DocumentMaster)
+
+        document_title = (
+            base_document.doc_title
+            if not language_id or language_id == 1
+            else translated_document.doc_title
+        )
+        document_language_id = (
+            base_document.language_id
+            if not language_id or language_id == 1
+            else literal(language_id)
+        )
+
         query = (
             db.query(
-                DocumentMaster.doc_id,
-                DocumentMaster.doc_title,
-                DocumentMaster.doc_type,
-                DocumentMaster.status,
+                base_document.doc_id,
+                document_title,
+                base_document.doc_type,
+                base_document.status,
                 ModuleMaster.module_name.label("module_name"),
                 # Category = the module's type (Technical / Non Technical).
                 ModuleType.module_type.label("category_name"),
@@ -84,61 +101,69 @@ class DocumentRepository:
             )
             .outerjoin(
                 ModuleMaster,
-                DocumentMaster.module_id == ModuleMaster.module_id,
+                base_document.module_id == ModuleMaster.module_id,
             )
             .outerjoin(
                 ModuleType,
                 ModuleType.module_type_id
-                == cast(DocumentMaster.doc_category_id, BigInteger),
+                == cast(base_document.doc_category_id, BigInteger),
             )
             .outerjoin(
                 TopicMaster,
-                DocumentMaster.topic_id == TopicMaster.topic_id,
+                base_document.topic_id == TopicMaster.topic_id,
             )
             .outerjoin(
                 LanguageMaster,
-                DocumentMaster.language_id == LanguageMaster.language_id,
+                document_language_id == LanguageMaster.language_id,
             )
             .outerjoin(
                 PdfMaster,
                 and_(
-                    DocumentMaster.doc_type == "PDF",
-                    DocumentMaster.doc_ref_id == PdfMaster.pdf_id,
+                    base_document.doc_type == "PDF",
+                    base_document.doc_ref_id == PdfMaster.pdf_id,
                 ),
             )
             .outerjoin(
                 PptMaster,
                 and_(
-                    DocumentMaster.doc_type == "PPT",
-                    DocumentMaster.doc_ref_id == PptMaster.ppt_id,
+                    base_document.doc_type == "PPT",
+                    base_document.doc_ref_id == PptMaster.ppt_id,
                 ),
             )
             .outerjoin(
                 VideoMaster,
                 and_(
-                    DocumentMaster.doc_type == "Video",
-                    DocumentMaster.doc_ref_id == VideoMaster.video_id,
+                    base_document.doc_type == "Video",
+                    base_document.doc_ref_id == VideoMaster.video_id,
                 ),
             )
-            .filter(DocumentMaster.deleted_at.is_(None))
+            .filter(base_document.deleted_at.is_(None))
         )
 
         if language_id:
-            query = query.filter(DocumentMaster.language_id == language_id)
+            query = query.filter(base_document.language_id == 1)
+            if language_id != 1:
+                query = query.outerjoin(
+                    translated_document,
+                    and_(
+                        translated_document.parent_id == base_document.parent_id,
+                        translated_document.language_id == language_id,
+                        translated_document.deleted_at.is_(None),
+                    ),
+                )
         else:
-     
-            query = query.filter(DocumentMaster.parent_id == DocumentMaster.doc_id)
+            query = query.filter(base_document.parent_id == base_document.doc_id)
 
         if doc_type:
-            query = query.filter(DocumentMaster.doc_type == doc_type)
+            query = query.filter(base_document.doc_type == doc_type)
 
         if search:
-            query = query.filter(DocumentMaster.doc_title.ilike(f"%{search}%"))
+            query = query.filter(document_title.ilike(f"%{search}%"))
 
-        total = query.with_entities(func.count(DocumentMaster.doc_id)).scalar() or 0
+        total = query.with_entities(func.count(base_document.doc_id)).scalar() or 0
 
         documents = (
-            query.order_by(DocumentMaster.doc_id.desc())
+            query.order_by(base_document.doc_id.desc())
             .offset((page - 1) * per_page)
             .limit(per_page)
             .all()
@@ -600,12 +625,53 @@ class DocumentRepository:
             doc_id=document_id,
         )
 
+    # @staticmethod
+    # def export_documents(
+    #     db: Session,
+    #     status: int | None = None,
+    #     doc_category_id: int | None = None,
+    #     doc_ref_id: int | None = None,
+    # ):
+    #     query = (
+    #         db.query(
+    #             DocumentMaster.doc_id,
+    #             DocumentMaster.doc_title,
+    #             DocumentMaster.doc_description,
+    #             ModuleType.module_type.label("category_name"),
+    #             DocumentMaster.doc_type,
+    #             DocumentMaster.doc_ref_id,
+    #             DocumentMaster.status,
+    #             DocumentMaster.created_at,
+    #             DocumentMaster.updated_at,
+    #         )
+    #         .outerjoin(
+    #             ModuleType,
+    #             ModuleType.module_type_id
+    #             == cast(DocumentMaster.doc_category_id, BigInteger),
+    #         )
+    #         .filter(DocumentMaster.deleted_at.is_(None))
+    #     )
+
+    #     if status is not None:
+    #         query = query.filter(DocumentMaster.status == status)
+
+    #     if doc_category_id is not None:
+    #         query = query.filter(DocumentMaster.doc_category_id == doc_category_id)
+
+    #     if doc_ref_id is not None:
+    #         query = query.filter(DocumentMaster.doc_ref_id == doc_ref_id)
+
+    #     return query.order_by(DocumentMaster.doc_id).all()
+
     @staticmethod
     def export_documents(
         db: Session,
         status: int | None = None,
         doc_category_id: int | None = None,
         doc_ref_id: int | None = None,
+        language_id: int | None = None,
+        search: str | None = None,
+        doc_type: str | None = None,
     ):
         query = (
             db.query(
@@ -619,13 +685,28 @@ class DocumentRepository:
                 DocumentMaster.created_at,
                 DocumentMaster.updated_at,
             )
+            .select_from(DocumentMaster)
             .outerjoin(
                 ModuleType,
                 ModuleType.module_type_id
-                == cast(DocumentMaster.doc_category_id, BigInteger),
+                == cast(
+                    DocumentMaster.doc_category_id,
+                    BigInteger,
+                ),
             )
             .filter(DocumentMaster.deleted_at.is_(None))
         )
+
+        if language_id:
+            query = query.filter(DocumentMaster.language_id == language_id)
+        else:
+            query = query.filter(DocumentMaster.parent_id == DocumentMaster.doc_id)
+
+        if doc_type:
+            query = query.filter(DocumentMaster.doc_type == doc_type)
+
+        if search and search.strip():
+            query = query.filter(DocumentMaster.doc_title.ilike(f"%{search.strip()}%"))
 
         if status is not None:
             query = query.filter(DocumentMaster.status == status)
@@ -636,4 +717,4 @@ class DocumentRepository:
         if doc_ref_id is not None:
             query = query.filter(DocumentMaster.doc_ref_id == doc_ref_id)
 
-        return query.order_by(DocumentMaster.doc_id).all()
+        return query.order_by(DocumentMaster.doc_id.desc()).all()

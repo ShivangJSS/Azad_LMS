@@ -8,7 +8,6 @@ from app.modules.auth.jwt_handler import verify_token
 from app.modules.auth.repository import AuthRepository
 from app.modules.auth.model import User
 
-
 security = HTTPBearer()
 
 
@@ -61,10 +60,7 @@ def require_roles(*roles: UserRole):
         current_user: User = Depends(get_current_user),
     ) -> User:
 
-        allowed_roles = {
-            int(role.value)
-            for role in roles
-        }
+        allowed_roles = {int(role.value) for role in roles}
 
         if int(current_user.role) not in allowed_roles:
             raise HTTPException(

@@ -11,7 +11,7 @@ export default function EntriesDropdown({
             <select
                 value={value}
                 onChange={(e) => onChange(Number(e.target.value))}
-                className="border rounded-sm px-3 py-1 text-[#5E6E82] shadow-inner"
+                className="border rounded-sm px-3 py-1 text-[#5E6E82] bg-white/80 shadow-inner"
             >
 
                 {options.map((option) => (

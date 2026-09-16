@@ -25,8 +25,6 @@ class AssessmentMaster(Base):
     updated_at = Column(DateTime)
 
 
-
-
 class PostSessionAssessment(Base):
     __tablename__ = "post_session_assessment"
 
@@ -66,10 +64,10 @@ class McqMaster(Base):
     created_at = Column(DateTime, server_default=text("CURRENT_TIMESTAMP"))
 
     updated_at = Column(
-    DateTime,
-    server_default=text("CURRENT_TIMESTAMP"),
-    onupdate=text("CURRENT_TIMESTAMP"),
-)
+        DateTime,
+        server_default=text("CURRENT_TIMESTAMP"),
+        onupdate=text("CURRENT_TIMESTAMP"),
+    )
     deleted_at = Column(DateTime)
 
     language_id = Column(BigInteger)
@@ -104,19 +102,20 @@ class ScqMaster(Base):
 
     language_id = Column(BigInteger)
 
+
 class MatchMakingMaster(Base):
     __tablename__ = "match_making_masters"
 
     match_making_id = Column(
-    BigInteger,
-    primary_key=True,
-    autoincrement=True,
-)
+        BigInteger,
+        primary_key=True,
+        autoincrement=True,
+    )
 
     deleted_at = Column(
-      DateTime,
-      nullable=True,
-)
+        DateTime,
+        nullable=True,
+    )
 
     parent_id = Column(BigInteger)
 
@@ -134,10 +133,7 @@ class MatchMakingMaster(Base):
 
     updated_at = Column(DateTime)
 
-    
-
     language_id = Column(BigInteger)
-
 
 
 class AssessmentMapping(Base):
@@ -167,8 +163,6 @@ class AssessmentMapping(Base):
     created_at = Column(DateTime)
 
     updated_at = Column(DateTime)
-
-
 
 
 class McqQuestionOption(Base):
@@ -234,22 +228,16 @@ class ScqQuestionOption(Base):
 class MatchLeftItem(Base):
     __tablename__ = "match_left_items"
 
-    match_left_id = Column(BigInteger, primary_key=True,autoincrement=True)
+    match_left_id = Column(BigInteger, primary_key=True, autoincrement=True)
 
     match_making_id = Column(
-    BigInteger,
-    ForeignKey(
-        "match_making_masters.match_making_id"
-    ),
-)
+        BigInteger,
+        ForeignKey("match_making_masters.match_making_id"),
+    )
 
     match_left_text = Column(String(500))
 
-
-
     sort_order = Column(String(50))
-
-
 
     created_at = Column(DateTime)
 
@@ -263,20 +251,16 @@ class MatchLeftItem(Base):
 class MatchRightItem(Base):
     __tablename__ = "match_right_items"
 
-    match_right_id = Column(BigInteger, primary_key=True,autoincrement=True)
+    match_right_id = Column(BigInteger, primary_key=True, autoincrement=True)
 
     match_making_id = Column(
-    BigInteger,
-    ForeignKey(
-        "match_making_masters.match_making_id"
-    ),
-)
+        BigInteger,
+        ForeignKey("match_making_masters.match_making_id"),
+    )
 
     match_right_text = Column(String(500))
 
     sort_order = Column(String(50))
-
-
 
     created_at = Column(DateTime)
 
@@ -290,45 +274,37 @@ class MatchRightItem(Base):
 class MatchCorrectAnswer(Base):
     __tablename__ = "match_correct_answers"
 
-    match_correct_answers_id = Column(BigInteger, primary_key=True,autoincrement=True)
+    match_correct_answers_id = Column(BigInteger, primary_key=True, autoincrement=True)
 
     match_making_id = Column(
-    BigInteger,
-    ForeignKey(
-        "match_making_masters.match_making_id"
-    ),
-)
+        BigInteger,
+        ForeignKey("match_making_masters.match_making_id"),
+    )
 
     match_left_id = Column(
-     BigInteger,
-     ForeignKey(
-        "match_left_items.match_left_id"
-    ),
-)
+        BigInteger,
+        ForeignKey("match_left_items.match_left_id"),
+    )
 
     match_right_id = Column(
-     BigInteger,
-     ForeignKey(
-        "match_right_items.match_right_id"
-    ),
-)
+        BigInteger,
+        ForeignKey("match_right_items.match_right_id"),
+    )
 
     created_at = Column(DateTime)
 
     updated_at = Column(DateTime)
 
     deleted_at = Column(
-     DateTime,
-     nullable=True,
-)
-
-
+        DateTime,
+        nullable=True,
+    )
 
 
 class DropBucketMaster(Base):
     __tablename__ = "drop_bucket_masters"
 
-    drop_bucket_id = Column(BigInteger, primary_key=True,autoincrement=True)
+    drop_bucket_id = Column(BigInteger, primary_key=True, autoincrement=True)
 
     parent_id = Column(BigInteger)
 
@@ -346,24 +322,20 @@ class DropBucketMaster(Base):
 
     updated_at = Column(DateTime)
 
-    deleted_at = Column(DateTime,nullable=True)
+    deleted_at = Column(DateTime, nullable=True)
 
     language_id = Column(BigInteger)
 
 
-    
 class DropBucket(Base):
     __tablename__ = "drop_buckets"
 
-    bucket_id = Column(BigInteger, primary_key=True,autoincrement=True)
+    bucket_id = Column(BigInteger, primary_key=True, autoincrement=True)
 
     drop_bucket_id = Column(
-    BigInteger,
-    ForeignKey("drop_bucket_masters.drop_bucket_id"),
-)
-
-
-  
+        BigInteger,
+        ForeignKey("drop_bucket_masters.drop_bucket_id"),
+    )
 
     bucket_name = Column(String(500))
 
@@ -375,7 +347,7 @@ class DropBucket(Base):
 
     updated_at = Column(DateTime)
 
-    deleted_at = Column(DateTime,nullable=True)
+    deleted_at = Column(DateTime, nullable=True)
 
     language_id = Column(BigInteger)
 
@@ -383,12 +355,12 @@ class DropBucket(Base):
 class DropBucketItem(Base):
     __tablename__ = "drop_bucket_items"
 
-    drop_bucket_item_id = Column(BigInteger, primary_key=True,autoincrement=True)
+    drop_bucket_item_id = Column(BigInteger, primary_key=True, autoincrement=True)
 
     bucket_id = Column(
-    BigInteger,
-    ForeignKey("drop_buckets.bucket_id"),
-)
+        BigInteger,
+        ForeignKey("drop_buckets.bucket_id"),
+    )
 
     item_name = Column(String(500))
 
@@ -400,6 +372,6 @@ class DropBucketItem(Base):
 
     updated_at = Column(DateTime)
 
-    deleted_at = Column(DateTime,nullable=True)
+    deleted_at = Column(DateTime, nullable=True)
 
     language_id = Column(BigInteger)

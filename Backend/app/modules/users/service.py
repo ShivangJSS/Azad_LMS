@@ -1,5 +1,6 @@
 from unittest import result
 from urllib import response
+from typing import Any
 from app.utils.file_upload import save_image
 from fastapi import HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
@@ -21,12 +22,20 @@ from app.modules.users.schema import (
 
 from app.modules.users.schema import UserUpdateRequest
 from app.modules.auth.model import User
+from app.common.enums import UserRole as CanonicalUserRole
+from app.shared.dependencies.location_scope import (
+    LocationScopeLevel,
+    assert_scope_value,
+    get_location_scope,
+)
 from app.modules.auth.security import hash_password
 from app.modules.users.constants import (
     CREATABLE_ROLES,
     ROLE_LABELS,
     UserRole,
 )
+
+
 
 from app.modules.users.schema import ParticipantCreateRequest, UserCreateRequest
 
@@ -46,9 +55,9 @@ class UserService:
 
     @staticmethod
     def assert_participant_access(db, current_user, participant_id):
-        role = str(current_user.role)
+        scope = get_location_scope(current_user)
 
-        if role in ("1", "2"):
+        if scope.level == LocationScopeLevel.GLOBAL:
             return
 
         record = UserRepository.get_participant_edit(db, participant_id)
@@ -58,11 +67,24 @@ class UserService:
                 detail="Participant not found.",
             )
 
-        if role == "3" and record.get("state_id") == current_user.state_lgd_code:
+        if (
+            scope.level == LocationScopeLevel.STATE
+            and record.get("state_id") == scope.state_lgd_code
+        ):
             return
-        if role == "4" and record.get("district_id") == current_user.district_lgd_code:
+        if (
+            scope.level == LocationScopeLevel.DISTRICT
+            and record.get("state_id") == scope.state_lgd_code
+            and record.get("district_id") == scope.district_lgd_code
+        ):
             return
-        if role == "5" and record.get("centre_id") == current_user.centre_id:
+        if (
+            scope.level == LocationScopeLevel.CENTRE
+            and record.get("state_id") == scope.state_lgd_code
+            and record.get("district_id") == scope.district_lgd_code
+            and record.get("block_id") == scope.block_lgd_code
+            and record.get("centre_id") == scope.centre_id
+        ):
             return
 
         raise HTTPException(
@@ -75,19 +97,19 @@ class UserService:
         """Force scoped roles to their own jurisdiction; Super Admin/Admin
         keep whatever filter they requested. Returns the effective
         (state_id, district_id, centre_id)."""
-        role = str(current_user.role)
+        role = CanonicalUserRole(str(current_user.role))
 
-        if role in ("1", "2"):
+        if role in (CanonicalUserRole.SUPER_ADMIN, CanonicalUserRole.ADMIN):
             return state_id, district_id, centre_id
-        if role == "3":
+        if role == CanonicalUserRole.STATE_HEAD:
             return current_user.state_lgd_code, district_id, centre_id
-        if role == "4":
+        if role == CanonicalUserRole.DISTRICT_HEAD:
             return (
                 current_user.state_lgd_code,
                 current_user.district_lgd_code,
                 centre_id,
             )
-        if role == "5":
+        if role == CanonicalUserRole.PI:
             return (
                 current_user.state_lgd_code,
                 current_user.district_lgd_code,
@@ -131,21 +153,29 @@ class UserService:
         request: UserCreateRequest,
         current_user: User,
     ):
-    # Logged-in user's role
-        role = UserRole(int(current_user.role))
+        # Logged-in user's canonical RBAC role
+        role = CanonicalUserRole(str(current_user.role))
+        normalized_email = request.email.strip().lower()
+        # Roles this user is allowed to create
+        allowed_roles = {
+            CanonicalUserRole.SUPER_ADMIN: {CanonicalUserRole.ADMIN},
+            CanonicalUserRole.ADMIN: {
+                CanonicalUserRole.STATE_HEAD,
+                CanonicalUserRole.DISTRICT_HEAD,
+                CanonicalUserRole.PI,
+            },
+        }.get(role, set())
 
-    # Roles this user is allowed to create
-        allowed_roles = CREATABLE_ROLES.get(role, [])
-
-    # Permission check
-        if request.role not in [int(r) for r in allowed_roles]:
+        # Permission check
+        requested_role = CanonicalUserRole(str(request.role))
+        if requested_role not in allowed_roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You are not allowed to create this role.",
-        )
+            )
 
-    # Check if email already exists
-        existing_email = UserRepository.get_by_email(db, request.email)
+        # Check if email already exists
+        existing_email = UserRepository.get_by_email(db, normalized_email)
 
         if existing_email:
             raise HTTPException(
@@ -153,9 +183,9 @@ class UserService:
                 detail="Email already exists.",
             )
 
-    # The form only collects email; derive the login username from it
-    # when one isn't explicitly provided.
-        username = request.username or request.email
+        # The form only collects email; derive the login username from it
+        # when one isn't explicitly provided.
+        username = request.username or normalized_email
 
         existing_username = UserRepository.get_by_username(db, username)
 
@@ -165,15 +195,15 @@ class UserService:
                 detail="Username already exists.",
             )
 
-    # Validate location fields based on role
-        if request.role == UserRole.STATE_LEAD:
-             if not request.state_lgd_code:
+        # Validate location fields based on role
+        if requested_role == CanonicalUserRole.STATE_HEAD:
+            if not request.state_lgd_code:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="State is required for State Lead.",
                 )
 
-        elif request.role == UserRole.DISTRICT_LEAD:
+        elif requested_role == CanonicalUserRole.DISTRICT_HEAD:
             if not request.state_lgd_code:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -186,7 +216,7 @@ class UserService:
                     detail="District is required for District Lead.",
                 )
 
-        elif request.role == UserRole.PI:
+        elif requested_role == CanonicalUserRole.PI:
             if not request.state_lgd_code:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -211,17 +241,35 @@ class UserService:
                     detail="Centre is required for PI.",
                 )
 
-    # Hash password
+        if requested_role != CanonicalUserRole.ADMIN:
+            assert_scope_value(
+                current_user,
+                state_lgd_code=request.state_lgd_code,
+                district_lgd_code=request.district_lgd_code,
+                block_lgd_code=request.block_lgd_code,
+                centre_id=request.centre_id,
+            )
+
+        # Hash password
         hashed_password = hash_password(request.password)
 
-    # Default responsibility to the role's label when not provided by the form
-        responsibility = request.responsibility or ROLE_LABELS[UserRole(request.role)]
+        # Default responsibility to the role's label when not provided by the form
+        responsibility = (
+            request.responsibility
+            or {
+                CanonicalUserRole.SUPER_ADMIN: "Super Admin",
+                CanonicalUserRole.ADMIN: "Admin",
+                CanonicalUserRole.STATE_HEAD: "State Head",
+                CanonicalUserRole.DISTRICT_HEAD: "District Head",
+                CanonicalUserRole.PI: "PI",
+            }[requested_role]
+        )
 
-    # Create User model
+        # Create User model
         new_user = User(
             name=request.name,
             username=username,
-            email=request.email,
+            email=normalized_email,
             password=hashed_password,
             role=str(request.role),  # DB stores role as varchar
             responsibility=responsibility,
@@ -229,36 +277,33 @@ class UserService:
             district_lgd_code=request.district_lgd_code,
             block_lgd_code=request.block_lgd_code,
             centre_id=request.centre_id,
-            status=request.status,
+            status="1",
         )
 
-    # Save user
+        # Save user
         created_user = UserRepository.create_user(db, new_user)
 
         return created_user
 
-
     @staticmethod
     def get_users(db: Session):
-     users = UserRepository.get_users(db)
+        users = UserRepository.get_users(db)
+        response: list[dict[str, Any]] = []
 
-     response = []
+        for user in users:
+            response.append(
+                {
+                    "id": user.id,
+                    "name": user.name,
+                    "email": user.email,
+                    "role": user.role,
+                    "role_name": ROLE_LABELS[UserRole(int(user.role))],
+                    "responsibility": user.responsibility,
+                    "status": user.status,
+                }
+            )
 
-     for user in users:
-        response.append(
-            {
-                "id": user.id,
-                "name": user.name,
-                "email": user.email,
-                "role": user.role,
-                "role_name": ROLE_LABELS[UserRole(int(user.role))],
-                "responsibility": user.responsibility,
-                "status": user.status,
-            }
-        )
-
-     return response
-
+        return response
 
     @staticmethod
     def get_user_by_id(
@@ -290,286 +335,258 @@ class UserService:
             "status": user.status,
         }
 
-
-
-
     @staticmethod
     def delete_user(
-      db: Session,
-      user_id: int,
-      current_user: User,
+        db: Session,
+        user_id: int,
+        current_user: User,
     ):
-      user = UserRepository.get_by_id(db, user_id)
+        user = UserRepository.get_by_id_for_delete(db, user_id)
 
-      if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found.",
-        )
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found.",
+            )
 
-      # Role hierarchy guard: only manage users within the creatable set.
-      actor_role = UserRole(int(current_user.role))
-      manageable_ids = [int(r) for r in CREATABLE_ROLES.get(actor_role, [])]
+        # Role hierarchy guard: only manage users within the creatable set.
+        actor_role = UserRole(int(current_user.role))
+        manageable_ids = [int(r) for r in CREATABLE_ROLES.get(actor_role, [])]
 
-      if int(user.role) not in manageable_ids:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You are not allowed to delete this user.",
-        )
+        if int(user.role) not in manageable_ids:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You are not allowed to delete this user.",
+            )
 
-      UserRepository.soft_delete_user(db, user)
+        UserRepository.delete_user(db, user)
 
-      return {
-        "message": "User deleted successfully."
-      }
-
+        return {"message": "User deleted successfully."}
 
     @staticmethod
     def get_batches(
-      db: Session,
-      centre_id: int,
-):
-      return UserRepository.get_batches(
-        db=db,
-        centre_id=centre_id,
-    )
+        db: Session,
+        centre_id: int,
+    ):
+        return UserRepository.get_batches(
+            db=db,
+            centre_id=centre_id,
+        )
 
     @staticmethod
     def get_enrollment(
-     db: Session,
-     batch_id: int,
-):
-     return UserRepository.get_enrollment(
-        db=db,
-        batch_id=batch_id,
-    )
-
+        db: Session,
+        batch_id: int,
+    ):
+        return UserRepository.get_enrollment(
+            db=db,
+            batch_id=batch_id,
+        )
 
     @staticmethod
     async def create_participant(
-     db: Session,
-     data: ParticipantCreateRequest,
-     image: UploadFile | None = None,
-):
-     image_name = await save_image(image)
-     participant = UserRepository.create_participant(
-        db=db,
-        data=data,
-        image_name=image_name,
-    )
-
-     # create_participant already inserts the batch mapping; do NOT assign again
-     # (a second BatchParticipant row makes the trainee appear twice in the list).
-     if participant == "duplicate_enrollment_no":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Enrollment number already exists.",
+        db: Session,
+        data: ParticipantCreateRequest,
+        image: UploadFile | None = None,
+    ):
+        image_name = await save_image(image)
+        participant = UserRepository.create_participant(
+            db=db,
+            data=data,
+            image_name=image_name,
         )
 
-     if participant == "duplicate_username":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username already exists.",
-        )
+        # create_participant already inserts the batch mapping; do NOT assign again
+        # (a second BatchParticipant row makes the trainee appear twice in the list).
+        if participant == "duplicate_enrollment_no":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Enrollment number already exists.",
+            )
 
-     return {
-        "message": "Participant created successfully."
-    }
+        if participant == "duplicate_username":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Username already exists.",
+            )
 
-
-
-
-
+        return {"message": "Participant created successfully."}
 
     @staticmethod
     def update_user(
-     db: Session,
-     user_id: int,
-     request: UserUpdateRequest,
-     current_user: User,
-):
-    # Check user exists
-     user = UserRepository.get_by_id(db, user_id)
+        db: Session,
+        user_id: int,
+        request: UserUpdateRequest,
+        current_user: User,
+    ):
+        # Check user exists
+        user = UserRepository.get_by_id(db, user_id)
 
-     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found.",
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found.",
+            )
+
+        # Role hierarchy guard (prevents privilege escalation).
+        # The actor may only manage a target whose CURRENT role is within their
+        # creatable set, and may only assign a NEW role within that same set.
+        actor_role = UserRole(int(current_user.role))
+        manageable_ids = [int(r) for r in CREATABLE_ROLES.get(actor_role, [])]
+
+        if int(user.role) not in manageable_ids:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You are not allowed to manage this user.",
+            )
+
+        if int(request.role) not in manageable_ids:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You are not allowed to assign this role.",
+            )
+
+        # Check duplicate email
+        existing_email = UserRepository.get_by_email_except_user(
+            db,
+            request.email,
+            user_id,
         )
 
-    # Role hierarchy guard (prevents privilege escalation).
-    # The actor may only manage a target whose CURRENT role is within their
-    # creatable set, and may only assign a NEW role within that same set.
-     actor_role = UserRole(int(current_user.role))
-     manageable_ids = [int(r) for r in CREATABLE_ROLES.get(actor_role, [])]
+        if existing_email:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already exists.",
+            )
 
-     if int(user.role) not in manageable_ids:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You are not allowed to manage this user.",
-        )
+        # Update fields
+        user.name = request.name
+        user.email = request.email
+        user.role = str(request.role)
 
-     if int(request.role) not in manageable_ids:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You are not allowed to assign this role.",
-        )
+        # Update password only if provided
+        if request.password:
+            user.password = hash_password(request.password)
 
-    # Check duplicate email
-     existing_email = UserRepository.get_by_email_except_user(
-        db,
-        request.email,
-        user_id,
-    )
+        updated_user = UserRepository.update_user(db, user)
 
-     if existing_email:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already exists.",
-        )
-
-    # Update fields
-     user.name = request.name
-     user.email = request.email
-     user.role = str(request.role)
-
-    # Update password only if provided
-     if request.password:
-        user.password = hash_password(request.password)
-
-     updated_user = UserRepository.update_user(db, user)
-
-     return updated_user
-
-
-
+        return updated_user
 
     @staticmethod
     def get_all_centres(db: Session):
-     return UserRepository.get_all_centres(db)
-
+        return UserRepository.get_all_centres(db)
 
     @staticmethod
     def get_batches(
-     db: Session,
-     centre_id: int | None = None,
-):
-     return UserRepository.get_batches(db, centre_id)
-
-
-
+        db: Session,
+        centre_id: int | None = None,
+    ):
+        return UserRepository.get_batches(db, centre_id)
 
     @staticmethod
     def get_participants(
-     db: Session,
-     state_id: int | None = None,
-     district_id: int | None = None,
-     centre_id: int | None = None,
-     batch_id: int | None = None,
-     search: str | None = None,
-):
-     participants = UserRepository.get_participants(
-        db=db,
-        state_id=state_id,
-        district_id=district_id,
-        centre_id=centre_id,
-        batch_id=batch_id,
-        search=search,
-    )
-
-     response = []
-
-     for p in participants:
-        # ---- Performance chip: MCQ + SCQ score percentage ----
-        mcq_attempted = getattr(p, "mcq_attempted", 0) or 0
-        mcq_correct = getattr(p, "mcq_correct", 0) or 0
-        scq_attempted = getattr(p, "scq_attempted", 0) or 0
-        scq_correct = getattr(p, "scq_correct", 0) or 0
-
-        attempted = mcq_attempted + scq_attempted
-        correct = mcq_correct + scq_correct
-        score_pct = (correct / attempted * 100) if attempted > 0 else 0
-
-        # ---- Course Progress: completion (completed / configured) ----
-        completed = (
-            (getattr(p, "mcq_done", 0) or 0)
-            + (getattr(p, "scq_done", 0) or 0)
-            + (getattr(p, "mm_done", 0) or 0)
-            + (getattr(p, "db_done", 0) or 0)
-        )
-        configured_total = getattr(p, "configured_total", 0) or 0
-
-        # Full completion = 100%, otherwise proportional to what's done.
-        course_progress = (
-            min(100, round((completed / configured_total) * 100, 2))
-            if configured_total > 0
-            else 0
+        db: Session,
+        state_id: int | None = None,
+        district_id: int | None = None,
+        centre_id: int | None = None,
+        batch_id: int | None = None,
+        search: str | None = None,
+    ):
+        participants = UserRepository.get_participants(
+            db=db,
+            state_id=state_id,
+            district_id=district_id,
+            centre_id=centre_id,
+            batch_id=batch_id,
+            search=search,
         )
 
-        if completed == 0:
-            performance_status = "Yet to Start"
-        elif score_pct >= 70:
-            performance_status = "Good"
-        elif score_pct >= 40:
-            performance_status = "Average"
-        else:
-            performance_status = "Poor"
+        response = []
 
-        response.append(
-            {
-                "participant_id": p.participant_id,
-                "participant_name": p.participant_name,
-                "enrollment_no": p.enrollment_no,
-                "mobile_no": p.mobile_no,
-                "age": p.age,
-                "image": getattr(p, "image", None),
-                "state_name": p.state_name,
-                "district_name": p.district_name,
-                "centre_name": p.centre_name,
-                "batch_name": p.batch_name,
-                "status": (
-                    "Active"
-                    if p.status == "1"
-                    else "Inactive"
-                ),
-                "course_progress": course_progress,
-                "performance_status": performance_status,
-            }
-        )
+        for p in participants:
+            # ---- Performance chip: MCQ + SCQ score percentage ----
+            mcq_attempted = getattr(p, "mcq_attempted", 0) or 0
+            mcq_correct = getattr(p, "mcq_correct", 0) or 0
+            scq_attempted = getattr(p, "scq_attempted", 0) or 0
+            scq_correct = getattr(p, "scq_correct", 0) or 0
 
-     return response
+            attempted = mcq_attempted + scq_attempted
+            correct = mcq_correct + scq_correct
+            score_pct = (correct / attempted * 100) if attempted > 0 else 0
+
+            # ---- Course Progress: completion (completed / configured) ----
+            completed = (
+                (getattr(p, "mcq_done", 0) or 0)
+                + (getattr(p, "scq_done", 0) or 0)
+                + (getattr(p, "mm_done", 0) or 0)
+                + (getattr(p, "db_done", 0) or 0)
+            )
+            configured_total = getattr(p, "configured_total", 0) or 0
+
+            # Full completion = 100%, otherwise proportional to what's done.
+            course_progress = (
+                min(100, round((completed / configured_total) * 100, 2))
+                if configured_total > 0
+                else 0
+            )
+
+            if completed == 0:
+                performance_status = "Yet to Start"
+            elif score_pct >= 70:
+                performance_status = "Good"
+            elif score_pct >= 40:
+                performance_status = "Average"
+            else:
+                performance_status = "Poor"
+
+            response.append(
+                {
+                    "participant_id": p.participant_id,
+                    "participant_name": p.participant_name,
+                    "enrollment_no": p.enrollment_no,
+                    "mobile_no": p.mobile_no,
+                    "age": p.age,
+                    "image": getattr(p, "image", None),
+                    "state_name": p.state_name,
+                    "district_name": p.district_name,
+                    "centre_name": p.centre_name,
+                    "batch_name": p.batch_name,
+                    "status": ("Active" if p.status == "1" else "Inactive"),
+                    "course_progress": course_progress,
+                    "performance_status": performance_status,
+                }
+            )
+
+        return response
 
     @staticmethod
     def get_participant_report(
-     db: Session,
-     participant_id: int,
- ) -> ParticipantReportResponse:
+        db: Session,
+        participant_id: int,
+    ) -> ParticipantReportResponse:
 
-     report = UserRepository.get_module_report(
-        db=db,
-        participant_id=participant_id,
-    )
-
-     if not report["participant_profile"]:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Participant not found.",
+        report = UserRepository.get_module_report(
+            db=db,
+            participant_id=participant_id,
         )
 
-     return ParticipantReportResponse(
-        participant=ParticipantProfileResponse(
-            **report["participant_profile"]
-        ),
-        attempt_wise_result=report["attempt_wise_result"],
-        assessment_summary=report["assessment_summary"],
-    )
+        if not report["participant_profile"]:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Participant not found.",
+            )
 
+        return ParticipantReportResponse(
+            participant=ParticipantProfileResponse(**report["participant_profile"]),
+            attempt_wise_result=report["attempt_wise_result"],
+            assessment_summary=report["assessment_summary"],
+        )
 
     # ==================================================================
     # Manage Modules
     # ==================================================================
 
-    def assign_module(self, participant_id: int, module_id: int):
+    # def assign_module(self, participant_id: int, module_id: int):
         module = self.repository.get_module_by_id(module_id)
 
         if not module:
@@ -598,6 +615,61 @@ class UserService:
             "success": True,
             "message": "Module assigned successfully",
         }
+    
+    # #15sep
+    # def assign_module(self, participant_id: int, module_id: int):
+    # module = self.repository.get_module_by_id(module_id)
+
+    # if not module:
+    #     raise ValueError("Module not found")
+
+    # module_group = self.repository.get_module_group(module)
+
+    # # Make sure module progression follows sequence_no.
+    # # Do NOT use module_id or document type priority.
+    # module_group = sorted(
+    #     module_group,
+    #     key=lambda item: getattr(item, "sequence_no", 0),
+    # )
+
+    # for index, item in enumerate(module_group):
+
+    #     existing = self.repository.get_participant_module(
+    #         participant_id,
+    #         item.module_id,
+    #     )
+
+    #     if existing:
+    #         # Keep the participant-module record active.
+    #         if str(existing.status) != "1":
+    #             existing.status = "1"
+
+    #         # IMPORTANT:
+    #         # Do not reset existing lock_status.
+    #         # This preserves COMPLETED/ACTIVE/LOCKED progression.
+    #         continue
+
+    #     # Only the FIRST module is initially active.
+    #     # Every subsequent module is locked.
+    #     lock_status = (
+    #         ModuleLockStatus.ACTIVE
+    #         if index == 0
+    #         else ModuleLockStatus.LOCKED
+    #     )
+
+    #     self.repository.create_participant_module(
+    #         participant_id=participant_id,
+    #         course_id=item.fk_course_id,
+    #         module_id=item.module_id,
+    #         lock_status=lock_status,
+    #     )
+
+    # self.repository.commit()
+
+    # return {
+    #     "success": True,
+    #     "message": "Module assigned successfully",
+    # }
 
     def unassign_module(self, participant_id: int, module_id: int):
         module = self.repository.get_module_by_id(module_id)
@@ -606,8 +678,7 @@ class UserService:
             raise ValueError("Module not found")
 
         module_ids = [
-            item.module_id
-            for item in self.repository.get_module_group(module)
+            item.module_id for item in self.repository.get_module_group(module)
         ]
 
         self.repository.delete_participant_modules(
@@ -622,7 +693,7 @@ class UserService:
             "message": "Module unassigned successfully",
         }
 
-    def get_modules(self, participant_id: int, language_id: int):
+    # def get_modules(self, participant_id: int, language_id: int):
         modules = self.repository.get_modules_by_language(language_id)
         assigned_ids = self.repository.get_assigned_module_ids(participant_id)
 
@@ -638,6 +709,72 @@ class UserService:
             for m in modules
         ]
 
+    # #15sep
+    # def get_modules(self, participant_id: int, language_id: int):
+
+    # modules = self.repository.get_modules_by_language(language_id)
+
+    # # Make sure API ordering follows module sequence.
+    # modules = sorted(
+    #     modules,
+    #     key=lambda m: getattr(m, "sequence_no", 0),
+    # )
+
+    # assigned_ids = self.repository.get_assigned_module_ids(
+    #     participant_id
+    # )
+
+    # response = []
+
+    # for module in modules:
+
+    #     if module.module_id not in assigned_ids:
+    #         continue
+
+    #     participant_module = self.repository.get_participant_module(
+    #         participant_id,
+    #         module.module_id,
+    #     )
+
+    #     if not participant_module:
+    #         continue
+
+    #     lock_status = int(
+    #         participant_module.lock_status
+    #         if participant_module.lock_status is not None
+    #         else ModuleLockStatus.LOCKED
+    #     )
+
+    #     response.append(
+    #         {
+    #             "module_id": module.module_id,
+    #             "parent_id": module.parent_id or module.module_id,
+    #             "module_name": module.module_name,
+    #             "module_type": module.module_type,
+    #             "language_id": module.language_id,
+
+    #             "assigned": True,
+
+    #             # Database value
+    #             "lock_status": lock_status,
+
+    #             # Flutter-friendly value
+    #             "status": MODULE_LOCK_STATUS_LABELS.get(
+    #                 lock_status,
+    #                 "LOCKED",
+    #             ),
+
+    #             "unlocked": (
+    #                 lock_status == ModuleLockStatus.ACTIVE
+    #             ),
+
+    #             "completed": (
+    #                 lock_status == ModuleLockStatus.COMPLETED
+    #             ),
+    #         }
+    #     )
+
+    # return response
 
     # ==================================================================
     # Credentials + Time Spent
@@ -651,6 +788,7 @@ class UserService:
                 ParticipantMaster.username,
             )
             .filter(ParticipantMaster.participant_id == participant_id)
+            .filter(ParticipantMaster.deleted_at.is_(None))
             .first()
         )
 
@@ -672,6 +810,7 @@ class UserService:
         participant = (
             db.query(ParticipantMaster)
             .filter(ParticipantMaster.participant_id == participant_id)
+            .filter(ParticipantMaster.deleted_at.is_(None))
             .first()
         )
 
@@ -712,7 +851,6 @@ class UserService:
                 ],
             },
         }
-
 
     # ==================================================================
     # Edit / Update participant

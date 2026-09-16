@@ -99,5 +99,6 @@ class CourseService:
     ):
         return CourseRepository.export_courses(
             db=db,
+            search=search,
             language_id=language_id,
         )

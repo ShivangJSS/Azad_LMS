@@ -1,17 +1,17 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import AppLayout from "../../../../components/layout/AppLayout";
-import Breadcrumbs from "../../../../shared/components/breadcrumbs/Breadcrumbs";
+import AppLayout from "@/components/layout/AppLayout";
+import Breadcrumbs from "@/shared/components/breadcrumbs/Breadcrumbs";
 
-import TopicForm from "../components/TopicForm";
+import TopicForm from "@/features/module/Topic/components/TopicForm";
 
 import {
     getTopicById,
     updateTopic,
-} from "../services/TopicService";
+} from "@/features/module/Topic/services/TopicService";
 
-import { getModules } from "../../ListModule/services/ListService";
+import { getModules } from "@/features/module/ListModule/services/ListService";
 
 import toast from "react-hot-toast";
 

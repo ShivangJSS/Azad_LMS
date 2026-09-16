@@ -1,4 +1,13 @@
-from sqlalchemy import BigInteger, Column, DateTime, Integer, Numeric, SmallInteger, String, text
+from sqlalchemy import (
+    BigInteger,
+    Column,
+    DateTime,
+    Integer,
+    Numeric,
+    SmallInteger,
+    String,
+    text,
+)
 
 from app.database.database import Base
 from app.modules.batch.model import BatchMaster, BatchParticipant
@@ -34,6 +43,7 @@ class CentreMaster(Base):
         DateTime,
         nullable=True,
     )
+
 
 class BlockMaster(Base):
     __tablename__ = "block_master"

@@ -1,14 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
-import DataTable from "../../../shared/components/table/DataTable";
-// import TableHeader from "../../../shared/components/table/TableHeader";
-import Pagination from "../../../shared/components/table/Pagination";
-import TableActions from "../../../shared/components/table/TableActions";
-import AppLayout from "../../../components/layout/AppLayout";
-import Breadcrumbs from "../../../shared/components/breadcrumbs/Breadcrumbs";
+import DataTable from "@/shared/components/table/DataTable";
+// import TableHeader from "@/shared/components/table/TableHeader";
+import Pagination from "@/shared/components/table/Pagination";
+import TableActions from "@/shared/components/table/TableActions";
+import AppLayout from "@/components/layout/AppLayout";
+import Breadcrumbs from "@/shared/components/breadcrumbs/Breadcrumbs";
 import { FaChevronDown } from "react-icons/fa";
-import EntriesDropdown from "../../../shared/components/table/EntriesDropdown";
+import EntriesDropdown from "@/shared/components/table/EntriesDropdown";
 
 import {
     getStates,
@@ -16,7 +16,7 @@ import {
     getBlocks,
     getCentres,
     deleteCentre,
-} from "../services/centerService";
+} from "@/features/center/services/CenterService";
 
 
 const columns = [

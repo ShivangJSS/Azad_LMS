@@ -1,32 +1,50 @@
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { FiDownload } from "react-icons/fi";
+import AppLayout from "@/components/layout/AppLayout";
+import Breadcrumbs from "@/shared/components/breadcrumbs/Breadcrumbs";
 
-import AppLayout from "../../../components/layout/AppLayout";
-import Breadcrumbs from "../../../shared/components/breadcrumbs/Breadcrumbs";
-
-import CourseTable from "../components/CourseTable";
-import useCourse from "../hook/useCourse";
-import LanguageTabs from "../../../shared/components/language/LanguageTabs";
-
-const PURPLE = "#732269";
+import CourseTable from "@/features/course/components/CourseTable";
+import useCourse from "@/features/course/hook/useCourse";
+import LanguageTabs from "@/shared/components/language/LanguageTabs";
+import Pagination from "@/shared/components/table/Pagination";
+import SearchResetActions from "@/shared/components/table/SearchResetActions";
 
 export default function CourseList() {
+
+    const perPage = 10;
 
     const [searchParams, setSearchParams] = useSearchParams();
 
     const activeTab = (
         searchParams.get("tab") || "english"
     ).toLowerCase();
+    const [currentPage, setCurrentPage] = useState(1);
 
     const {
         loading,
         filteredCourses,
         searchText,
         setSearchText,
+        appliedSearch,
         handleSearch,
         handleReset,
-        handleExport,
     } = useCourse(activeTab);
+
+    const totalPages = Math.max(1, Math.ceil(filteredCourses.length / perPage));
+    const paginatedCourses = useMemo(() => {
+        const start = (currentPage - 1) * perPage;
+        return filteredCourses.slice(start, start + perPage);
+    }, [currentPage, filteredCourses]);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [activeTab, appliedSearch]);
+
+    useEffect(() => {
+        if (currentPage > totalPages) {
+            setCurrentPage(totalPages);
+        }
+    }, [currentPage, totalPages]);
 
     const handleTabChange = (key) => {
         setSearchParams({ tab: key });
@@ -36,12 +54,11 @@ export default function CourseList() {
     return (
         <AppLayout>
 
-            <div className="min-h-screen w-full bg-[#eef3f9]">
+            <div className="course-list-page min-h-screen w-full bg-[#eef3f9]">
 
                 {/* PAGE HEADER */}
 
                 <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-
                     <span className="text-[21px] font-normal text-[#344050]">
                         Course List
                     </span>
@@ -58,7 +75,7 @@ export default function CourseList() {
 
                 {/* CARD */}
 
-                <div className="bg-white rounded-sm border border-[#dee2e6] shadow-sm">
+                <div className="course-list-card bg-white">
 
                     {/* LANGUAGE TABS */}
 
@@ -68,75 +85,57 @@ export default function CourseList() {
                     />
 
                     {/* SEARCH */}
-
-                    <div
-                        className="flex flex-col md:flex-row items-center gap-3 px-4 py-4"
-                        style={{ borderBottom: "1px solid #dee2e6" }}
-                    >
-
-                        <input
-                            type="text"
-                            value={searchText}
-                            onChange={(e) =>
-                                setSearchText(e.target.value)
-                            }
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter")
-                                    handleSearch();
-                            }}
-                            placeholder="Search By Course Name"
-                            className="flex-1 h-[30px] px-3 border border-[#e3e6ed] rounded-[4px] outline-none focus:border-[#732269] shadow-inner shadow-inner-[#dee2e6]"
-                        />
-
-                        <button
-                            onClick={handleSearch}
-                            className="h-7.5 px-7.5 rounded-sm! bg-[#732269] text-white"
+                    <div className="course-list-panel border bg-white !rounded-none">
+                        <div
+                            className="flex flex-col md:flex-row items-center gap-3 px-4 py-4"
                         >
-                            Search
-                        </button>
 
-                        <button
-                            onClick={handleReset}
-                            className="h-7.5 px-7.5 rounded-sm! border-2 border-[#241f1fd4]"
-                        >
-                            Reset
-                        </button>
-
-                    </div>
-
-                    {/* BODY */}
-
-                    <div className="px-4 py-3">
-
-                        <p className="mb-2 text-[15px] font-bold text-[#344050]">
-                            Total Course(s): {filteredCourses.length}
-                        </p>
-
-                        <CourseTable
-                            loading={loading}
-                            courses={filteredCourses}
-                            activeTab={activeTab}
-                        />
-
-                        <button
-                            type="button"
-                            onClick={() =>
-                                handleExport(filteredCourses, activeTab)
-                            }
-                            disabled={!filteredCourses.length}
-                            className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 text-[13px] font-medium text-[#732269] bg-white border border-[#dee2e6] rounded-[4px]"
-                        >
-                            <FiDownload
-                                size={14}
-                                color={PURPLE}
+                            <input
+                                type="text"
+                                value={searchText}
+                                onChange={(e) =>
+                                    setSearchText(e.target.value)
+                                }
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter")
+                                        handleSearch(); 
+                                }}
+                                placeholder="Search By Course Name"
+                                className="flex-1 h-[30px] px-3 border border-[#e3e6ed] rounded-[4px] outline-none focus:border-[#732269]  shadow-inner-[#dee2e6]"
                             />
-                            <span>Export</span>
-                        </button>
+
+                            <SearchResetActions
+                                onSearch={handleSearch}
+                                onReset={handleReset}
+                            />
+
+                        </div>
+
+                        {/* BODY */}
+
+                        <div className="px-4 py-3">
+
+                            <p className="mb-2 text-[15px] font-bold text-[#344050]">
+                                Total Course(s): {filteredCourses.length}
+                            </p>
+
+                            <CourseTable
+                                loading={loading}
+                                courses={paginatedCourses}
+                                activeTab={activeTab}
+                                startIndex={(currentPage - 1) * perPage}
+                            />
+                            <div className="mt-[20px] flex flex-wrap items-center justify-between gap-[12px]">
+                                <Pagination
+                                    currentPage={currentPage}
+                                    totalPages={totalPages}
+                                    onPageChange={setCurrentPage}
+                                />
+                            </div>
+                        </div>
 
                     </div>
-
                 </div>
-
             </div>
 
         </AppLayout>

@@ -10,7 +10,6 @@ from app.modules.batch.schema import (
 )
 
 
-
 class BatchService:
 
     @staticmethod
@@ -59,23 +58,23 @@ class BatchService:
 
     @staticmethod
     def get_batch_by_id(
-     db: Session,
-     batch_id: int,
-):
+        db: Session,
+        batch_id: int,
+    ):
 
-     batch = BatchRepository.get_batch_view_by_id(
-        db=db,
-        batch_id=batch_id,
-    )
-
-     if not batch:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Batch not found",
+        batch = BatchRepository.get_batch_view_by_id(
+            db=db,
+            batch_id=batch_id,
         )
 
-     return batch
-    
+        if not batch:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Batch not found",
+            )
+
+        return batch
+
     @staticmethod
     def update_batch(
         db: Session,
@@ -160,17 +159,14 @@ class BatchService:
             batch=batch,
         )
 
-        return {
-            "message": "Batch deleted successfully"
-        }
-
+        return {"message": "Batch deleted successfully"}
 
     @staticmethod
     def get_batch_participants(
-     db: Session,
-     batch_id: int,
-):
-     return BatchRepository.get_batch_participants(
-        db=db,
-        batch_id=batch_id,
-    )
+        db: Session,
+        batch_id: int,
+    ):
+        return BatchRepository.get_batch_participants(
+            db=db,
+            batch_id=batch_id,
+        )

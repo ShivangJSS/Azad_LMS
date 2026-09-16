@@ -2,11 +2,11 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
-import AppLayout from "../../../components/layout/AppLayout";
+import AppLayout from "@/components/layout/AppLayout";
 
 
-import UserForm from "../components/UserForm";
-import { createUser } from "../services/UserService";
+import UserForm from "@/features/users/components/UserForm";
+import { createUser } from "@/features/users/services/UserService";
 
 export default function CreateUser() {
     const navigate = useNavigate();
@@ -16,8 +16,21 @@ export default function CreateUser() {
     const handleCreate = async (data) => {
         try {
             setLoading(true);
-
-            await createUser(data);
+            const payload = {
+                ...data,
+                role: Number(data.role),
+                state_lgd_code: data.state_lgd_code
+                    ? Number(data.state_lgd_code)
+                    : null,
+                district_lgd_code: data.district_lgd_code
+                    ? Number(data.district_lgd_code)
+                    : null,
+                block_lgd_code: data.block_lgd_code
+                    ? Number(data.block_lgd_code)
+                    : null,
+                centre_id: data.centre_id ? Number(data.centre_id) : null,
+            };
+            await createUser(payload);
 
             toast.success("User Created Successfully");
 

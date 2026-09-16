@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 
 import {
     getModules,
     deleteModule,
-} from "../services/ListService";
+} from "@/features/module/ListModule/services/ListService";
+import { getTopicCountsByModule } from "@/features/module/Topic/services/TopicService";
 
 import {
     LANGUAGES,
     getLanguageByKey,
-} from "../../../../shared/constants/languageConstants";
+} from "@/shared/constants/languageConstants";
 
 import {
     EMPTY_FILTERS,
@@ -20,8 +22,12 @@ export default function useList() {
        STATE
     ========================= */
 
+    // Start on whatever tab the URL asks for (e.g. after "+ Add Module"
+    // from the Hindi tab redirects to /modules?tab=hindi), else English.
+    const [searchParams] = useSearchParams();
+
     const [language, setLanguage] = useState(
-        LANGUAGES[0].key
+        (searchParams.get("tab") || LANGUAGES[0].key).toLowerCase()
     );
 
     const [modules, setModules] = useState([]);
@@ -55,8 +61,6 @@ export default function useList() {
                 page: currentPage,
                 limit: PER_PAGE,
             };
-
-            // Search tabhi bhejna jab user ne kuch search kiya ho
             if (appliedFilters.search?.trim()) {
                 params.search = appliedFilters.search.trim();
             }
@@ -71,11 +75,62 @@ export default function useList() {
             //    pagination: {...}
             // }
 
-            setModules(
-                Array.isArray(response?.data)
-                    ? response.data
-                    : []
+            const moduleRows = Array.isArray(response?.data)
+                ? response.data
+                : [];
+
+            const baseResponse = await getModules({
+                language_id: 1,
+                page: 1,
+                limit: 1000,
+            });
+
+            const baseModuleRows = Array.isArray(baseResponse?.data)
+                ? baseResponse.data
+                : [];
+
+            const baseModuleMap = Object.fromEntries(
+                baseModuleRows.map((baseModule) => [
+                    String(baseModule.module_id),
+                    baseModule.module_name,
+                ])
             );
+
+            // Defend against an incorrectly scoped API response. A row
+            // without a language_id cannot safely belong to this tab.
+            const languageScopedRows = moduleRows.filter((module) =>
+                Number(module.language_id) === Number(selectedLanguage.id)
+            );
+
+            let topicCounts = null;
+            try {
+                // Scope topic counts to the selected language so other
+                // languages' topics never inflate this tab's counts.
+                topicCounts = await getTopicCountsByModule(selectedLanguage.id);
+            } catch {
+                topicCounts = null;
+            }
+        
+            const modulesWithTopicCounts = languageScopedRows.map((module) => {
+                const baseModuleId =
+                    module.parent_id ?? module.module_id;
+
+                const baseModuleName =
+                    baseModuleMap[String(baseModuleId)]
+                        ?.trim()
+                        .toLowerCase();
+
+                const topicCount =
+                    baseModuleName
+                        ? topicCounts?.[`name:${baseModuleName}`] ?? 0
+                        : 0;
+
+                return {
+                    ...module,
+                    topic_count: topicCount,
+                };
+            });
+            setModules(modulesWithTopicCounts);
 
             setTotalEntries(
                 response?.pagination?.total ?? 0
@@ -192,6 +247,7 @@ export default function useList() {
 
         // UI
         filters,
+        appliedFilters,
         currentPage,
         loading,
 

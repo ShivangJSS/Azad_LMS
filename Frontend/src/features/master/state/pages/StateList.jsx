@@ -2,15 +2,18 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
-import AppLayout from "../../../../components/layout/AppLayout";
-import Breadcrumbs from "../../../../shared/components/breadcrumbs/Breadcrumbs";
-import DataTable from "../../../../shared/components/table/DataTable";
-import EntriesDropdown from "../../../../shared/components/table/EntriesDropdown";
-import Pagination from "../../../../shared/components/table/Pagination";
+import AppLayout from "@/components/layout/AppLayout";
+import Breadcrumbs from "@/shared/components/breadcrumbs/Breadcrumbs";
+import DataTable from "@/shared/components/table/DataTable";
+import EntriesDropdown from "@/shared/components/table/EntriesDropdown";
+import Pagination from "@/shared/components/table/Pagination";
 
-import useTable from "../../../../shared/hooks/useTable";
+import useTable from "@/shared/hooks/useTable";
 
-import { getAllStates, deleteState } from "../services/StateService";
+import {
+    getAllStates,
+    deleteState,
+} from "@/features/master/state/services/StateService";
 
 export default function StateList() {
     const navigate = useNavigate();
@@ -54,7 +57,8 @@ export default function StateList() {
             .includes(stateName.toLowerCase());
 
         const statusMatch =
-            !statusFilter || String(state.status) === statusFilter;
+            !statusFilter ||
+            String(state.status) === statusFilter;
 
         return nameMatch && statusMatch;
     });
@@ -65,7 +69,11 @@ export default function StateList() {
 
     const table = useTable({
         data: filteredStates,
-        searchableFields: ["state_lgd_code", "state_name", "status"],
+        searchableFields: [
+            "state_lgd_code",
+            "state_name",
+            "status",
+        ],
         initialEntries: 10,
     });
 
@@ -74,74 +82,71 @@ export default function StateList() {
     // =====================================================
 
     const columns = [
-        { key: "sr_no", title: "S. No.", sortable: false, className: "text-center" },
-        { key: "state_lgd_code", title: "LGD Code", sortable: true, className: "text-center" },
-        { key: "state_name", title: "State Name", sortable: true, className: "text-center" },
-        { key: "status", title: "Status", sortable: true, className: "text-center" },
-        { key: "action", title: "Action", sortable: false, className: "text-center" },
+        {
+            key: "sr_no",
+            title: "S. No.",
+            sortable: false,
+            className: "text-center",
+        },
+        {
+            key: "state_lgd_code",
+            title: "LGD Code",
+            sortable: true,
+            className: "text-center",
+        },
+        {
+            key: "state_name",
+            title: "State Name",
+            sortable: true,
+            className: "text-center",
+        },
+        {
+            key: "status",
+            title: "Status",
+            sortable: true,
+            className: "text-center",
+        },
+        {
+            key: "action",
+            title: "Action",
+            sortable: false,
+            className: "text-center",
+        },
     ];
 
     // =====================================================
     // DELETE STATE
     // =====================================================
+
     const performDelete = async (stateId) => {
-
-        const deleteToast = toast.loading("Deleting state...");
-
         try {
-            const response = await deleteState(stateId);
+            await deleteState(stateId);
 
-
-            toast.success("State deleted successfully", {
-                id: deleteToast,
-            });
+            // Default react-hot-toast success toast
+            toast.success("State deleted successfully!");
 
             await fetchStates();
         } catch (error) {
-
+            // Default react-hot-toast error toast
             toast.error(
                 error.response?.data?.detail ||
-                error.response?.data?.message ||
-                "Failed to delete state.",
-                {
-                    id: deleteToast,
-                }
+                    error.response?.data?.message ||
+                    "Failed to delete state."
             );
         }
     };
 
     const handleDelete = (stateId) => {
-        toast(
-            (t) => (
-                <div className="flex flex-col items-center gap-4 rounded-md bg-white p-4 shadow-lg">
-                    <p className="text-center font-medium text-gray-800">
-                        Are you sure you want to delete this state?
-                    </p>
-                    <div className="flex gap-3">
-                        <button
-                            type="button"
-                            onClick={() => {
-                                toast.dismiss(t.id);
-                                performDelete(stateId);
-                            }}
-                            className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
-                        >
-                            Delete
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => toast.dismiss(t.id)}
-                            className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                        >
-                            Cancel
-                        </button>
-                    </div>
-                </div>
-            ),
-            {
-                duration: Infinity, // Toast won't dismiss automatically
-            }
+        // Browser's default confirmation dialog
+        const confirmed = window.confirm(
+            "Are you sure you want to delete this state?"
         );
+
+        if (!confirmed) {
+            return;
+        }
+
+        performDelete(stateId);
     };
 
     // =====================================================
@@ -170,8 +175,13 @@ export default function StateList() {
 
                     <Breadcrumbs
                         items={[
-                            { label: "Home", path: "/dashboard" },
-                            { label: "State Masters" },
+                            {
+                                label: "Home",
+                                path: "/dashboard",
+                            },
+                            {
+                                label: "State Masters",
+                            },
                         ]}
                     />
                 </div>
@@ -189,21 +199,33 @@ export default function StateList() {
                         <input
                             type="text"
                             value={stateName}
-                            onChange={(e) => setStateName(e.target.value)}
+                            onChange={(e) =>
+                                setStateName(e.target.value)
+                            }
                             placeholder="Search By State Name"
-                            className="w-full h-[38px] border border-gray-300 rounded-md px-4 text-[14px] text-gray-700 placeholder:text-gray-400  shadow-inner focus:outline-none focus:ring-1 focus:ring-[#7e2081]"
+                            className="w-full h-[38px] border border-gray-300 rounded-md px-4 text-[14px] text-gray-700 placeholder:text-gray-400 shadow-inner focus:outline-none focus:ring-1 focus:ring-[#7e2081]"
                         />
 
                         {/* STATUS */}
 
                         <select
                             value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value)}
+                            onChange={(e) =>
+                                setStatusFilter(e.target.value)
+                            }
                             className="w-full h-[38px] border border-gray-300 rounded-md px-3 text-[14px] text-gray-700 bg-white focus:outline-none focus:ring-1 shadow-inner focus:ring-[#7e2081]"
                         >
-                            <option value="">Select Status</option>
-                            <option value="1">Active</option>
-                            <option value="0">Inactive</option>
+                            <option value="">
+                                Select Status
+                            </option>
+
+                            <option value="1">
+                                Active
+                            </option>
+
+                            <option value="0">
+                                Inactive
+                            </option>
                         </select>
 
                         {/* SEARCH */}
@@ -239,14 +261,6 @@ export default function StateList() {
                                 {filteredStates.length}
                             </span>
                         </p>
-
-                        <button
-                            type="button"
-                            onClick={() => navigate("/master/states/create")}
-                            className="text-[14px] font-medium text-gray-700 !rounded-sm px-4 py-1  border-1 border-[#171616e3] hover:bg-gray-50 transition-colors"
-                        >
-                            + Add State
-                        </button>
                     </div>
 
                     {/* ================= TABLE ================= */}
@@ -302,7 +316,10 @@ export default function StateList() {
                                 {/* ACTION */}
 
                                 <td className="border border-[#dee2e6] px-3 py-2">
-                                    <div className="flex items-center justify-center gap-2 ">
+                                    <div className="flex items-center justify-center gap-2">
+
+                                        {/* EDIT */}
+
                                         <button
                                             type="button"
                                             onClick={() =>
@@ -315,10 +332,14 @@ export default function StateList() {
                                             Edit
                                         </button>
 
+                                        {/* DELETE */}
+
                                         <button
                                             type="button"
                                             onClick={() =>
-                                                handleDelete(state.state_lgd_code)
+                                                handleDelete(
+                                                    state.state_lgd_code
+                                                )
                                             }
                                             className="bg-[#dc3545] hover:bg-[#c82333] text-white text-[13px] font-semibold px-3 py-1 !rounded-sm transition-colors"
                                         >
@@ -333,6 +354,7 @@ export default function StateList() {
                     {/* ================= PAGINATION ================= */}
 
                     <div className="flex flex-col md:flex-row justify-between items-center mt-4 gap-3">
+
                         <EntriesDropdown
                             value={table.entriesPerPage}
                             onChange={table.setEntriesPerPage}

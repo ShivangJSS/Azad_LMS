@@ -84,8 +84,6 @@ class MatchMakingController:
             match_making_id=match_making_id,
         )
 
-
-
     @staticmethod
     def get_left_items(
         match_making_id: int,
@@ -134,64 +132,58 @@ class MatchMakingController:
             match_left_id=match_left_id,
         )
 
-
-
     @staticmethod
     def get_right_items(
-     match_making_id: int,
-     language_id: Optional[int] = None,
-     db: Session = Depends(get_db),
-):
-     return MatchMakingService.get_right_items(
-        db=db,
-        match_making_id=match_making_id,
-        language_id=language_id,
-    )
-
+        match_making_id: int,
+        language_id: Optional[int] = None,
+        db: Session = Depends(get_db),
+    ):
+        return MatchMakingService.get_right_items(
+            db=db,
+            match_making_id=match_making_id,
+            language_id=language_id,
+        )
 
     @staticmethod
     def create_right_item(
-     match_making_id: int,
-     payload: MatchRightItemCreate,
-     db: Session = Depends(get_db),
-):
-     return MatchMakingService.create_right_item(
-        db=db,
-        match_making_id=match_making_id,
-        data=payload,
-    )
-
+        match_making_id: int,
+        payload: MatchRightItemCreate,
+        db: Session = Depends(get_db),
+    ):
+        return MatchMakingService.create_right_item(
+            db=db,
+            match_making_id=match_making_id,
+            data=payload,
+        )
 
     @staticmethod
     def get_right_item_by_id(
-     match_right_id: int,
-     db: Session = Depends(get_db),
-):
-     return MatchMakingService.get_right_item_by_id(
-        db=db,
-        match_right_id=match_right_id,
-    )
-
+        match_right_id: int,
+        db: Session = Depends(get_db),
+    ):
+        return MatchMakingService.get_right_item_by_id(
+            db=db,
+            match_right_id=match_right_id,
+        )
 
     @staticmethod
     def update_right_item(
-     match_right_id: int,
-     payload: MatchRightItemUpdate,
-     db: Session = Depends(get_db),
-):
-     return MatchMakingService.update_right_item(
-        db=db,
-        match_right_id=match_right_id,
-        data=payload,
-    )
-
+        match_right_id: int,
+        payload: MatchRightItemUpdate,
+        db: Session = Depends(get_db),
+    ):
+        return MatchMakingService.update_right_item(
+            db=db,
+            match_right_id=match_right_id,
+            data=payload,
+        )
 
     @staticmethod
     def delete_right_item(
-     match_right_id: int,
-     db: Session = Depends(get_db),
-):
-     return MatchMakingService.delete_right_item(
-        db=db,
-        match_right_id=match_right_id,
-    )
+        match_right_id: int,
+        db: Session = Depends(get_db),
+    ):
+        return MatchMakingService.delete_right_item(
+            db=db,
+            match_right_id=match_right_id,
+        )

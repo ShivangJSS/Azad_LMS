@@ -42,9 +42,6 @@ router.post(
 )(ScqController.create_scq)
 
 
-
-
-
 # Update
 router.put(
     "/{scq_id}",

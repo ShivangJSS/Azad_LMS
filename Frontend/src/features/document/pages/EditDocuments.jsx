@@ -2,17 +2,17 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 
-import AppLayout from "../../../components/layout/AppLayout";
-import Breadcrumbs from "../../../shared/components/breadcrumbs/Breadcrumbs";
+import AppLayout from "@/components/layout/AppLayout";
+import Breadcrumbs from "@/shared/components/breadcrumbs/Breadcrumbs";
 
-import DocumentForm from "../components/Documentform";
-import { getMediaUrl } from "../../../shared/utils/mediaUrl";
+import DocumentForm from "@/features/document/components/Documentform";
+import { getMediaUrl } from "@/shared/utils/mediaUrl";
 import {
     getDocument,
     getDocumentCategories,
     getLanguages,
     updateDocument,
-} from "../services/DocumentServices";
+} from "@/features/document/services/DocumentServices";
 
 const breadcrumbItems = [
     { label: "Home", path: "/dashboard" },
@@ -177,7 +177,7 @@ export default function EditDocuments() {
         docType === "VIDEO"
             ? doc?.video_url
             : docType === "PDF"
-              ? doc?.pdf_url
+                ? doc?.pdf_url
               : doc?.ppt_url;
 
     const existingFileUrl = getMediaUrl(existingFilePath);

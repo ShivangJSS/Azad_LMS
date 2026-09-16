@@ -1,93 +1,131 @@
-import React from "react";
+import { memo } from "react";
+
 import {
     FaBuilding,
-    FaUsers,
     FaCubes,
-    FaLayerGroup,
     FaFileAlt,
+    FaLayerGroup,
+    FaUsers,
 } from "react-icons/fa";
 
-const statsConfig = [
-    {
-        key: "centres",
-        label: "Centres",
-        icon: FaBuilding,
-        gradient: "bg-[linear-gradient(120deg,#3f5a52_0%,#5d8479_45%,#a9ccc0_100%)]",
-        glow: "shadow-[0_10px_22px_-8px_rgba(214,178,74,0.55)]",
-    },
-    {
-        key: "trainees",
-        label: "Trainees",
-        icon: FaUsers,
-        gradient: "bg-[linear-gradient(120deg,#4a2242_0%,#3d4f61_55%,#2f7e7c_100%)]",
-        glow: "shadow-[0_10px_22px_-8px_rgba(56,132,196,0.55)]",
-    },
-    {
-        key: "modules",
-        label: "Modules",
-        icon: FaCubes,
-        gradient: "bg-[linear-gradient(120deg,#dcaad2_0%,#b96bad_55%,#8e3b8a_100%)]",
-        glow: "shadow-[0_10px_22px_-8px_rgba(129,180,229,0.55)]",
-    },
-    {
-        key: "batches",
-        label: "Batches",
-        icon: FaLayerGroup,
-        gradient: "bg-[linear-gradient(120deg,#28352d_0%,#41544a_55%,#75847a_100%)]",
-        glow: "shadow-[0_10px_22px_-8px_rgba(96,180,120,0.55)]",
-    },
-    {
-        key: "documents",
-        label: "Documents",
-        icon: FaFileAlt,
-        gradient: "bg-[linear-gradient(120deg,#33101c_0%,#5c1e26_55%,#7e2f30_100%)]",
-        glow: "shadow-[0_10px_22px_-8px_rgba(228,110,130,0.55)]",
-    },
+import { CARD_CLASS, INK, SUB, formatNumber } from "../hook/dashboardTheme";
+
+// ============================================================
+// Static configuration
+//
+// Compact white cards: a coloured stripe down the left edge, a filled
+// circular icon, then the metric with its label underneath.
+// ============================================================
+
+const STATS_CONFIG = [
+    { key: "centres", label: "Total Centres", icon: FaBuilding, accent: "#732269" },
+    { key: "trainees", label: "Active Trainees", icon: FaUsers, accent: "#2C8FE0" },
+    { key: "modules", label: "Modules", icon: FaCubes, accent: "#22A957" },
+    { key: "batches", label: "Active Batches", icon: FaLayerGroup, accent: "#A93FBF" },
+    { key: "documents", label: "Documents", icon: FaFileAlt, accent: "#E74C3C" },
 ];
 
-export default function StatsCards({
+const GRID_CLASS =
+    "grid w-full grid-cols-1 items-stretch gap-[14px] sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5";
+
+const CARD_SHELL =
+    `${CARD_CLASS} relative flex min-h-[80px] items-center gap-[14px] overflow-hidden py-[14px] pl-[20px] pr-[16px]`;
+
+// ============================================================
+// Loading skeleton (same shape, so nothing shifts when data lands)
+// ============================================================
+
+function StatsCardsSkeleton() {
+    return (
+        <section className="w-full">
+            <div className={GRID_CLASS}>
+                {STATS_CONFIG.map(({ key }) => (
+                    <div key={key} className={CARD_SHELL}>
+                        <span className="absolute inset-y-0 left-0 w-[4px] bg-[#EFECF3]" />
+                        <span className="h-[44px] w-[44px] shrink-0 animate-pulse rounded-full bg-[#F0EDF4]" />
+                        <div className="min-w-0 flex-1">
+                            <span className="block h-[20px] w-[62px] animate-pulse rounded-[5px] bg-[#EBE7F1]" />
+                            <span className="mt-[7px] block h-[10px] w-[86px] animate-pulse rounded-full bg-[#F4F2F7]" />
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </section>
+    );
+}
+
+// ============================================================
+// Component
+// ============================================================
+
+function StatsCards({
     centres = 0,
     trainees = 0,
     modules = 0,
     batches = 0,
     documents = 0,
+    loading = false,
 }) {
+    if (loading) {
+        return <StatsCardsSkeleton />;
+    }
+
     const values = { centres, trainees, modules, batches, documents };
 
     return (
-        <div className="w-full bg-white px-[20px] pt-[4px] pb-[16px]">
-            <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-[20px] items-stretch">
-                {statsConfig.map((card) => {
-                    const Icon = card.icon;
+        <section className="w-full">
+            <div className={GRID_CLASS}>
+                {STATS_CONFIG.map(({ key, label, icon: Icon, accent }) => (
+                    <div
+                        key={key}
+                        className={`${CARD_SHELL} transition-shadow duration-200 hover:shadow-[0_2px_4px_rgba(31,27,46,0.05),0_16px_32px_-20px_rgba(31,27,46,0.28)]`}
+                    >
+                        {/* Accent stripe down the left edge. Painted as a child
+                            rather than a border so the global card-hover rule
+                            in index.css can't recolour it. */}
+                        <span
+                            aria-hidden="true"
+                            className="absolute inset-y-0 left-0 w-[4px]"
+                            style={{ backgroundColor: accent }}
+                        />
 
-                    return (
-                        <div
-                            key={card.key}
-                            className={`group relative flex flex-col justify-center overflow-hidden h-full min-h-[124px] rounded-[14px] px-[18px] py-[16px] cursor-pointer transition-all duration-300 ease-out will-change-transform hover:-translate-y-[6px] hover:shadow-[0_18px_30px_-10px_rgba(0,0,0,0.35)] ${card.gradient} ${card.glow}`}
+                        <span
+                            className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-full"
+                            style={{ backgroundColor: accent }}
                         >
-                            <span className="pointer-events-none absolute right-[-26px] bottom-[-56px] w-[150px] h-[150px] rounded-full bg-white/[0.10]" />
-                            <span className="pointer-events-none absolute right-[54px] bottom-[-70px] w-[120px] h-[120px] rounded-full bg-white/[0.07]" />
-                            <span className="pointer-events-none absolute right-[16px] top-[-34px] w-[92px] h-[92px] rounded-full bg-white/[0.07]" />
+                            <Icon size={19} className="text-white" aria-hidden="true" />
+                        </span>
 
-                            <div className="relative z-[1] flex flex-row items-center justify-between gap-[12px]">
-                                <div className="flex flex-col min-w-0">
-                                    <span className="block text-[13px] leading-[18px] font-semibold uppercase tracking-[0.06em] text-white whitespace-nowrap font-['Open_Sans']">
-                                        {card.label}
-                                    </span>
+                        <div className="min-w-0">
+                            <span
+                                className="block font-bold"
+                                style={{
+                                    color: INK,
+                                    fontSize: "22px",
+                                    lineHeight: "28px",
+                                    fontVariantNumeric: "tabular-nums",
+                                }}
+                            >
+                                {formatNumber(Number(values[key]) || 0)}
+                            </span>
 
-                                    <span className="block mt-[6px] text-[30px] leading-[38px] font-bold text-white font-['Open_Sans']">
-                                        {values[card.key]}
-                                    </span>
-                                </div>
-
-                                <div className="flex items-center justify-center shrink-0 w-[52px] h-[52px] rounded-full bg-white/[0.18] transition-all duration-300 group-hover:bg-white/[0.28] group-hover:scale-110">
-                                    <Icon size={22} className="text-white" />
-                                </div>
-                            </div>
+                            <span
+                                className="block truncate"
+                                style={{
+                                    color: SUB,
+                                    fontSize: "12px",
+                                    lineHeight: "17px",
+                                }}
+                            >
+                                {label}
+                            </span>
                         </div>
-                    );
-                })}
+                    </div>
+                ))}
             </div>
-        </div>
+        </section>
     );
 }
+
+// Prevent re-render when dashboard statistics haven't changed.
+export default memo(StatsCards);

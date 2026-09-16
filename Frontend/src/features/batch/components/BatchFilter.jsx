@@ -1,5 +1,5 @@
 // import { Plus, RotateCcw } from 'lucide-react';
-// import { BRAND } from '../pages/BatchList';
+// import { BRAND } from '@/features/batch/pages/BatchList';
 
 // export default function BatchFilter({
 //     filters,
@@ -66,20 +66,19 @@
 // }
 
 
-import { Plus, RotateCcw } from "lucide-react";
-import { BRAND } from "../pages/BatchList";
+import SearchResetActions from "@/shared/components/table/SearchResetActions";
 
 export default function BatchFilter({
     filters,
     states,
     districts,
     onFilterChange,
+    onSearch,
     onReset,
-    onAddBatch,
 }) {
     return (
         <div className="bg-white mb-4 flex flex-wrap items-end gap-3">
-            <div className="w-full sm:w-[28%]">
+            <div className="w-full sm:w-[22%]">
                 <label className="block text-sm font-medium text-[#4d5969] mb-1">
                     State
                 </label>
@@ -102,7 +101,7 @@ export default function BatchFilter({
                 </select>
             </div>
 
-            <div className="w-full sm:w-[28%]">
+            <div className="w-full sm:w-[22%]">
                 <label className="block text-sm font-medium text-[#4d5969] mb-1">
                     District
                 </label>
@@ -126,26 +125,23 @@ export default function BatchFilter({
                 </select>
             </div>
 
-            <button
-                type="button"
-                onClick={onReset}
-                className="h-[39px] flex items-center gap-1.5 !shadow-inner border border-[#718096] hover:bg-[#f7f8fa] text-[#5b6b82] text-sm font-medium px-5 !rounded-md transition-colors"
-            >
-                <RotateCcw className="w-4.5 h-4.5" />
-                Reset
-            </button>
+            {/* Single search bar — matches the other list pages. */}
+            <div className="w-full sm:flex-1 sm:min-w-[220px]">
+                <label className="block text-sm font-medium text-[#4d5969] mb-1">
+                    Search
+                </label>
 
-            <div className="flex-1" />
+                <input
+                    type="text"
+                    placeholder="Search By Batch Name"
+                    className="w-full h-[39px] !shadow-inner border border-[#d9e1ec] rounded-md px-3 text-sm text-[#253858] bg-white focus:outline-none focus:border-[#732269]"
+                    value={filters.search}
+                    onChange={onFilterChange("search")}
+                    onKeyDown={(e) => e.key === "Enter" && onSearch()}
+                />
+            </div>
 
-            <button
-                type="button"
-                onClick={onAddBatch}
-                style={{ backgroundColor: BRAND }}
-                className="h-[39px] flex items-center  !shadow-inner text-white text-sm font-medium px-3 !rounded-md hover:opacity-90 transition-opacity"
-            >
-                <Plus className="w-4.5 h-4.5" />
-                Add Batch
-            </button>
+            <SearchResetActions onSearch={onSearch} onReset={onReset} />
         </div>
     );
 }

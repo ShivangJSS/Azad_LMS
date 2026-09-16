@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { FaChevronDown } from "react-icons/fa";
 
-import { getStates, getDistricts, getBlocks, getCentreById, createCentre, updateCentre } from "../services/centerService";
+import { getStates, getDistricts, getBlocks, getCentreById, createCentre, updateCentre } from "@/features/center/services/CenterService";
 
 const emptyForm = {
     state_id: "", district_id: "", block_id: "", centre_name: "", location: "",
@@ -125,6 +125,13 @@ export default function CenterUserForm() {
 
         const { name, value } = e.target;
 
+        // Restrict phone_number and pin fields to numeric values only
+        if (name === "phone_number" || name === "pin") {
+            const numericValue = value.replace(/[^0-9]/g, '');
+            setFormData((prev) => ({ ...prev, [name]: numericValue }));
+            return;
+        }
+
         if (name === "state_id") {
             setFormData((prev) => ({ ...prev, state_id: value, district_id: "", block_id: "" }));
             setDistricts([]);
@@ -149,6 +156,25 @@ export default function CenterUserForm() {
     const handleSubmit = async (e) => {
 
         e.preventDefault();
+
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (formData.email && !emailRegex.test(formData.email.trim())) {
+            alert("Please enter a valid email address.");
+            return;
+        }
+
+        // Validate phone number length (should be exactly 10 digits)
+        if (formData.phone_number && formData.phone_number.trim().length !== 10) {
+            alert("Phone number must be exactly 10 digits.");
+            return;
+        }
+
+        // Validate PIN code length (should be exactly 6 digits)
+        if (formData.pin && formData.pin.trim().length !== 6) {
+            alert("PIN code must be exactly 6 digits.");
+            return;
+        }
 
         try {
 
@@ -281,23 +307,69 @@ export default function CenterUserForm() {
                     </div>
 
                     <div className="w-full">
-                        <label className={labelClass}>Latitude</label>
-                        <input type="number" step="any" name="latitude" value={formData.latitude} onChange={handleChange} className={inputClass} />
+                        <label className={labelClass}>
+                            Latitude
+                        </label>
+
+                        <input
+                            type="number"
+                            step="any"
+                            name="latitude"
+                            value={formData.latitude}
+                            onChange={handleChange}
+                            className={inputClass}
+                        />
                     </div>
 
                     <div className="w-full">
-                        <label className={labelClass}>Longitude</label>
-                        <input type="number" step="any" name="longitude" value={formData.longitude} onChange={handleChange} className={inputClass} />
+                        <label className={labelClass}>
+                            Longitude
+                        </label>
+
+                        <input
+                            type="number"
+                            step="any"
+                            name="longitude"
+                            value={formData.longitude}
+                            onChange={handleChange}
+                            className={inputClass}
+                        />
                     </div>
 
                     <div className="w-full">
-                        <label className={labelClass}>PIN Code <Req /></label>
-                        <input type="text" inputMode="numeric" name="pin" value={formData.pin} onChange={handleChange} className={inputClass} maxLength={6} required />
+                        <label className={labelClass}>
+                            PIN Code <Req />
+                        </label>
+
+                        <input
+                            type="text"
+                            inputMode="numeric"
+                            name="pin"
+                            value={formData.pin}
+                            onChange={handleChange}
+                            className={inputClass}
+                            maxLength={6}
+                            required
+                            autoComplete="postal-code"
+                        />
                     </div>
 
                     <div className="w-full">
-                        <label className={labelClass}>Phone Number <Req /></label>
-                        <input type="text" inputMode="numeric" name="phone_number" value={formData.phone_number} onChange={handleChange} className={inputClass} maxLength={10} required />
+                        <label className={labelClass}>
+                            Phone Number <Req />
+                        </label>
+
+                        <input
+                            type="text"
+                            inputMode="numeric"
+                            name="phone_number"
+                            value={formData.phone_number}
+                            onChange={handleChange}
+                            className={inputClass}
+                            maxLength={10}
+                            required
+                            autoComplete="tel"
+                        />
                     </div>
 
                     <div className="w-full">

@@ -2,20 +2,20 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
 
-import AppLayout from "../../../../components/layout/AppLayout";
-import Breadcrumbs from "../../../../shared/components/breadcrumbs/Breadcrumbs";
-import LanguageTabs from "../../../../shared/components/language/LanguageTabs";
+import AppLayout from "@/components/layout/AppLayout";
+import Breadcrumbs from "@/shared/components/breadcrumbs/Breadcrumbs";
+import LanguageTabs from "@/shared/components/language/LanguageTabs";
 
 import {
     getLanguageByKey,
-} from "../../../../shared/constants/languageConstants";
+} from "@/shared/constants/languageConstants";
 
 import {
     getMCQById,
     saveMCQTranslation,
-} from "../services/MCQServices";
+} from "@/features/assessment/MCQ/services/MCQServices";
 
-import MCQTranslationForm from "../components/MCQTranslationForm";
+import MCQTranslationForm from "@/features/assessment/MCQ/components/MCQTranslationForm";
 
 const INITIAL_FORM = {
     mcq_question_title: "",
@@ -485,12 +485,10 @@ export default function MCQView() {
 
 
             // =================================================
-            // BACK TO LIST
+            // SAVE IN PLACE — stay on the page, refresh shown data
             // =================================================
 
-            navigate(
-                "/mcq-master"
-            );
+            await loadMCQ();
 
 
         } catch (error) {

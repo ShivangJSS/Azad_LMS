@@ -4,7 +4,7 @@ import {
     getVideos,
     deleteVideo,
     getArchivedVersions,
-} from "../services/VideoService";
+} from "@/features/document/video/services/VideoService";
 import { PER_PAGE } from "./videoConstants";
 
 /** Normalise the paginated `{ data, total }` envelope into an array. */

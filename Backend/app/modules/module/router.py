@@ -59,22 +59,21 @@ def get_modules(
 @router.get("/export")
 def export_modules(
     language_id: int = Query(...),
+    search: str | None = Query(None),
     db: Session = Depends(get_db),
 ):
 
     file = ModuleService.export_modules(
         db=db,
         language_id=language_id,
+        search=search,
     )
 
     return StreamingResponse(
         file,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={
-            "Content-Disposition": "attachment; filename=Modules.xlsx"
-        },
+        headers={"Content-Disposition": "attachment; filename=Modules.xlsx"},
     )
-
 
 
 # ==========================
@@ -89,10 +88,12 @@ async def create_module(
     module_duration: str = Form(...),
     publishing_status: str = Form(...),
     status: int = Form(...),
-   
     module_overview: str = Form(...),
     module_objective: str = Form(...),
     module_icon: UploadFile = File(...),
+    # Which language tab this module is being added from. Defaults to
+    # English (1) for existing callers that don't send it.
+    language_id: int = Form(1),
     db: Session = Depends(get_db),
 ):
     return ModuleService.create_module(
@@ -104,12 +105,11 @@ async def create_module(
         module_duration=module_duration,
         publishing_status=publishing_status,
         status=status,
-      
         module_overview=module_overview,
         module_objective=module_objective,
         module_icon=module_icon,
+        language_id=language_id,
     )
-
 
 
 # ==========================
@@ -134,7 +134,6 @@ def get_module_by_id(
 @router.put("/{module_id}")
 async def update_module(
     module_id: int,
-
     fk_course_id: int = Form(...),
     module_name: str = Form(...),
     module_description: str = Form(...),
@@ -142,12 +141,9 @@ async def update_module(
     module_duration: str = Form(...),
     publishing_status: str = Form(...),
     status: int = Form(...),
-    
     module_overview: str = Form(...),
     module_objective: str = Form(...),
-
     module_icon: UploadFile | None = File(None),
-
     db: Session = Depends(get_db),
 ):
 
@@ -161,13 +157,10 @@ async def update_module(
         module_duration=module_duration,
         publishing_status=publishing_status,
         status=status,
-       
         module_overview=module_overview,
         module_objective=module_objective,
         module_icon=module_icon,
     )
-
-
 
 
 # ==========================
@@ -182,10 +175,6 @@ def delete_module(
         db=db,
         module_id=module_id,
     )
-
-
-
-
 
 
 # ==========================
@@ -204,9 +193,6 @@ def save_translation(
     )
 
 
-
-
-
 @router.get("/{module_id}/translation")
 def get_translation(
     module_id: int,
@@ -221,169 +207,103 @@ def get_translation(
 
 
 @router.get(
-    "/modules/{module_id}/post-assessments",
-    response_model=ModulePostAssessmentResponse
+    "/modules/{module_id}/post-assessments", response_model=ModulePostAssessmentResponse
 )
-def get_post_assessments(
-    module_id: int,
-    db: Session = Depends(get_db)
-):
-    return ModuleService.get_post_assessments(
-        db=db,
-        module_id=module_id
-    )
+def get_post_assessments(module_id: int, db: Session = Depends(get_db)):
+    return ModuleService.get_post_assessments(db=db, module_id=module_id)
 
 
 @router.get(
-    "/modules/{module_id}/pre-assessments",
-    response_model=ModulePostAssessmentResponse
+    "/modules/{module_id}/pre-assessments", response_model=ModulePostAssessmentResponse
 )
-def get_pre_assessments(
-    module_id: int,
-    db: Session = Depends(get_db)
-):
-    return ModuleService.get_pre_assessments(
-        db=db,
-        module_id=module_id
-    )
+def get_pre_assessments(module_id: int, db: Session = Depends(get_db)):
+    return ModuleService.get_pre_assessments(db=db, module_id=module_id)
 
 
-@router.get(
-    "/assessments/{assessment_id}/scqs"
-)
+@router.get("/assessments/{assessment_id}/scqs")
 def get_scq_assessment_mapping(
     assessment_id: int,
     language_id: int | None = Query(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     return ModuleService.get_scq_assessment_mapping(
-        db=db,
-        assessment_id=assessment_id,
-        language_id=language_id
+        db=db, assessment_id=assessment_id, language_id=language_id
     )
 
 
-
-@router.get(
-    "/assessments/{assessment_id}/mcqs"
-)
+@router.get("/assessments/{assessment_id}/mcqs")
 def get_mcq_assessment_mapping(
     assessment_id: int,
     language_id: int | None = Query(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     return ModuleService.get_mcq_assessment_mapping(
-        db=db,
-        assessment_id=assessment_id,
-        language_id=language_id
+        db=db, assessment_id=assessment_id, language_id=language_id
     )
+
 
 @router.get(
     "/assessments/{assessment_id}/match-makings",
-    response_model=list[MatchMakingAssessmentMappingResponse]
+    response_model=list[MatchMakingAssessmentMappingResponse],
 )
 def get_match_making_assessment_mapping(
     assessment_id: int,
     language_id: int | None = Query(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     return ModuleService.get_match_making_assessment_mapping(
-        db=db,
-        assessment_id=assessment_id,
-        language_id=language_id
+        db=db, assessment_id=assessment_id, language_id=language_id
     )
-
 
 
 @router.get(
     "/assessments/{assessment_id}/drop-buckets",
-    response_model=list[
-        DropBucketAssessmentMappingResponse
-    ]
+    response_model=list[DropBucketAssessmentMappingResponse],
 )
 def get_drop_bucket_assessment_mapping(
     assessment_id: int,
     language_id: int | None = Query(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    return (
-        ModuleService
-        .get_drop_bucket_assessment_mapping(
-            db=db,
-            assessment_id=assessment_id,
-            language_id=language_id
-        )
+    return ModuleService.get_drop_bucket_assessment_mapping(
+        db=db, assessment_id=assessment_id, language_id=language_id
     )
 
 
-@router.post(
-    "/assessment-mapping"
-)
+@router.post("/assessment-mapping")
 def save_assessment_mapping(
-    request: AssessmentMappingCreateRequest,
-    db: Session = Depends(get_db)
+    request: AssessmentMappingCreateRequest, db: Session = Depends(get_db)
 ):
-    return ModuleService.save_assessment_mapping(
-        db=db,
-        request=request
-    )
-
+    return ModuleService.save_assessment_mapping(db=db, request=request)
 
 
 @router.get(
-    "/main-content/topics/{module_id}",
-    response_model=list[TopicDropdownResponse]
+    "/main-content/topics/{module_id}", response_model=list[TopicDropdownResponse]
 )
-def get_topics_for_main_content(
-    module_id: int,
-    db: Session = Depends(get_db)
-):
-    return ModuleService.get_topics_for_main_content(
-        db=db,
-        module_id=module_id
-    )
+def get_topics_for_main_content(module_id: int, db: Session = Depends(get_db)):
+    return ModuleService.get_topics_for_main_content(db=db, module_id=module_id)
 
 
-@router.get(
-    "/main-content/documents",
-    response_model=list[DocumentDropdownResponse]
-)
-def get_documents_for_main_content(
-    db: Session = Depends(get_db)
-):
-    return ModuleService.get_documents_for_main_content(
-        db=db
-    )
+@router.get("/main-content/documents", response_model=list[DocumentDropdownResponse])
+def get_documents_for_main_content(db: Session = Depends(get_db)):
+    return ModuleService.get_documents_for_main_content(db=db)
 
 
-@router.post(
-    "/main-content",
-    response_model=MainContentResponse
-)
+@router.post("/main-content", response_model=MainContentResponse)
 def create_main_content(
-    payload: MainContentCreateRequest,
-    db: Session = Depends(get_db)
+    payload: MainContentCreateRequest, db: Session = Depends(get_db)
 ):
-    return ModuleService.create_main_content(
-        db=db,
-        payload=payload
-    )
+    return ModuleService.create_main_content(db=db, payload=payload)
 
 
-@router.get(
-    "/main-content/{module_id}",
-    response_model=list[MainContentListResponse]
-)
+@router.get("/main-content/{module_id}", response_model=list[MainContentListResponse])
 def get_main_content_list(
-    module_id: int,
-    language_id: int | None = Query(None),
-    db: Session = Depends(get_db)
+    module_id: int, language_id: int | None = Query(None), db: Session = Depends(get_db)
 ):
     return ModuleService.get_main_content_list(
-        db=db,
-        module_id=module_id,
-        language_id=language_id
+        db=db, module_id=module_id, language_id=language_id
     )
+
 
 # ==========================
 # Self-Paced Learning (Optional)
@@ -428,9 +348,7 @@ def get_self_paced_list(
 # Deactivate Main Content
 # (additive – Module Configuration UI)
 # ==========================
-@router.patch(
-    "/main-content/{self_paced_learning_id}/deactivate"
-)
+@router.patch("/main-content/{self_paced_learning_id}/deactivate")
 def deactivate_main_content(
     self_paced_learning_id: int,
     db: Session = Depends(get_db),
@@ -445,9 +363,7 @@ def deactivate_main_content(
 # Activate Main Content
 # (additive – Module Configuration UI toggle)
 # ==========================
-@router.patch(
-    "/main-content/{self_paced_learning_id}/activate"
-)
+@router.patch("/main-content/{self_paced_learning_id}/activate")
 def activate_main_content(
     self_paced_learning_id: int,
     db: Session = Depends(get_db),
@@ -462,9 +378,7 @@ def activate_main_content(
 # Deactivate Assessment Mapping
 # (additive – Module Configuration UI)
 # ==========================
-@router.patch(
-    "/assessment-mapping/deactivate"
-)
+@router.patch("/assessment-mapping/deactivate")
 def deactivate_assessment_mapping(
     request: AssessmentMappingDeactivateRequest,
     db: Session = Depends(get_db),

@@ -6,7 +6,6 @@ import os
 from dotenv import load_dotenv
 from jose import JWTError, jwt
 
-
 # ==========================================================
 # JWT Configuration
 # ==========================================================
@@ -17,8 +16,7 @@ _secret_key = os.getenv("SECRET_KEY")
 
 if not _secret_key:
     raise RuntimeError(
-        "SECRET_KEY is not configured. "
-        "Please add SECRET_KEY to your .env file."
+        "SECRET_KEY is not configured. " "Please add SECRET_KEY to your .env file."
     )
 
 # Explicit str assignment prevents Pylance str | None errors
@@ -34,6 +32,7 @@ RESET_PASSWORD_EXPIRE_MINUTES = 15
 # ==========================================================
 # Create Access Token
 # ==========================================================
+
 
 def create_access_token(
     data: dict[str, str],
@@ -70,14 +69,13 @@ def create_access_token(
 # Create Refresh Token
 # ==========================================================
 
+
 def create_refresh_token(user_id: int) -> str:
     """
     Create a JWT refresh token.
     """
 
-    expire = datetime.now(timezone.utc) + timedelta(
-        days=REFRESH_TOKEN_EXPIRE_DAYS
-    )
+    expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
 
     payload: dict[str, Any] = {
         "sub": str(user_id),
@@ -95,6 +93,7 @@ def create_refresh_token(user_id: int) -> str:
 # ==========================================================
 # Verify / Decode Token
 # ==========================================================
+
 
 def verify_token(
     token: str,
@@ -123,6 +122,7 @@ def verify_token(
 # Verify Refresh Token
 # ==========================================================
 
+
 def verify_refresh_token(
     token: str,
 ) -> dict[str, Any] | None:
@@ -147,6 +147,7 @@ def verify_refresh_token(
 # ==========================================================
 # Create Reset Password Token
 # ==========================================================
+
 
 def create_reset_password_token(
     email: str,
@@ -175,6 +176,7 @@ def create_reset_password_token(
 # ==========================================================
 # Verify Reset Password Token
 # ==========================================================
+
 
 def verify_reset_password_token(
     token: str,

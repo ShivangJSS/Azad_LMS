@@ -2,21 +2,21 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
 
-import AppLayout from "../../../../components/layout/AppLayout";
-import Breadcrumbs from "../../../../shared/components/breadcrumbs/Breadcrumbs";
-import LanguageTabs from "../../../../shared/components/language/LanguageTabs";
+import AppLayout from "@/components/layout/AppLayout";
+import Breadcrumbs from "@/shared/components/breadcrumbs/Breadcrumbs";
+import LanguageTabs from "@/shared/components/language/LanguageTabs";
 
 import {
     getTopicById,
     getTopicTranslation,
     saveTopicTranslation,
-} from "../services/TopicService";
+} from "@/features/module/Topic/services/TopicService";
 
 import {
     getLanguageByKey,
-} from "../../../../shared/constants/languageConstants";
+} from "@/shared/constants/languageConstants";
 
-import TopicTranslationForm from "../components/TopicTranslation";
+import TopicTranslationForm from "@/features/module/Topic/components/TopicTranslation";
 
 const breadcrumbItems = [
     {
@@ -122,8 +122,9 @@ export default function ViewTopic() {
 
             toast.success("Translation saved successfully.");
 
-            // Go back to the topic list on success.
-            navigate("/topic-master");
+            // Save in place (AJAX) — stay on the page and refresh the shown
+            // data instead of redirecting to the list.
+            await loadTopic();
 
         } catch (error) {
 

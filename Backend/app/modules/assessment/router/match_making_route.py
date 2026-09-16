@@ -106,10 +106,10 @@ def delete(
     )
 
 
-
 # ===========================
 # LEFT ITEMS
 # ===========================
+
 
 @router.get(
     "/{match_making_id}/left-items",
@@ -184,7 +184,6 @@ def delete_left_item(
         match_left_id=match_left_id,
         db=db,
     )
-
 
 
 @router.get(

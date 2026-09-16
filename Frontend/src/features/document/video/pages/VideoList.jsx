@@ -1,23 +1,21 @@
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import { FiPlus } from "react-icons/fi";
+import AppLayout from "@/components/layout/AppLayout";
+import Breadcrumbs from "@/shared/components/breadcrumbs/Breadcrumbs";
+import DataTable from "@/shared/components/table/DataTable";
+import Pagination from "@/shared/components/table/Pagination";
+import EntriesDropdown from "@/shared/components/table/EntriesDropdown";
+import ExportButton from "@/shared/components/table/ExportButton";
+import FloatingAddButton from "@/shared/components/FloatingAddButton";
 
-import AppLayout from "../../../../components/layout/AppLayout";
-import Breadcrumbs from "../../../../shared/components/breadcrumbs/Breadcrumbs";
-import DataTable from "../../../../shared/components/table/DataTable";
-import Pagination from "../../../../shared/components/table/Pagination";
-import EntriesDropdown from "../../../../shared/components/table/EntriesDropdown";
-import ExportButton from "../../../../shared/components/table/ExportButton";
-import FloatingAddButton from "../../../../shared/components/FloatingAddBUtton";
-
-import useVideoList from "../hook/useVideoList";
+import useVideoList from "@/features/document/video/hook/useVideoList";
 import {
     VIDEO_COLUMNS,
     ARCHIVED_COLUMNS,
     ENTRIES_OPTIONS,
     toMediaUrl,
-} from "../hook/videoConstants";
-import { exportVideos } from "../services/VideoService";
+} from "@/features/document/video/hook/videoConstants";
+import { exportVideos } from "@/features/document/video/services/VideoService";
 
 const breadcrumbItems = [
     { label: "Home", path: "/dashboard" },
@@ -77,7 +75,7 @@ export default function VideoList() {
                 <Breadcrumbs items={breadcrumbItems} />
             </div>
 
-            <div className="w-full rounded-[8px] border border-[#D8E2EF] bg-white p-[20px]">
+            <div className="w-full bg-white p-[20px]">
 
                 {/* ===== TOP: count + search ===== */}
                 <div className="mb-[14px] flex flex-wrap items-center justify-between gap-[12px]">

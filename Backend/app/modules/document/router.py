@@ -28,7 +28,6 @@ from app.modules.document.schema import (
 )
 from app.modules.document.service import DocumentService
 
-
 router = APIRouter(
     prefix="",
     tags=["Document Management"],
@@ -42,6 +41,7 @@ router = APIRouter(
 # List Documents
 # -------------------------------------------------------
 
+
 @router.get(
     "/documents/categories",
     response_model=list[DocumentCategoryResponse],
@@ -54,6 +54,7 @@ def get_document_categories(
         DocumentCategoryResponse(id=row.doc_category_id, name=row.doc_category_name)
         for row in DocumentService.get_active_categories(db, language_id)
     ]
+
 
 @router.get(
     "/documents/languages",
@@ -88,8 +89,38 @@ def get_documents(
 
 
 # -------------------------------------------------------
+# Export CSV
+# -------------------------------------------------------
+
+
+@router.get(
+    "/documents/export/csv",
+    response_class=StreamingResponse,
+)
+def export_csv(
+    status_filter: int | None = Query(default=None, alias="status"),
+    doc_category_id: int | None = Query(default=None, gt=0),
+    doc_ref_id: int | None = Query(default=None, gt=0),
+    language_id: int | None = Query(default=None, gt=0),
+    search: str | None = Query(default=None),
+    doc_type: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+):
+    return DocumentService.export_csv(
+        db=db,
+        status=status_filter,
+        doc_category_id=doc_category_id,
+        doc_ref_id=doc_ref_id,
+        language_id=language_id,
+        search=search,
+        doc_type=doc_type,
+    )
+
+
+# -------------------------------------------------------
 # Get Document
 # -------------------------------------------------------
+
 
 @router.get(
     "/documents/{doc_id}",
@@ -108,6 +139,7 @@ def get_document_by_id(
 # -------------------------------------------------------
 # Create Document
 # -------------------------------------------------------
+
 
 @router.post(
     "/documents",
@@ -130,6 +162,7 @@ async def create_document(
 # -------------------------------------------------------
 # Update Document
 # -------------------------------------------------------
+
 
 @router.put(
     "/documents/{doc_id}",
@@ -155,6 +188,7 @@ async def update_document(
 # Delete Document
 # -------------------------------------------------------
 
+
 @router.delete(
     "/documents/{doc_id}",
     status_code=status.HTTP_200_OK,
@@ -175,6 +209,7 @@ def delete_document(
 # Keep this BEFORE translation/{language_id}
 # -------------------------------------------------------
 
+
 @router.get(
     "/documents/{document_id}/translation/form",
     response_model=TranslationFormResponse,
@@ -192,6 +227,7 @@ def get_translation_form(
 # -------------------------------------------------------
 # Get Translation
 # -------------------------------------------------------
+
 
 @router.get(
     "/documents/{document_id}/translation/{language_id}",
@@ -211,6 +247,7 @@ def get_translation(
 # -------------------------------------------------------
 # Save Translation
 # -------------------------------------------------------
+
 
 @router.post(
     "/documents/{document_id}/translation/save",
@@ -233,26 +270,4 @@ async def save_translation(
         description=description,
         document_image=document_image,
         media_file=media_file,
-    )
-
-
-# -------------------------------------------------------
-# Export CSV
-# -------------------------------------------------------
-
-@router.get(
-    "/documents/export/csv",
-    response_class=StreamingResponse,
-)
-def export_csv(
-    status_filter: int | None = Query(default=None, alias="status"),
-    doc_category_id: int | None = Query(default=None, gt=0),
-    doc_ref_id: int | None = Query(default=None, gt=0),
-    db: Session = Depends(get_db),
-):
-    return DocumentService.export_csv(
-        db=db,
-        status=status_filter,
-        doc_category_id=doc_category_id,
-        doc_ref_id=doc_ref_id,
     )

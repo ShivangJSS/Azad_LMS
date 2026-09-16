@@ -1,42 +1,16 @@
-from sqlalchemy import and_, func
-from sqlalchemy.orm import Session, aliased
+from sqlalchemy import func, or_
+from sqlalchemy.orm import Session
 
+# from Backend.app.database.database import db
 from app.modules.document.model import TopicMaster
 from app.modules.module.model import ModuleMaster
 
 
-# Language rows to auto-create for every new topic: (language_id, translate code)
-TOPIC_TRANSLATION_LANGUAGES = [
-    (2, "hi"),  # Hindi
-    (3, "bn"),  # Bengali
-    (4, "ta"),  # Tamil
-]
-
-
-def _translate_text(text: str, target_lang: str) -> str:
-    """Translate `text` into `target_lang` (best-effort).
-
-    Uses deep-translator's Google backend when available. If the package is
-    not installed or the call fails (e.g. no network), the original English
-    text is returned so topic creation never breaks.
-    """
-    if not text or not str(text).strip():
-        return text
-
-    try:
-        from deep_translator import GoogleTranslator
-
-        translated = GoogleTranslator(
-            source="auto",
-            target=target_lang,
-        ).translate(str(text))
-
-        return translated or text
-    except Exception:
-        return text
-
-
 class TopicRepository:
+
+    # =========================================================
+    # GET TOPICS
+    # =========================================================
 
     @staticmethod
     def get_topics(
@@ -46,103 +20,158 @@ class TopicRepository:
         skip: int,
         limit: int,
     ):
+        """
+        Return ONLY topics belonging to the requested language.
 
-        if language_id == 1:
-            # English is the base language: list the English topics directly.
-            query = (
-                db.query(
-                    TopicMaster.topic_id,
-                    TopicMaster.topic_name,
-                    ModuleMaster.module_name,
-                    TopicMaster.is_active.label("status"),
-                )
-                .join(
-                    ModuleMaster,
+        Example:
+            English -> language_id = 1
+            Hindi   -> language_id = 2
+            Bangla  -> language_id = 3
+            Tamil   -> language_id = 4
+        """
+
+        print(
+            f"BACKEND REPO: Fetching topics for language_id={language_id}"
+        )
+
+        # =====================================================
+        # MAIN QUERY
+        # =====================================================
+
+        query = (
+        db.query(
+            TopicMaster.topic_id,
+            TopicMaster.topic_name,
+            TopicMaster.language_id,
+            TopicMaster.is_active.label("status"),
+            ModuleMaster.module_name,
+        )
+        .join(
+            ModuleMaster,
+            (
+                ModuleMaster.language_id == TopicMaster.language_id
+            )
+            & (
+                ModuleMaster.deleted_at.is_(None)
+            )
+            & (
+                or_(
                     ModuleMaster.module_id == TopicMaster.module_id,
+                    ModuleMaster.parent_id == TopicMaster.module_id,
                 )
-                .filter(
-                    TopicMaster.language_id == 1,
-                    TopicMaster.is_active == "1",
-                )
+            ),
+        )
+        .filter(
+            TopicMaster.language_id == language_id,
+        )
+)
+        # =====================================================
+        # SEARCH
+        # =====================================================
+
+        if search:
+            query = query.filter(
+                TopicMaster.topic_name.ilike(f"%{search}%")
             )
 
-            if search:
-                query = query.filter(
-                    TopicMaster.topic_name.ilike(f"%{search}%")
-                )
-        else:
-            # Other languages: show EVERY English topic (so newly added topics
-            # appear automatically), with its translation for this language if
-            # one exists, otherwise the English name as a fallback.
-            translation = aliased(TopicMaster)
+        # =====================================================
+        # COUNT QUERY
+        # =====================================================
 
-            display_name = func.coalesce(
-                translation.topic_name,
-                TopicMaster.topic_name,
-            )
-
-            query = (
-                db.query(
-                    TopicMaster.topic_id,
-                    display_name.label("topic_name"),
-                    ModuleMaster.module_name,
-                    TopicMaster.is_active.label("status"),
-                )
-                .join(
-                    ModuleMaster,
-                    ModuleMaster.module_id == TopicMaster.module_id,
-                )
-                .outerjoin(
-                    translation,
-                    and_(
-                        translation.parent_id == TopicMaster.parent_id,
-                        translation.language_id == language_id,
-                        translation.is_active == "1",
-                    ),
-                )
-                .filter(
-                    TopicMaster.language_id == 1,
-                    TopicMaster.is_active == "1",
+        count_query = (
+            db.query(
+                func.count(
+                    func.distinct(TopicMaster.topic_id)
                 )
             )
-
-            if search:
-                query = query.filter(
-                    display_name.ilike(f"%{search}%")
+            .join(
+                ModuleMaster,
+                (
+                    ModuleMaster.language_id == TopicMaster.language_id
                 )
+                & (
+                    ModuleMaster.deleted_at.is_(None)
+                )
+                & (
+                    or_(
+                        ModuleMaster.module_id == TopicMaster.module_id,
+                        ModuleMaster.parent_id == TopicMaster.module_id,
+                    )
+                ),
+            )
+            .filter(
+                TopicMaster.language_id == language_id,
+            )
+        )
+        if search:
+            count_query = count_query.filter(
+                TopicMaster.topic_name.ilike(f"%{search}%")
+            )
 
-        total = query.count()
+        total = count_query.scalar() or 0
 
-        # Newest topics first (a just-added topic shows at the top).
+        # =====================================================
+        # FETCH ROWS
+        # =====================================================
+
+        print(
+            "BACKEND REPO: Query built, about to execute..."
+        )
+
         rows = (
-            query.order_by(TopicMaster.topic_id.desc())
+            query
+            .order_by(TopicMaster.topic_id.desc())
             .offset(skip)
             .limit(limit)
             .all()
         )
+
+        print(
+            f"BACKEND REPO: Raw rows count={len(rows)}"
+        )
+
+        # =====================================================
+        # BUILD RESPONSE
+        # =====================================================
 
         records = [
             {
                 "topic_id": row.topic_id,
                 "topic_name": row.topic_name,
                 "module_name": row.module_name,
-                "language_id": language_id,
+                "language_id": row.language_id,
                 "status": row.status,
             }
             for row in rows
         ]
 
+        print(
+            f"BACKEND REPO: Returning {len(records)} records "
+            f"with total={total} for language_id={language_id}"
+        )
+
+        if records:
+            print(
+                "BACKEND REPO: First record language_id="
+                f"{records[0]['language_id']}"
+            )
+
         return records, total
+
+    # =========================================================
+    # GET TOPIC BY ID
+    # =========================================================
 
     @staticmethod
     def get_topic_by_id(
         db: Session,
         topic_id: int,
     ):
-
         parent_id = (
             db.query(TopicMaster.parent_id)
-            .filter(TopicMaster.topic_id == topic_id)
+            .filter(
+                TopicMaster.topic_id == topic_id
+            )
             .scalar()
         )
 
@@ -165,60 +194,67 @@ class TopicRepository:
             )
             .filter(
                 TopicMaster.parent_id == parent_id,
-                 TopicMaster.is_active == "1",
+                
             )
-            .order_by(TopicMaster.language_id.asc())
+            .order_by(
+                TopicMaster.language_id.asc()
+            )
             .all()
         )
 
         return topics
+
+    # =========================================================
+    # DELETE TOPIC
+    # =========================================================
 
     @staticmethod
     def delete_topic(
         db: Session,
         topic_id: int,
     ):
-
         topic = (
             db.query(TopicMaster)
-            .filter(TopicMaster.topic_id == topic_id)
+            .filter(
+                TopicMaster.topic_id == topic_id
+            )
             .first()
         )
 
         if not topic:
             return False
 
-        (
-            db.query(TopicMaster)
-            .filter(
-                TopicMaster.parent_id == topic.parent_id
-            )
-            .update(
-                {
-                    TopicMaster.is_active: "0"
-                },
-                synchronize_session=False,
-            )
+        db.query(TopicMaster).filter(
+            TopicMaster.parent_id == topic.parent_id
+        ).delete(
+            synchronize_session=False
         )
 
         db.commit()
 
         return True
 
+    # =========================================================
+    # CREATE TOPICS
+    # =========================================================
+
     @staticmethod
     def create_topics(
         db: Session,
         module_id: int,
         topics: list,
+        language_id: int = 1,
     ):
-
         created_topics = []
 
         for item in topics:
 
+            # Each language can have its own independent
+            # TopicMaster record.
+
             topic = TopicMaster(
                 module_id=module_id,
-                language_id=1,
+                language_id=language_id,
                 topic_name=item.topic_name,
                 is_active=item.is_active,
             )
@@ -226,26 +262,9 @@ class TopicRepository:
             db.add(topic)
             db.flush()
 
-            # Parent points to itself for English record
+            # Self-parented record for independently
+            # created language topics.
             topic.parent_id = topic.topic_id
-
-            # Auto-create translated rows (Hindi / Bengali / Tamil) so the
-            # topic shows up—already translated—when the user switches tabs.
-            for lang_id, lang_code in TOPIC_TRANSLATION_LANGUAGES:
-                translated_name = _translate_text(
-                    item.topic_name,
-                    lang_code,
-                )
-
-                db.add(
-                    TopicMaster(
-                        module_id=module_id,
-                        language_id=lang_id,
-                        parent_id=topic.topic_id,
-                        topic_name=translated_name,
-                        is_active=item.is_active,
-                    )
-                )
 
             created_topics.append(topic)
 
@@ -256,7 +275,9 @@ class TopicRepository:
 
         return created_topics
 
-
+    # =========================================================
+    # SAVE TOPIC TRANSLATION
+    # =========================================================
 
     @staticmethod
     def save_translation(
@@ -266,10 +287,12 @@ class TopicRepository:
         topic_name: str,
         is_active: str,
     ):
-        # Find English (or parent) record
+        # Find original/parent topic
         parent = (
             db.query(TopicMaster)
-            .filter(TopicMaster.topic_id == topic_id)
+            .filter(
+                TopicMaster.topic_id == topic_id
+            )
             .first()
         )
 
@@ -278,7 +301,10 @@ class TopicRepository:
 
         parent_id = parent.parent_id
 
-        # Check if translation already exists
+        # =====================================================
+        # CHECK EXISTING TRANSLATION
+        # =====================================================
+
         translation = (
             db.query(TopicMaster)
             .filter(
@@ -288,13 +314,19 @@ class TopicRepository:
             .first()
         )
 
+        # =====================================================
+        # UPDATE EXISTING TRANSLATION
+        # =====================================================
+
         if translation:
-            # Update existing translation
             translation.topic_name = topic_name
             translation.is_active = is_active
 
+        # =====================================================
+        # CREATE NEW TRANSLATION
+        # =====================================================
+
         else:
-            # Insert new translation
             translation = TopicMaster(
                 parent_id=parent_id,
                 module_id=parent.module_id,
@@ -310,7 +342,9 @@ class TopicRepository:
 
         return translation
 
-
+    # =========================================================
+    # UPDATE TOPIC
+    # =========================================================
 
     @staticmethod
     def update_topic(
@@ -320,7 +354,6 @@ class TopicRepository:
         topic_name: str,
         is_active: str,
     ):
-
         topic = (
             db.query(TopicMaster)
             .filter(
@@ -340,8 +373,11 @@ class TopicRepository:
         db.refresh(topic)
 
         return topic
- 
- 
+
+    # =========================================================
+    # GET TOPIC TRANSLATION
+    # =========================================================
+
     @staticmethod
     def get_topic_translation(
         db: Session,
@@ -359,6 +395,10 @@ class TopicRepository:
         if not english:
             return None
 
+        # =====================================================
+        # ENGLISH
+        # =====================================================
+
         if language_id == 1:
             return {
                 "topic_id": english.topic_id,
@@ -367,12 +407,17 @@ class TopicRepository:
                 "status": english.is_active,
             }
 
+        # =====================================================
+        # TRANSLATION
+        # =====================================================
+
         translation = (
             db.query(TopicMaster)
             .filter(
                 TopicMaster.parent_id == english.parent_id,
                 TopicMaster.language_id == language_id,
                 TopicMaster.is_active == "1",
+                
             )
             .first()
         )
@@ -384,6 +429,10 @@ class TopicRepository:
                 "module_id": translation.module_id,
                 "status": translation.is_active,
             }
+
+        # =====================================================
+        # NO TRANSLATION
+        # =====================================================
 
         return {
             "topic_id": english.topic_id,

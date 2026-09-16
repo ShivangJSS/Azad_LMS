@@ -4,7 +4,7 @@ import {
     getTranslationForm,
     getTranslation,
     saveTranslation,
-} from "../services/DocumentServices";
+} from "@/features/document/services/DocumentServices";
 
 
 const EMPTY_FORM = {

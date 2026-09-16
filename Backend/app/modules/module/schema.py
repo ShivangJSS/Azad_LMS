@@ -4,10 +4,10 @@ from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict
 
-
 # ==========================
 # Create Module
 # ==========================
+
 
 class ModuleCreate(BaseModel):
     fk_course_id: int
@@ -26,6 +26,7 @@ class ModuleCreate(BaseModel):
 # Update Module
 # ==========================
 
+
 class ModuleUpdate(BaseModel):
     fk_course_id: int
     module_name: str
@@ -43,6 +44,7 @@ class ModuleUpdate(BaseModel):
 # Translation
 # ==========================
 
+
 class ModuleTranslation(BaseModel):
     language_id: int
     module_name: str
@@ -55,6 +57,7 @@ class ModuleTranslation(BaseModel):
 # ==========================
 # Module List Response
 # ==========================
+
 
 class ModuleListResponse(BaseModel):
     module_id: int
@@ -81,6 +84,7 @@ class ModuleListResponse(BaseModel):
 # ==========================
 # Module Details
 # ==========================
+
 
 class ModuleDetail(BaseModel):
     module_id: int
@@ -119,6 +123,7 @@ class ModuleDetail(BaseModel):
 # Translation Response
 # ==========================
 
+
 class ModuleTranslation(BaseModel):
     language_id: int
     module_name: str
@@ -126,18 +131,19 @@ class ModuleTranslation(BaseModel):
     module_overview: str | None = None
     module_objective: str | None = None
 
+
 class AssessmentResponse(BaseModel):
     assessment_id: int
     assessment_name: str
 
+
 class Config:
-        from_attributes = True
+    from_attributes = True
 
 
 class ModulePostAssessmentResponse(BaseModel):
     module_id: int
     assessments: List[AssessmentResponse]
-
 
 
 class ScqAssessmentMappingResponse(BaseModel):
@@ -166,6 +172,7 @@ class McqAssessmentMappingResponse(BaseModel):
     class Config:
         from_attributes = True
 
+
 class MatchMakingAssessmentMappingResponse(BaseModel):
     match_making_id: int
     match_making_question_title: str
@@ -178,9 +185,7 @@ class MatchMakingAssessmentMappingResponse(BaseModel):
     is_checked: bool
 
 
-class DropBucketAssessmentMappingResponse(
-    BaseModel
-):
+class DropBucketAssessmentMappingResponse(BaseModel):
     drop_bucket_id: int
     drop_bucket_question_title: str
     drop_bucket_question_description: str | None = None
@@ -190,6 +195,7 @@ class DropBucketAssessmentMappingResponse(
     language_id: int
     language_name: str | None = None
     is_checked: bool
+
 
 class AssessmentItem(BaseModel):
     assessment_id: int
@@ -201,10 +207,10 @@ class AssessmentMappingCreateRequest(BaseModel):
     assessments: List[AssessmentItem]
 
 
-
 # =========================================================
 # Create Main Content
 # =========================================================
+
 
 class MainContentCreateRequest(BaseModel):
     module_id: int
@@ -221,6 +227,7 @@ class MainContentResponse(BaseModel):
 # Topic Dropdown
 # =========================================================
 
+
 class TopicDropdownResponse(BaseModel):
     topic_id: int
     topic_name: str
@@ -234,6 +241,7 @@ class TopicDropdownResponse(BaseModel):
 # =========================================================
 # Document Dropdown
 # =========================================================
+
 
 class DocumentDropdownResponse(BaseModel):
     doc_id: int
@@ -249,6 +257,7 @@ class DocumentDropdownResponse(BaseModel):
 # =========================================================
 # Assigned Main Content Listing
 # =========================================================
+
 
 class MainContentListResponse(BaseModel):
     self_paced_learning_id: int
@@ -271,9 +280,11 @@ class MainContentListResponse(BaseModel):
     class Config:
         from_attributes = True
 
+
 # =========================================================
 # Deactivate Assessment Mapping (additive)
 # =========================================================
+
 
 class AssessmentMappingDeactivateRequest(BaseModel):
     assessment_id: int

@@ -2,13 +2,20 @@ import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { FiX, FiCopy, FiRefreshCw } from "react-icons/fi";
 
-import { getParticipantKeyDetails } from "../services/ParticipantService";
+import { getParticipantKeyDetails } from "@/features/participant/services/ParticipantService";
 
 const PURPLE = "#732269";
 
 export default function CredentialsModal({ participantId, participantName, onClose }) {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        document.body.style.overflow = "hidden";
+        return () => {
+            document.body.style.overflow = "";
+        };
+    }, []);
 
     useEffect(() => {
         if (!participantId) return;

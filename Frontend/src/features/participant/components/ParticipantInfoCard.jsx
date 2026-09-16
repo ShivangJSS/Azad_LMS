@@ -5,7 +5,7 @@ import {
     FaIdCard,
 } from "react-icons/fa";
 
-import { getParticipantImageUrl } from "../../../shared/utils/mediaUrl";
+import { getParticipantImageUrl } from "@/shared/utils/mediaUrl";
 
 const toMediaUrl = getParticipantImageUrl;
 

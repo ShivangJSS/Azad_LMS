@@ -1,4 +1,4 @@
-import { LANGUAGES } from "../../../../shared/constants/languageConstants";
+import { LANGUAGES } from "@/shared/constants/languageConstants";
 
 export const PER_PAGE = 10;
 
@@ -78,15 +78,13 @@ export const MODULE_COLUMNS = [
     {
         key: "status",
         title: "Status",
-        width: "w-[8%]",
+        width: "w-[9%]",
         align: "left",
     },
-
-    // THIS WAS MISSING
     {
         key: "actions",
         title: "Action",
-        width: "w-[31%]",
+        width: "w-[30%]",
         align: "center",
     },
 ];

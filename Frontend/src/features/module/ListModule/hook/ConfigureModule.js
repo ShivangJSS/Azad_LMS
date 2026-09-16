@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
-import API from "../../../../api/Api";
+import { useNavigate, useParams } from "react-router-dom";
+import API from "@/api/Api";
 
+import { getModuleById, getModuleTranslation, saveModuleTranslation, } from "@/features/module/ListModule/services/ListService";
 import {
-    getModuleById,
-    getModuleTranslation,
-    saveModuleTranslation,
-} from "../../../../api/moduleApi";
-
+    getPostAssessments,
+    getAssessmentQuestions,
+    ASSESSMENT_TYPES,
+} from "@/features/module/ListModule/services/ConfigurationService";
 const LANGUAGES = [
     {
         id: 1,
@@ -59,6 +59,7 @@ const EMPTY_TRANSLATION = {
 
 export default function useConfigureModule() {
     const { moduleId } = useParams();
+    const navigate = useNavigate();
 
     /* =========================================================
        MODULE
@@ -230,37 +231,102 @@ export default function useConfigureModule() {
        SAVE TRANSLATION
     ========================================================= */
 
+    // const handleSaveTranslation = async (formData) => {
+    //     try {
+    //         const payload = {
+    //             language_id: activeLanguage,
+
+    //             module_name:
+    //                 formData.module_name || "",
+
+    //             module_description:
+    //                 formData.module_description || "",
+
+    //             module_overview:
+    //                 formData.module_overview || "",
+
+    //             module_objective:
+    //                 formData.module_objective || "",
+
+    //             status: 1,
+    //         };
+
+    //         await saveModuleTranslation(
+    //             moduleId,
+    //             payload
+    //         );
+
+    //         await loadTranslation(activeLanguage);
+
+    //         return {
+    //             success: true,
+    //             message: "Translation saved successfully.",
+    //         };
+    //     } catch (error) {
+    //         console.error(
+    //             "Error saving translation:",
+    //             error?.response?.data ?? error
+    //         );
+
+    //         return {
+    //             success: false,
+    //             message:
+    //                 error?.response?.data?.detail ||
+    //                 "Unable to save translation.",
+    //         };
+    //     }
+    // };
+
     const handleSaveTranslation = async (formData) => {
         try {
+            const languageId = Number(activeLanguage);
+
             const payload = {
-                language_id: activeLanguage,
-
-                module_name:
-                    formData.module_name || "",
-
-                module_description:
-                    formData.module_description || "",
-
-                module_overview:
-                    formData.module_overview || "",
-
-                module_objective:
-                    formData.module_objective || "",
-
+                language_id: languageId,
+                module_name: formData.module_name || "",
+                module_description: formData.module_description || "",
+                module_overview: formData.module_overview || "",
+                module_objective: formData.module_objective || "",
                 status: 1,
             };
 
-            await saveModuleTranslation(
+            // Save translation first
+            const response = await saveModuleTranslation(
                 moduleId,
                 payload
             );
 
-            await loadTranslation(activeLanguage);
+            console.log("Translation save response:", response);
+            console.log("Saved language ID:", languageId);
+
+            // ==========================================
+            // TAMIL ONLY -> MODULE LIST
+            // ==========================================
+            if (languageId === 4) {
+                // Small delay ensures successful save response is completed
+                // before changing the route.
+                setTimeout(() => {
+                    navigate("/modules", {
+                        replace: true,
+                    });
+                }, 100);
+
+                return {
+                    success: true,
+                    message: "Tamil translation saved successfully.",
+                };
+            }
+
+            // ==========================================
+            // HINDI / BANGLA -> STAY HERE
+            // ==========================================
+            await loadTranslation(languageId);
 
             return {
                 success: true,
                 message: "Translation saved successfully.",
             };
+
         } catch (error) {
             console.error(
                 "Error saving translation:",
@@ -271,11 +337,11 @@ export default function useConfigureModule() {
                 success: false,
                 message:
                     error?.response?.data?.detail ||
+                    error?.response?.data?.message ||
                     "Unable to save translation.",
             };
         }
     };
-
     /* =========================================================
        LOAD MAIN CONTENT
     ========================================================= */
@@ -409,18 +475,35 @@ export default function useConfigureModule() {
        LOAD POST ASSESSMENTS
     ========================================================= */
 
+    // const loadPostAssessments = async () => {
+    //     try {
+    //         const response = await API.get(
+    //             `/modules/${moduleId}/post-assessments`
+    //         );
+
+    //         const data =
+    //             response?.data ?? response;
+
+    //         setPostAssessments(
+    //             data?.assessments || []
+    //         );
+    //     } catch (error) {
+    //         console.error(
+    //             "Error loading post assessments:",
+    //             error?.response?.data ?? error
+    //         );
+
+    //         setPostAssessments([]);
+    //     }
+    // };
+
     const loadPostAssessments = async () => {
         try {
-            const response = await API.get(
-                `/modules/${moduleId}/post-assessments`
-            );
+            const response = await getPostAssessments(moduleId);
 
-            const data =
-                response?.data ?? response;
+            const data = response?.data ?? response;
 
-            setPostAssessments(
-                data?.assessments || []
-            );
+            setPostAssessments(data?.assessments || []);
         } catch (error) {
             console.error(
                 "Error loading post assessments:",
@@ -435,61 +518,161 @@ export default function useConfigureModule() {
        LOAD ASSESSMENT QUESTIONS
     ========================================================= */
 
+    // useEffect(() => {
+    //     if (!postAssessments.length) {
+    //         setAssessmentQuestions([]);
+    //         return;
+    //     }
+
+    //     loadAssessmentQuestions();
+    // }, [
+    //     activePostTab,
+    //     postAssessments,
+    // ]);
+
     useEffect(() => {
-        if (!postAssessments.length) {
+        if (postAssessments.length === 0) {
             setAssessmentQuestions([]);
             return;
         }
 
         loadAssessmentQuestions();
+
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [
         activePostTab,
-        postAssessments,
+        activeLanguage,
+        postAssessments.length,
     ]);
 
-    const loadAssessmentQuestions = async () => {
-        const assessmentId =
-            postAssessments[0]?.assessment_id;
+    // const loadAssessmentQuestions = async () => {
+    //     const assessmentId =
+    //         postAssessments[0]?.assessment_id;
 
-        if (!assessmentId) {
+    //     if (!assessmentId) {
+    //         setAssessmentQuestions([]);
+    //         return;
+    //     }
+
+    //     try {
+    //         let endpoint = "";
+
+    //         switch (activePostTab) {
+    //             case "MCQ":
+    //                 endpoint =
+    //                     `/modules/assessments/${assessmentId}/mcqs`;
+    //                 break;
+
+    //             case "SCQ":
+    //                 endpoint =
+    //                     `/modules/assessments/${assessmentId}/scqs`;
+    //                 break;
+
+    //             case "DB":
+    //                 endpoint =
+    //                     `/modules/assessments/${assessmentId}/drop-buckets`;
+    //                 break;
+
+    //             case "MM":
+    //                 endpoint =
+    //                     `/modules/assessments/${assessmentId}/match-makings`;
+    //                 break;
+
+    //             default:
+    //                 setAssessmentQuestions([]);
+    //                 return;
+    //         }
+
+    //         const response =
+    //             await API.get(endpoint);
+
+    //         setAssessmentQuestions(
+    //             response?.data || []
+    //         );
+    //     } catch (error) {
+    //         console.error(
+    //             "Error loading assessment questions:",
+    //             error?.response?.data ?? error
+    //         );
+
+    //         setAssessmentQuestions([]);
+    //     }
+    // };
+
+
+    const loadAssessmentQuestions = async () => {
+        const assessmentIds = postAssessments
+            .map((assessment) => Number(assessment?.assessment_id))
+            .filter(Boolean);
+
+        if (!assessmentIds.length) {
             setAssessmentQuestions([]);
             return;
         }
 
         try {
-            let endpoint = "";
+            const responses = await Promise.allSettled(
+                assessmentIds.map((assessmentId) =>
+                    getAssessmentQuestions(
+                        assessmentId,
+                        activePostTab,
+                        activeLanguage
+                    )
+                )
+            );
 
-            switch (activePostTab) {
-                case "MCQ":
-                    endpoint =
-                        `/modules/assessments/${assessmentId}/mcqs`;
-                    break;
+            const merged = new Map();
 
-                case "SCQ":
-                    endpoint =
-                        `/modules/assessments/${assessmentId}/scqs`;
-                    break;
-
-                case "DB":
-                    endpoint =
-                        `/modules/assessments/${assessmentId}/drop-buckets`;
-                    break;
-
-                case "MM":
-                    endpoint =
-                        `/modules/assessments/${assessmentId}/match-makings`;
-                    break;
-
-                default:
-                    setAssessmentQuestions([]);
+            responses.forEach((result) => {
+                if (result.status !== "fulfilled") {
                     return;
-            }
+                }
 
-            const response =
-                await API.get(endpoint);
+                const response = result.value;
+                const data = response?.data ?? response;
+
+                if (!Array.isArray(data)) {
+                    return;
+                }
+
+                data.forEach((question) => {
+                    const config = ASSESSMENT_TYPES[activePostTab];
+                    const refKey = config?.refKey;
+
+                    if (!refKey) {
+                        return;
+                    }
+
+                    const questionId = question?.[refKey];
+
+                    if (
+                        questionId === undefined ||
+                        questionId === null
+                    ) {
+                        return;
+                    }
+
+                    const key = String(questionId);
+
+                    if (!merged.has(key)) {
+                        merged.set(key, question);
+                        return;
+                    }
+
+                    const existing = merged.get(key);
+
+                    merged.set(key, {
+                        ...existing,
+                        ...question,
+                        is_checked:
+                            Boolean(existing?.is_checked) ||
+                            Boolean(question?.is_checked),
+                    });
+                });
+            });
 
             setAssessmentQuestions(
-                response?.data || []
+                Array.from(merged.values())
             );
         } catch (error) {
             console.error(
@@ -500,7 +683,6 @@ export default function useConfigureModule() {
             setAssessmentQuestions([]);
         }
     };
-
     /* =========================================================
        ASSESSMENT TAB CHANGE
     ========================================================= */

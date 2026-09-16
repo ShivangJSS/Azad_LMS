@@ -1,6 +1,6 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 
-import { hasPermission } from "../../config/permissions";
+import { hasPermission } from "@/config/permissions";
 
 export default function ProtectedRoute({ allowedRoles, children }) {
     const location = useLocation();
@@ -8,7 +8,9 @@ export default function ProtectedRoute({ allowedRoles, children }) {
     const role = localStorage.getItem("userRole");
 
     if (!token) {
-        return <Navigate to="/Login" replace state={{ from: location }} />;
+        // Route is defined as "/login" (lowercase); "/Login" matched no route
+        // and fell through to the catch-all, showing a blank/NotFound page.
+        return <Navigate to="/login" replace state={{ from: location }} />;
     }
 
     if (allowedRoles && !hasPermission(allowedRoles, role)) {

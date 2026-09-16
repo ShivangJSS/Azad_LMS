@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getCourseById, getCourseImageUrl } from "../services/CourseService";
+import { getCourseById, getCourseImageUrl } from "@/features/course/services/CourseService";
 
 const useCourseView = (id, languageId) => {
     const [course, setCourse] = useState(null);

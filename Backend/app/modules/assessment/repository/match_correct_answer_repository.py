@@ -22,9 +22,7 @@ class MatchCorrectAnswerRepository:
                 MatchCorrectAnswer.match_making_id == match_making_id,
                 MatchCorrectAnswer.deleted_at.is_(None),
             )
-            .order_by(
-                MatchCorrectAnswer.match_correct_answers_id.asc()
-            )
+            .order_by(MatchCorrectAnswer.match_correct_answers_id.asc())
             .all()
         )
 
@@ -36,8 +34,7 @@ class MatchCorrectAnswerRepository:
         return (
             db.query(MatchCorrectAnswer)
             .filter(
-                MatchCorrectAnswer.match_correct_answers_id
-                == match_correct_answers_id,
+                MatchCorrectAnswer.match_correct_answers_id == match_correct_answers_id,
                 MatchCorrectAnswer.deleted_at.is_(None),
             )
             .first()
