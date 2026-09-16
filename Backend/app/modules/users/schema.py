@@ -450,6 +450,7 @@ from pydantic import (
     EmailStr,
     Field,
     field_validator,
+    model_validator,
 )
 
 
@@ -930,6 +931,40 @@ class ParticipantCreateRequest(BaseModel):
             )
 
         return value
+
+
+# =========================================================
+# Participant - Change Password
+# =========================================================
+
+
+class ParticipantChangePasswordRequest(BaseModel):
+    new_password: str = Field(..., min_length=8)
+    confirm_password: str = Field(..., min_length=8)
+
+    @field_validator("new_password", "confirm_password")
+    @classmethod
+    def validate_password(cls, value):
+        value = str(value)
+
+        if value != value.strip():
+            raise ValueError(
+                "Leading or trailing white space is not allowed in Password."
+            )
+
+        if len(value) < 8:
+            raise ValueError(
+                "Password must be at least 8 characters long."
+            )
+
+        return value
+
+    @model_validator(mode="after")
+    def validate_password_match(self):
+        if self.new_password != self.confirm_password:
+            raise ValueError("Passwords do not match.")
+
+        return self
 
 
 # =========================================================

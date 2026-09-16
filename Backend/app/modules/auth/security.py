@@ -29,7 +29,7 @@ def verify_password(
             _encode_password(plain_password),
             hashed_password.encode("utf-8"),
         )
-    except ValueError, TypeError:
+    except (ValueError, TypeError):
         return False
 
 

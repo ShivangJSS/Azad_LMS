@@ -1,10 +1,10 @@
 from collections import defaultdict
-
 from sqlalchemy import BigInteger, String, case, cast, distinct, func, or_
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from app.database import db
 
-from app.modules.auth.security import hash_password
+from app.modules.auth.security import hash_password, verify_password
 
 from app.modules.assessment.model import (
     AssessmentMapping,
@@ -2258,7 +2258,7 @@ class UserRepository:
             .first()
         )
 
-    def create_participant_module(self, participant_id, course_id, module_id):
+    def create_participant_module(self, participant_id, course_id, module_id, lock_status: int = 0):
         # participant_module_id has no DB default, so allocate the next id
         # explicitly and flush so subsequent inserts in the same request see it.
         next_id = (
@@ -2270,7 +2270,7 @@ class UserRepository:
             participant_id=participant_id,
             course_id=course_id,
             module_id=module_id,
-            lock_status=0,
+            lock_status=lock_status,
             status="1",
         )
         self.db.add(participant_module)
@@ -2286,6 +2286,27 @@ class UserRepository:
             )
             .delete(synchronize_session=False)
         )
+
+    @staticmethod
+    def change_participant_password(db: Session, participant_id: int, new_password: str):
+        participant = (
+            db.query(ParticipantMaster)
+            .filter(
+                ParticipantMaster.participant_id == participant_id,
+                ParticipantMaster.deleted_at.is_(None),
+            )
+            .first()
+        )
+        if not participant:
+            raise HTTPException(status_code=404, detail="Participant not found")
+
+        if participant.password and verify_password(new_password, participant.password):
+            raise HTTPException(status_code=400, detail="Password already saved.")
+
+        participant.password = hash_password(new_password)
+        db.commit()
+        db.refresh(participant)
+        return participant
 
     def commit(self):
         self.db.commit()
