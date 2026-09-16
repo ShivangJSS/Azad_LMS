@@ -41,13 +41,3 @@ CREATABLE_ROLES = {
 
 ACTIVE = "1"
 INACTIVE = "0"
-
-
-
-#15SEP
-class ModuleLockStatus(IntEnum):
-    LOCKED = 0
-    ACTIVE = 1
-    COMPLETED = 2
-
-

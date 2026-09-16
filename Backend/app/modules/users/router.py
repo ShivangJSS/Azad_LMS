@@ -414,21 +414,34 @@ async def update_participant(
     aadhaar_number: str | None = Form(None),
     location: str = Form(...),
     address: str | None = Form(None),
+
     state_id: int | None = Form(None),
     district_id: int | None = Form(None),
     block_id: int | None = Form(None),
+
+    # NEW: editable Centre + Batch + Enrollment
+    centre_id: int | None = Form(None),
+    batch_id: int | None = Form(None),
+    enrollment_no: str | None = Form(None),
+
     image: UploadFile | None = File(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    UserService.assert_participant_access(db, current_user, participant_id)
+    UserService.assert_participant_access(
+        db,
+        current_user,
+        participant_id,
+    )
+
     assert_scope_value(
         current_user,
         state_lgd_code=state_id or current_user.state_lgd_code,
         district_lgd_code=district_id or current_user.district_lgd_code,
         block_lgd_code=block_id or current_user.block_lgd_code,
-        centre_id=current_user.centre_id,
+        centre_id=centre_id or current_user.centre_id,
     )
+
     data = {
         "participant_name": participant_name,
         "age": age,
@@ -439,17 +452,23 @@ async def update_participant(
         "aadhaar_number": aadhaar_number,
         "location": location,
         "address": address,
+
         "state_id": state_id,
         "district_id": district_id,
         "block_id": block_id,
+
+        # NEW
+        "centre_id": centre_id,
+        "batch_id": batch_id,
+        "enrollment_no": enrollment_no,
     }
+
     return await UserService.update_participant(
         db=db,
         participant_id=participant_id,
         data=data,
         image=image,
     )
-
 
 # ===========================
 # COMBINED ROUTER

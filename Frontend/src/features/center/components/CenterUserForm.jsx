@@ -22,7 +22,7 @@ const labelClass = "block mb-[8px] text-[14px] font-medium leading-[1.5] shadow-
 
 const inputClass = "block w-full h-[35px] px-[12px] bg-white border border-[#D8E2EF] rounded-[6px] text-[14px] text-[#5E6E82] outline-none box-border shadow-inner";
 
-const selectClass = "block w-full h-[35px] pl-[12px] pr-[36px] appearance-none bg-white      border border-[#D8E2EF] rounded-[6px] text-[14px] text-[#5E6E82] outline-none  shadow-inner cursor-pointer truncate box-border disabled:bg-[#F5F7FA] disabled:text-[#9DA9BB] disabled:cursor-not-allowed bg-[length:14px_11px] bg-no-repeat bg-[right_12px_center] bg-[url('data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Cpath fill=%22none%22 stroke=%22%235E6E82%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22 stroke-width=%221.6%2２ d=%2２m2 5 6 6 6-6%2２/%3E%3C/svg%3E')]";
+const selectClass = "block w-full h-[35px] pl-[12px] pr-[36px] appearance-none bg-white      border border-[#D8E2EF] rounded-[6px] text-[14px] text-[#5E6E82] outline-none  shadow-inner cursor-pointer truncate box-border disabled:bg-[#F5F7FA] disabled:text-[#9DA9BB] disabled:cursor-not-allowed bg-[length:14px_11px] bg-no-repeat bg-[right_12px_center] bg-[url('data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Cpath fill=%22none%22 stroke=%22%235E6E82%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22 stroke-width=%221.6%22 d=%22m2 5 6 6 6-6%22/%3E%3C/svg%3E')]";
 
 const textareaClass = "block w-full min-h-[76px] px-[12px] py-[8px] bg-white border border-[#D8E2EF] rounded-[6px] text-[14px] text-[#5E6E82] outline-none resize-y box-border";
 
@@ -122,57 +122,159 @@ export default function CenterUserForm() {
     /* ============ CASCADE ============ */
 
     const handleChange = (e) => {
-
         const { name, value } = e.target;
 
-        // Restrict phone_number and pin fields to numeric values only
-        if (name === "phone_number" || name === "pin") {
-            const numericValue = value.replace(/[^0-9]/g, '');
-            setFormData((prev) => ({ ...prev, [name]: numericValue }));
-            return;
-        }
-
         if (name === "state_id") {
-            setFormData((prev) => ({ ...prev, state_id: value, district_id: "", block_id: "" }));
+            setFormData((prev) => ({
+                ...prev,
+                state_id: value,
+                district_id: "",
+                block_id: "",
+            }));
             setDistricts([]);
             setBlocks([]);
-            if (value) fetchDistricts(value);
+
+            if (value) {
+                fetchDistricts(value);
+            }
             return;
         }
 
         if (name === "district_id") {
-            setFormData((prev) => ({ ...prev, district_id: value, block_id: "" }));
+            setFormData((prev) => ({
+                ...prev,
+                district_id: value,
+                block_id: "",
+            }));
             setBlocks([]);
-            if (value) fetchBlocks(value);
+
+            if (value) {
+                fetchBlocks(value);
+            }
             return;
         }
 
-        setFormData((prev) => ({ ...prev, [name]: value }));
+        // PIN Code: numbers only. Spaces, letters and special characters
+        // are rejected immediately.
+        if (name === "pin") {
+            if (!/^\d*$/.test(value)) {
+                return;
+            }
+
+            setFormData((prev) => ({
+                ...prev,
+                pin: value.slice(0, 6),
+            }));
+            return;
+        }
+
+        // Phone Number: numbers only. Spaces, letters and special
+        // characters are rejected immediately.
+        if (name === "phone_number") {
+            if (!/^\d*$/.test(value)) {
+                return;
+            }
+
+            setFormData((prev) => ({
+                ...prev,
+                phone_number: value.slice(0, 10),
+            }));
+            return;
+        }
+
+        // Latitude/Longitude: allow only valid numeric characters.
+        if (name === "latitude" || name === "longitude") {
+            if (!/^-?\d*\.?\d*$/.test(value)) {
+                return;
+            }
+
+            setFormData((prev) => ({
+                ...prev,
+                [name]: value,
+            }));
+            return;
+        }
+
+        // Text fields: reject leading whitespace immediately.
+        if (
+            ["centre_name", "location", "address", "email"].includes(name) &&
+            value.length > 0 &&
+            /^\s/.test(value)
+        ) {
+            return;
+        }
+
+        setFormData((prev) => ({
+            ...prev,
+            [name]: value,
+        }));
     };
 
 
     /* ============ SUBMIT ============ */
 
     const handleSubmit = async (e) => {
-
         e.preventDefault();
 
-        // Validate email format
+        const centreName = String(formData.centre_name);
+        const location = String(formData.location);
+        const address = String(formData.address);
+        const email = String(formData.email);
+        const pin = String(formData.pin);
+        const phone = String(formData.phone_number);
+        const latitude = String(formData.latitude);
+        const longitude = String(formData.longitude);
+
+        // No leading/trailing whitespace.
+        const textRegex = /^\S(?:.*\S)?$/;
+
+        // Email must be a valid email and must not contain whitespace.
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (formData.email && !emailRegex.test(formData.email.trim())) {
-            alert("Please enter a valid email address.");
+
+        // Numbers only.
+        const pinRegex = /^\d{6}$/;
+        const phoneRegex = /^\d{10}$/;
+
+        // Latitude / longitude numeric validation.
+        const coordinateRegex = /^-?(?:\d+\.?\d*|\.\d+)$/;
+
+        if (!textRegex.test(centreName)) {
+            alert("Please enter a valid Centre Name. Leading or trailing white space is not allowed.");
             return;
         }
 
-        // Validate phone number length (should be exactly 10 digits)
-        if (formData.phone_number && formData.phone_number.trim().length !== 10) {
-            alert("Phone number must be exactly 10 digits.");
+        if (!textRegex.test(location)) {
+            alert("Please enter a valid Location. Leading or trailing white space is not allowed.");
             return;
         }
 
-        // Validate PIN code length (should be exactly 6 digits)
-        if (formData.pin && formData.pin.trim().length !== 6) {
-            alert("PIN code must be exactly 6 digits.");
+        if (!textRegex.test(address)) {
+            alert("Please enter a valid Address. Leading or trailing white space is not allowed.");
+            return;
+        }
+
+        if (!emailRegex.test(email) || !textRegex.test(email)) {
+            alert("Please enter a valid email address. White space is not allowed.");
+            return;
+        }
+
+        if (!pinRegex.test(pin)) {
+            alert("Please enter a valid 6-digit PIN Code. Numbers only.");
+            return;
+        }
+
+        if (!phoneRegex.test(phone)) {
+            alert("Please enter a valid 10-digit Phone Number. Numbers only.");
+            return;
+        }
+
+        if (latitude.trim() !== "" && !coordinateRegex.test(latitude)) {
+            alert("Please enter a valid Latitude. Numbers only.");
+            return;
+        }
+
+        if (longitude.trim() !== "" && !coordinateRegex.test(longitude)) {
+            alert("Please enter a valid Longitude. Numbers only.");
             return;
         }
 
@@ -184,14 +286,14 @@ export default function CenterUserForm() {
                 state_id: Number(formData.state_id),
                 district_id: Number(formData.district_id),
                 block_id: Number(formData.block_id),
-                centre_name: formData.centre_name.trim(),
-                location: formData.location.trim(),
+                centre_name: centreName.trim(),
+                location: location.trim(),
                 latitude: formData.latitude === "" ? null : Number(formData.latitude),
                 longitude: formData.longitude === "" ? null : Number(formData.longitude),
-                pin: String(formData.pin).trim(),
-                phone_number: String(formData.phone_number).trim(),
-                email: formData.email.trim(),
-                address: formData.address.trim(),
+                pin: pin.trim(),
+                phone_number: phone.trim(),
+                email: email.trim(),
+                address: address.trim(),
                 status: Number(formData.status),
             };
 
@@ -213,9 +315,19 @@ export default function CenterUserForm() {
 
             const detail = error.response?.data?.detail;
 
-            const message = Array.isArray(detail)
-                ? detail.map((d) => `${d.loc?.join(".")} → ${d.msg}`).join("\n")
-                : detail || "Unable to save centre";
+            let message;
+            if (Array.isArray(detail)) {
+                // Map email validation error to user-friendly message
+                const messages = detail.map(d => {
+                    if (d.loc?.includes('email') && d.msg?.includes('email address')) {
+                        return "Please enter a valid email address.";
+                    }
+                    return `${d.loc?.join(".")} → ${d.msg}`;
+                });
+                message = messages.join("\n");
+            } else {
+                message = detail || "Unable to save centre";
+            }
 
             alert(message);
 
@@ -298,83 +410,37 @@ export default function CenterUserForm() {
 
                     <div className="w-full">
                         <label className={labelClass}>Centre Name <Req /></label>
-                        <input type="text" name="centre_name" value={formData.centre_name} onChange={handleChange} className={inputClass} maxLength={75} required />
+                        <input type="text" name="centre_name" value={formData.centre_name} onChange={handleChange} className={inputClass} maxLength={75} pattern="^\S(?:.*\S)?$" title="Leading or trailing white space is not allowed." required />
                     </div>
 
                     <div className="w-full">
                         <label className={labelClass}>Location <Req /></label>
-                        <input type="text" name="location" value={formData.location} onChange={handleChange} className={inputClass} maxLength={30} required />
+                        <input type="text" name="location" value={formData.location} onChange={handleChange} className={inputClass} maxLength={30} pattern="^\S(?:.*\S)?$" title="Leading or trailing white space is not allowed." required />
                     </div>
 
                     <div className="w-full">
-                        <label className={labelClass}>
-                            Latitude
-                        </label>
-
-                        <input
-                            type="number"
-                            step="any"
-                            name="latitude"
-                            value={formData.latitude}
-                            onChange={handleChange}
-                            className={inputClass}
-                        />
+                        <label className={labelClass}>Latitude</label>
+                        <input type="number" step="any" name="latitude" value={formData.latitude} onChange={handleChange} className={inputClass} />
                     </div>
 
                     <div className="w-full">
-                        <label className={labelClass}>
-                            Longitude
-                        </label>
-
-                        <input
-                            type="number"
-                            step="any"
-                            name="longitude"
-                            value={formData.longitude}
-                            onChange={handleChange}
-                            className={inputClass}
-                        />
+                        <label className={labelClass}>Longitude</label>
+                        <input type="number" step="any" name="longitude" value={formData.longitude} onChange={handleChange} className={inputClass} />
                     </div>
 
                     <div className="w-full">
-                        <label className={labelClass}>
-                            PIN Code <Req />
-                        </label>
-
-                        <input
-                            type="text"
-                            inputMode="numeric"
-                            name="pin"
-                            value={formData.pin}
-                            onChange={handleChange}
-                            className={inputClass}
-                            maxLength={6}
-                            required
-                            autoComplete="postal-code"
-                        />
+                        <label className={labelClass}>PIN Code <Req /></label>
+                        <input type="text" inputMode="numeric" name="pin" value={formData.pin} onChange={handleChange} className={inputClass} maxLength={6} pattern="^\d{6}$" title="Enter 6 digits only." required />
                     </div>
 
                     <div className="w-full">
-                        <label className={labelClass}>
-                            Phone Number <Req />
-                        </label>
-
-                        <input
-                            type="text"
-                            inputMode="numeric"
-                            name="phone_number"
-                            value={formData.phone_number}
-                            onChange={handleChange}
-                            className={inputClass}
-                            maxLength={10}
-                            required
-                            autoComplete="tel"
-                        />
+                        <label className={labelClass}>Phone Number <Req /></label>
+                        <input type="text" inputMode="numeric" name="phone_number" value={formData.phone_number} onChange={handleChange} className={inputClass} maxLength={10} pattern="^\d{10}$" title="Enter 10 digits only." required />
                     </div>
 
                     <div className="w-full">
                         <label className={labelClass}>Email <Req /></label>
-                        <input type="email" name="email" value={formData.email} onChange={handleChange} className={inputClass} required />
+                        <input type="email" name="email" value={formData.email} onChange={handleChange} className={inputClass} pattern="^[^\s@]+@[^\s@]+\.[^\s@]+$" title="Please enter a valid email address without white space." required />
                     </div>
 
                 </div>
@@ -382,7 +448,7 @@ export default function CenterUserForm() {
 
                 <div className="w-full mt-[18px]">
                     <label className={labelClass}>Address <Req /></label>
-                    <textarea name="address" value={formData.address} onChange={handleChange} rows={2} className={textareaClass} required />
+                    <textarea name="address" value={formData.address} onChange={handleChange} rows={2} className={textareaClass} pattern="^\S(?:.*\S)?$" title="Leading or trailing white space is not allowed." required />
                 </div>
 
 

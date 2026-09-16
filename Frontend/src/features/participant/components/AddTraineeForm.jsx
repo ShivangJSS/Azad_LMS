@@ -192,10 +192,11 @@ export default function AddTraineeForm({ mode = 'create', initialData = null, pa
     getBatches(form.centre_id).then(setBatches).catch(() => setBatches([]));
   }, [form.centre_id]);
 
-  // ---- auto-build enrollment number once state/district/centre/batch are
-  // all selected: WWW/<state>/<district>/<fy>/<centre>/<batch name>/<seq> ----
+  // ---- auto-build enrollment number ----
+  // Create mode: generate a new sequence for the selected batch.
+  // Edit mode: keep the OLD unique sequence and rebuild only the
+  // state/district/fy/centre/batch parts.
   useEffect(() => {
-    if (isEdit) return; // enrollment is fixed when editing
     if (!form.state_id || !form.district_id || !form.centre_id || !form.batch_id) {
       return;
     }
@@ -213,12 +214,34 @@ export default function AddTraineeForm({ mode = 'create', initialData = null, pa
 
     async function buildEnrollmentNo() {
       setRefreshingEnrollment(true);
+
       try {
-        // Existing enrollments in this batch tell us the next sequence
-        // number. If this endpoint's contract turns out to mean something
-        // else, this is the one place to change it.
-        const existing = await getEnrollment(form.batch_id).catch(() => []);
-        const sequence = (Array.isArray(existing) ? existing.length : 0) + 1;
+        let sequence = '';
+
+        if (isEdit) {
+          // IMPORTANT:
+          // Never create a new unique sequence while editing.
+          // Reuse the sequence from the original enrollment number.
+          const oldEnrollment = String(initialData?.enrollment_no || '').trim();
+          const oldParts = oldEnrollment.split('/');
+
+          if (oldParts.length > 1) {
+            sequence = oldParts[oldParts.length - 1];
+          }
+        } else {
+          // Create mode gets the next sequence for the selected batch.
+          const existing = await getEnrollment(form.batch_id).catch(() => []);
+          sequence = String(
+            (Array.isArray(existing) ? existing.length : 0) + 1
+          );
+        }
+
+        // If an old enrollment number exists but its format is unexpected,
+        // do not overwrite it with a newly generated unique number.
+        if (isEdit && !sequence) {
+          if (!cancelled) setRefreshingEnrollment(false);
+          return;
+        }
 
         const parts = [
           'WWW',
@@ -231,7 +254,10 @@ export default function AddTraineeForm({ mode = 'create', initialData = null, pa
         ];
 
         if (!cancelled) {
-          setForm((prev) => ({ ...prev, enrollment_no: parts.join('/') }));
+          setForm((prev) => ({
+            ...prev,
+            enrollment_no: parts.join('/'),
+          }));
         }
       } finally {
         if (!cancelled) setRefreshingEnrollment(false);
@@ -239,10 +265,22 @@ export default function AddTraineeForm({ mode = 'create', initialData = null, pa
     }
 
     buildEnrollmentNo();
+
     return () => {
       cancelled = true;
     };
-  }, [form.state_id, form.district_id, form.centre_id, form.batch_id, states, districts, centres, batches]);
+  }, [
+    isEdit,
+    initialData?.enrollment_no,
+    form.state_id,
+    form.district_id,
+    form.centre_id,
+    form.batch_id,
+    states,
+    districts,
+    centres,
+    batches,
+  ]);
 
   // ---- handlers ----
 
@@ -294,21 +332,24 @@ export default function AddTraineeForm({ mode = 'create', initialData = null, pa
         next.block_id = '';
         next.centre_id = '';
         next.batch_id = '';
-        next.enrollment_no = '';
+        // Do not clear enrollment_no in edit mode.
+        // It will be regenerated with the same unique sequence once
+        // the new cascading selections are completed.
+        if (!isEdit) next.enrollment_no = '';
       } else if (key === 'district_id') {
         next.block_id = '';
         next.centre_id = '';
         next.batch_id = '';
-        next.enrollment_no = '';
+        if (!isEdit) next.enrollment_no = '';
       } else if (key === 'block_id') {
         next.centre_id = '';
         next.batch_id = '';
-        next.enrollment_no = '';
+        if (!isEdit) next.enrollment_no = '';
       } else if (key === 'centre_id') {
         next.batch_id = '';
-        next.enrollment_no = '';
+        if (!isEdit) next.enrollment_no = '';
       } else if (key === 'batch_id') {
-        next.enrollment_no = '';
+        if (!isEdit) next.enrollment_no = '';
       }
       return next;
     });
@@ -399,6 +440,9 @@ export default function AddTraineeForm({ mode = 'create', initialData = null, pa
         if (form.state_id) efd.append('state_id', form.state_id);
         if (form.district_id) efd.append('district_id', form.district_id);
         if (form.block_id) efd.append('block_id', form.block_id);
+        if (form.centre_id) efd.append('centre_id', form.centre_id);
+        if (form.batch_id) efd.append('batch_id', form.batch_id);
+        if (form.enrollment_no) efd.append('enrollment_no', form.enrollment_no);
         if (imageFile) efd.append('image', imageFile);
         await updateParticipant(participantId, efd);
         navigate('/participants/list');

@@ -1,45 +1,45 @@
-from unittest import result
-from urllib import response
 from typing import Any
-from app.utils.file_upload import save_image
+
 from fastapi import HTTPException, UploadFile, status
-from sqlalchemy.orm import Session
 from sqlalchemy import func
-from app.modules.module.model import ModuleMaster
-from app.modules.users.model import ParticipantMaster, TimeSpentModuleLog
-from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from app.modules.users.repository import (
-    UserRepository,
+from app.utils.file_upload import save_image
+
+from app.modules.module.model import ModuleMaster
+from app.modules.users.model import (
+    ParticipantMaster,
+    TimeSpentModuleLog,
 )
+
+from app.modules.users.repository import UserRepository
+
 from app.modules.users.schema import (
     ParticipantProfileResponse,
     AssessmentSummaryResponse,
     ModuleReportResponse,
     ParticipantReportResponse,
+    ParticipantCreateRequest,
+    UserCreateRequest,
+    UserUpdateRequest,
 )
 
-from app.modules.users.schema import UserUpdateRequest
 from app.modules.auth.model import User
+from app.modules.auth.security import hash_password
+
 from app.common.enums import UserRole as CanonicalUserRole
+
 from app.shared.dependencies.location_scope import (
     LocationScopeLevel,
     assert_scope_value,
     get_location_scope,
 )
-from app.modules.auth.security import hash_password
+
 from app.modules.users.constants import (
     CREATABLE_ROLES,
     ROLE_LABELS,
     UserRole,
 )
-
-
-
-from app.modules.users.schema import ParticipantCreateRequest, UserCreateRequest
-
-
 class UserService:
 
     def __init__(self, repository=None):
@@ -586,7 +586,7 @@ class UserService:
     # Manage Modules
     # ==================================================================
 
-    # def assign_module(self, participant_id: int, module_id: int):
+    def assign_module(self, participant_id: int, module_id: int):
         module = self.repository.get_module_by_id(module_id)
 
         if not module:
@@ -615,61 +615,6 @@ class UserService:
             "success": True,
             "message": "Module assigned successfully",
         }
-    
-    # #15sep
-    # def assign_module(self, participant_id: int, module_id: int):
-    # module = self.repository.get_module_by_id(module_id)
-
-    # if not module:
-    #     raise ValueError("Module not found")
-
-    # module_group = self.repository.get_module_group(module)
-
-    # # Make sure module progression follows sequence_no.
-    # # Do NOT use module_id or document type priority.
-    # module_group = sorted(
-    #     module_group,
-    #     key=lambda item: getattr(item, "sequence_no", 0),
-    # )
-
-    # for index, item in enumerate(module_group):
-
-    #     existing = self.repository.get_participant_module(
-    #         participant_id,
-    #         item.module_id,
-    #     )
-
-    #     if existing:
-    #         # Keep the participant-module record active.
-    #         if str(existing.status) != "1":
-    #             existing.status = "1"
-
-    #         # IMPORTANT:
-    #         # Do not reset existing lock_status.
-    #         # This preserves COMPLETED/ACTIVE/LOCKED progression.
-    #         continue
-
-    #     # Only the FIRST module is initially active.
-    #     # Every subsequent module is locked.
-    #     lock_status = (
-    #         ModuleLockStatus.ACTIVE
-    #         if index == 0
-    #         else ModuleLockStatus.LOCKED
-    #     )
-
-    #     self.repository.create_participant_module(
-    #         participant_id=participant_id,
-    #         course_id=item.fk_course_id,
-    #         module_id=item.module_id,
-    #         lock_status=lock_status,
-    #     )
-
-    # self.repository.commit()
-
-    # return {
-    #     "success": True,
-    #     "message": "Module assigned successfully",
-    # }
 
     def unassign_module(self, participant_id: int, module_id: int):
         module = self.repository.get_module_by_id(module_id)
@@ -693,7 +638,7 @@ class UserService:
             "message": "Module unassigned successfully",
         }
 
-    # def get_modules(self, participant_id: int, language_id: int):
+    def get_modules(self, participant_id: int, language_id: int):
         modules = self.repository.get_modules_by_language(language_id)
         assigned_ids = self.repository.get_assigned_module_ids(participant_id)
 
@@ -708,73 +653,6 @@ class UserService:
             }
             for m in modules
         ]
-
-    # #15sep
-    # def get_modules(self, participant_id: int, language_id: int):
-
-    # modules = self.repository.get_modules_by_language(language_id)
-
-    # # Make sure API ordering follows module sequence.
-    # modules = sorted(
-    #     modules,
-    #     key=lambda m: getattr(m, "sequence_no", 0),
-    # )
-
-    # assigned_ids = self.repository.get_assigned_module_ids(
-    #     participant_id
-    # )
-
-    # response = []
-
-    # for module in modules:
-
-    #     if module.module_id not in assigned_ids:
-    #         continue
-
-    #     participant_module = self.repository.get_participant_module(
-    #         participant_id,
-    #         module.module_id,
-    #     )
-
-    #     if not participant_module:
-    #         continue
-
-    #     lock_status = int(
-    #         participant_module.lock_status
-    #         if participant_module.lock_status is not None
-    #         else ModuleLockStatus.LOCKED
-    #     )
-
-    #     response.append(
-    #         {
-    #             "module_id": module.module_id,
-    #             "parent_id": module.parent_id or module.module_id,
-    #             "module_name": module.module_name,
-    #             "module_type": module.module_type,
-    #             "language_id": module.language_id,
-
-    #             "assigned": True,
-
-    #             # Database value
-    #             "lock_status": lock_status,
-
-    #             # Flutter-friendly value
-    #             "status": MODULE_LOCK_STATUS_LABELS.get(
-    #                 lock_status,
-    #                 "LOCKED",
-    #             ),
-
-    #             "unlocked": (
-    #                 lock_status == ModuleLockStatus.ACTIVE
-    #             ),
-
-    #             "completed": (
-    #                 lock_status == ModuleLockStatus.COMPLETED
-    #             ),
-    #         }
-    #     )
-
-    # return response
 
     # ==================================================================
     # Credentials + Time Spent
@@ -864,14 +742,61 @@ class UserService:
         return data
 
     @staticmethod
-    async def update_participant(db: Session, participant_id: int, data: dict, image):
+    async def update_participant(
+        db: Session,
+        participant_id: int,
+        data: dict,
+        image,
+    ):
+        # =========================================================
+        # GET EXISTING PARTICIPANT
+        # =========================================================
+        existing_participant = UserRepository.get_participant_edit(
+            db=db,
+            participant_id=participant_id,
+        )
+
+        if not existing_participant:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Participant not found",
+            )
+
+        # =========================================================
+        # LOCATION IS EDITABLE
+        # =========================================================
+        # State, District, Block and Centre are allowed to change.
+        # The frontend regenerates the enrollment number using the
+        # new location while keeping the original unique sequence.
+        #
+        # Example:
+        # OLD: WWW/UP/MZN/26-27/C01/B01/131
+        # NEW: WWW/HR/DEL/27-28/C05/B02/131
+        #
+        # The unique sequence (131) remains unchanged.
+        # =========================================================
+
+        # =========================================================
+        # SAVE IMAGE
+        # =========================================================
         image_name = await save_image(image) if image else None
+
+        # =========================================================
+        # UPDATE PARTICIPANT
+        # =========================================================
         participant = UserRepository.update_participant(
             db=db,
             participant_id=participant_id,
             data=data,
             image_name=image_name,
         )
+
         if not participant:
-            raise HTTPException(status_code=404, detail="Participant not found")
-        return {"message": "Participant updated successfully."}
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Participant not found",
+            )
+
+        return {
+            "message": "Participant updated successfully."
+        }

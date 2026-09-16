@@ -2,7 +2,9 @@ from collections import defaultdict
 
 from sqlalchemy import BigInteger, String, case, cast, distinct, func, or_
 from sqlalchemy.orm import Session
-from app.modules.auth.security import hash_password #new added
+from app.database import db
+
+from app.modules.auth.security import hash_password
 
 from app.modules.assessment.model import (
     AssessmentMapping,
@@ -257,11 +259,12 @@ class UserRepository:
         if existing_enrollment:
             return "duplicate_enrollment_no"
 
+        username = (data.username or "").strip()
         # Check for duplicate username
         existing_username = (
             db.query(ParticipantMaster)
             .filter(
-                ParticipantMaster.username == data.username,
+                func.lower(func.trim(ParticipantMaster.username)) == username.lower(),
                 ParticipantMaster.deleted_at.is_(None),
             )
             .first()
@@ -274,7 +277,7 @@ class UserRepository:
         participant = ParticipantMaster(
             enrollment_no=data.enrollment_no,
             participant_name=data.participant_name,
-            username=data.username,
+            username=username,
             password=hashed_password,
             gender=data.gender,
             age=data.age,
@@ -663,9 +666,49 @@ class UserRepository:
             "image": p.images,
         }
 
+    # @staticmethod
+    # def update_participant(db: Session, participant_id: int, data: dict, image_name):
+    #     p = (
+    #         db.query(ParticipantMaster)
+    #         .filter(
+    #             ParticipantMaster.participant_id == participant_id,
+    #             ParticipantMaster.deleted_at.is_(None),
+    #         )
+    #         .first()
+    #     )
+    #     if not p:
+    #         return None
+
+    #     # Editable fields only (enrollment / username / password are not changed here).
+    #     p.participant_name = data.get("participant_name", p.participant_name)
+    #     p.age = data.get("age", p.age)
+    #     p.gender = data.get("gender", p.gender)
+    #     p.email = data.get("email", p.email)
+    #     p.mobile_no = data.get("mobile_no", p.mobile_no)
+    #     p.pin = data.get("pin", p.pin)
+    #     p.aadhaar_number = data.get("aadhaar_number", p.aadhaar_number)
+    #     p.location = data.get("location", p.location)
+    #     p.address = data.get("address", p.address)
+    #     if data.get("state_id"):
+    #         p.state_id = data["state_id"]
+    #     if data.get("district_id"):
+    #         p.district_id = data["district_id"]
+    #     if data.get("block_id"):
+    #         p.block_id = data["block_id"]
+    #     if image_name:
+    #         p.images = image_name
+
+    #     db.commit()
+    #     db.refresh(p)
+    #     return p
     @staticmethod
-    def update_participant(db: Session, participant_id: int, data: dict, image_name):
-        p = (
+    def update_participant(
+        db: Session,
+        participant_id: int,
+        data: dict,
+        image_name=None,
+    ):
+        participant = (
             db.query(ParticipantMaster)
             .filter(
                 ParticipantMaster.participant_id == participant_id,
@@ -673,31 +716,84 @@ class UserRepository:
             )
             .first()
         )
-        if not p:
+
+        if not participant:
             return None
 
-        # Editable fields only (enrollment / username / password are not changed here).
-        p.participant_name = data.get("participant_name", p.participant_name)
-        p.age = data.get("age", p.age)
-        p.gender = data.get("gender", p.gender)
-        p.email = data.get("email", p.email)
-        p.mobile_no = data.get("mobile_no", p.mobile_no)
-        p.pin = data.get("pin", p.pin)
-        p.aadhaar_number = data.get("aadhaar_number", p.aadhaar_number)
-        p.location = data.get("location", p.location)
-        p.address = data.get("address", p.address)
-        if data.get("state_id"):
-            p.state_id = data["state_id"]
-        if data.get("district_id"):
-            p.district_id = data["district_id"]
-        if data.get("block_id"):
-            p.block_id = data["block_id"]
+        # Basic participant details
+        if data.get("participant_name") is not None:
+            participant.participant_name = data["participant_name"]
+
+        if data.get("age") is not None:
+            participant.age = data["age"]
+
+        if data.get("gender") is not None:
+            participant.gender = data["gender"]
+
+        if data.get("email") is not None:
+            participant.email = data["email"]
+
+        if data.get("mobile_no") is not None:
+            participant.mobile_no = data["mobile_no"]
+
+        if data.get("pin") is not None:
+            participant.pin = data["pin"]
+
+        if data.get("aadhaar_number") is not None:
+            participant.aadhaar_number = data["aadhaar_number"]
+
+        if data.get("location") is not None:
+            participant.location = data["location"]
+
+        if data.get("address") is not None:
+            participant.address = data["address"]
+
+        # Editable location
+        if data.get("state_id") is not None:
+            participant.state_id = data["state_id"]
+
+        if data.get("district_id") is not None:
+            participant.district_id = data["district_id"]
+
+        if data.get("block_id") is not None:
+            participant.block_id = data["block_id"]
+
+        # Enrollment number
+        enrollment_no = data.get("enrollment_no")
+
+        if enrollment_no:
+            participant.enrollment_no = enrollment_no
+
+        # Batch / Centre mapping
+        batch_id = data.get("batch_id")
+
+        if batch_id is not None:
+            batch_participant = (
+                db.query(BatchParticipant)
+                .filter(
+                    BatchParticipant.participant_id == participant_id,
+                    BatchParticipant.deleted_at.is_(None),
+                )
+                .first()
+            )
+
+            if batch_participant:
+                batch_participant.batch_id = int(batch_id)
+            else:
+                batch_participant = BatchParticipant(
+                    participant_id=participant_id,
+                    batch_id=int(batch_id),
+                )
+                db.add(batch_participant)
+
+        # Image
         if image_name:
-            p.images = image_name
+            participant.images = image_name
 
         db.commit()
-        db.refresh(p)
-        return p
+        db.refresh(participant)
+
+        return participant
 
     @staticmethod
     def get_participant_profile(
@@ -2196,7 +2292,3 @@ class UserRepository:
 
     def rollback(self):
         self.db.rollback()
-
-
-
-
