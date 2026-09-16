@@ -20,12 +20,13 @@ from app.modules.users.schema import (
     ModuleReportResponse,
     ParticipantReportResponse,
     ParticipantCreateRequest,
+    ParticipantUpdateRequest,
     UserCreateRequest,
     UserUpdateRequest,
 )
 
 from app.modules.auth.model import User
-from app.modules.auth.security import hash_password
+from app.modules.auth.security import hash_password, verify_password
 
 from app.common.enums import UserRole as CanonicalUserRole
 
@@ -40,6 +41,8 @@ from app.modules.users.constants import (
     ROLE_LABELS,
     UserRole,
 )
+
+
 class UserService:
 
     def __init__(self, repository=None):
@@ -328,11 +331,17 @@ class UserService:
             "role": user.role,
             "role_name": ROLE_LABELS[UserRole(int(user.role))],
             "responsibility": user.responsibility,
+            "state_lgd_code": user.state_lgd_code,
             "state_name": state_name or "N/A",
+            "district_lgd_code": user.district_lgd_code,
             "district_name": district_name or "N/A",
+            "block_lgd_code": user.block_lgd_code,
             "block_name": block_name or "N/A",
+            "centre_id": user.centre_id,
             "centre_name": centre_name or "N/A",
             "status": user.status,
+            "created_at": getattr(user, "created_at", None),
+            "updated_at": getattr(user, "updated_at", None),
         }
 
     @staticmethod
@@ -419,7 +428,9 @@ class UserService:
         request: UserUpdateRequest,
         current_user: User,
     ):
-        # Check user exists
+        # ---------------------------------------------------------
+        # Get target user
+        # ---------------------------------------------------------
         user = UserRepository.get_by_id(db, user_id)
 
         if not user:
@@ -428,28 +439,50 @@ class UserService:
                 detail="User not found.",
             )
 
-        # Role hierarchy guard (prevents privilege escalation).
-        # The actor may only manage a target whose CURRENT role is within their
-        # creatable set, and may only assign a NEW role within that same set.
+        # ---------------------------------------------------------
+        # Role hierarchy / authorization
+        # ---------------------------------------------------------
         actor_role = UserRole(int(current_user.role))
         manageable_ids = [int(r) for r in CREATABLE_ROLES.get(actor_role, [])]
 
+        # Actor must be allowed to manage the user's current role.
         if int(user.role) not in manageable_ids:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You are not allowed to manage this user.",
             )
 
-        if int(request.role) not in manageable_ids:
+        # Actor must also be allowed to assign the requested role.
+        requested_role = UserRole(int(request.role))
+        if int(requested_role) not in manageable_ids:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You are not allowed to assign this role.",
             )
 
-        # Check duplicate email
+        # ---------------------------------------------------------
+        # Normalize values
+        # ---------------------------------------------------------
+        normalized_email = str(request.email).strip().lower()
+        normalized_username = (
+            request.username.strip() if request.username is not None else None
+        )
+
+        if not normalized_username:
+            normalized_username = normalized_email
+
+        responsibility = (
+            request.responsibility.strip()
+            if request.responsibility is not None
+            else None
+        )
+
+        # ---------------------------------------------------------
+        # Duplicate email check
+        # ---------------------------------------------------------
         existing_email = UserRepository.get_by_email_except_user(
             db,
-            request.email,
+            normalized_email,
             user_id,
         )
 
@@ -459,12 +492,95 @@ class UserService:
                 detail="Email already exists.",
             )
 
-        # Update fields
-        user.name = request.name
-        user.email = request.email
-        user.role = str(request.role)
+        # ---------------------------------------------------------
+        # Duplicate username check
+        # ---------------------------------------------------------
+        # Keep the same username uniqueness rule used during creation.
+        existing_username = UserRepository.get_by_username(
+            db,
+            normalized_username,
+        )
 
-        # Update password only if provided
+        if existing_username and int(existing_username.id) != int(user_id):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Username already exists.",
+            )
+
+        # ---------------------------------------------------------
+        # Validate location according to requested role
+        # ---------------------------------------------------------
+        if requested_role == CanonicalUserRole.STATE_HEAD:
+            if not request.state_lgd_code:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="State is required for State Lead.",
+                )
+
+        elif requested_role == CanonicalUserRole.DISTRICT_HEAD:
+            if not request.state_lgd_code:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="State is required for District Lead.",
+                )
+
+            if not request.district_lgd_code:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="District is required for District Lead.",
+                )
+
+        elif requested_role == CanonicalUserRole.PI:
+            if not request.state_lgd_code:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="State is required for PI.",
+                )
+
+            if not request.district_lgd_code:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="District is required for PI.",
+                )
+
+            if not request.block_lgd_code:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Block is required for PI.",
+                )
+
+            if not request.centre_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Centre is required for PI.",
+                )
+
+        # Scoped roles cannot move a user outside their own jurisdiction.
+        if requested_role != CanonicalUserRole.ADMIN:
+            assert_scope_value(
+                current_user,
+                state_lgd_code=request.state_lgd_code,
+                district_lgd_code=request.district_lgd_code,
+                block_lgd_code=request.block_lgd_code,
+                centre_id=request.centre_id,
+            )
+
+        # ---------------------------------------------------------
+        # Update all editable fields
+        # ---------------------------------------------------------
+        user.name = request.name
+        user.username = normalized_username
+        user.email = normalized_email
+        user.role = str(request.role)
+        user.responsibility = responsibility or ROLE_LABELS[requested_role]
+
+        user.state_lgd_code = request.state_lgd_code
+        user.district_lgd_code = request.district_lgd_code
+        user.block_lgd_code = request.block_lgd_code
+        user.centre_id = request.centre_id
+        user.status = str(request.status)
+
+        # Password is optional on edit. Blank/None means keep old password.
         if request.password:
             user.password = hash_password(request.password)
 
@@ -703,6 +819,49 @@ class UserService:
         }
 
     @staticmethod
+    def change_participant_password(
+        db: Session,
+        participant_id: int,
+        new_password: str,
+    ):
+        # Check participant exists
+        participant = (
+            db.query(ParticipantMaster)
+            .filter(
+                ParticipantMaster.participant_id == participant_id,
+                ParticipantMaster.deleted_at.is_(None),
+            )
+            .first()
+        )
+
+        if not participant:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Participant not found",
+            )
+
+        # Check if the new password is already the current password
+        if participant.password and verify_password(
+            new_password,
+            participant.password,
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password already saved",
+            )
+
+        # Different password -> hash and save
+        participant.password = hash_password(new_password)
+
+        db.commit()
+        db.refresh(participant)
+
+        return {
+            "status": True,
+            "message": "Participant password changed successfully.",
+        }
+
+    @staticmethod
     def get_participant_time_spent(db: Session, participant_id: int):
         participant = (
             db.query(ParticipantMaster)
@@ -764,8 +923,8 @@ class UserService:
     async def update_participant(
         db: Session,
         participant_id: int,
-        data: dict,
-        image,
+        data: ParticipantUpdateRequest | dict,
+        image: UploadFile | None,
     ):
         # =========================================================
         # GET EXISTING PARTICIPANT
@@ -796,6 +955,30 @@ class UserService:
         # =========================================================
 
         # =========================================================
+        # VALIDATED DATA
+        # =========================================================
+        if isinstance(data, ParticipantUpdateRequest):
+            data = data.model_dump(exclude_unset=True)
+
+        # Normalize validated string values before repository update.
+        for key in (
+            "participant_name",
+            "gender",
+            "location",
+            "address",
+            "enrollment_no",
+            "email",
+            "mobile_no",
+            "pin",
+            "aadhaar_number",
+        ):
+            if key in data and isinstance(data[key], str):
+                data[key] = data[key].strip()
+
+        if "email" in data and data["email"]:
+            data["email"] = data["email"].lower()
+
+        # =========================================================
         # SAVE IMAGE
         # =========================================================
         image_name = await save_image(image) if image else None
@@ -816,6 +999,4 @@ class UserService:
                 detail="Participant not found",
             )
 
-        return {
-            "message": "Participant updated successfully."
-        }
+        return {"message": "Participant updated successfully."}

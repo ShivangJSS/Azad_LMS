@@ -1,10 +1,10 @@
 from collections import defaultdict
-
 from sqlalchemy import BigInteger, String, case, cast, distinct, func, or_
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from app.database import db
 
-from app.modules.auth.security import hash_password
+from app.modules.auth.security import hash_password, verify_password
 
 from app.modules.assessment.model import (
     AssessmentMapping,
@@ -2286,6 +2286,27 @@ class UserRepository:
             )
             .delete(synchronize_session=False)
         )
+
+    @staticmethod
+    def change_participant_password(db: Session, participant_id: int, new_password: str):
+        participant = (
+            db.query(ParticipantMaster)
+            .filter(
+                ParticipantMaster.participant_id == participant_id,
+                ParticipantMaster.deleted_at.is_(None),
+            )
+            .first()
+        )
+        if not participant:
+            raise HTTPException(status_code=404, detail="Participant not found")
+
+        if participant.password and verify_password(new_password, participant.password):
+            raise HTTPException(status_code=400, detail="Password already saved.")
+
+        participant.password = hash_password(new_password)
+        db.commit()
+        db.refresh(participant)
+        return participant
 
     def commit(self):
         self.db.commit()

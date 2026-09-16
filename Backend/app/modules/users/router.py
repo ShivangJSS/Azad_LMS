@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
+from pydantic import ValidationError
+
 
 from app.database.database import get_db
 from app.modules.auth.dependencies import get_current_user
@@ -7,7 +9,11 @@ from app.shared.dependencies.module_access import Module, require_module_access
 from app.modules.auth.model import User
 from app.modules.users.service import UserService
 from app.modules.users.repository import UserRepository
-from app.modules.users.schema import ParticipantModuleActionRequest
+from app.modules.users.schema import (
+    ParticipantModuleActionRequest,
+    ParticipantCreateRequest,
+    ParticipantUpdateRequest,
+)
 from app.shared.dependencies.location_scope import assert_scope_value
 
 from app.modules.users.schema import (
@@ -18,7 +24,6 @@ from app.modules.users.schema import (
     DistrictResponse,
     EnrollmentResponse,
     MessageResponse,
-    ParticipantCreateRequest,
     ParticipantListResponse,
     ParticipantReportResponse,
     StateResponse,
@@ -374,6 +379,26 @@ def get_participant_key_details(
     )
 
 
+@participants_router.put("/{participant_id}/change-password")
+def change_participant_password(
+    participant_id: int,
+    new_password: str = Form(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    UserService.assert_participant_access(
+        db,
+        current_user,
+        participant_id,
+    )
+
+    return UserService.change_participant_password(
+        db=db,
+        participant_id=participant_id,
+        new_password=new_password,
+    )
+
+
 @participants_router.get("/{participant_id}/time-spent")
 def get_participant_time_spent(
     participant_id: int,
@@ -414,16 +439,13 @@ async def update_participant(
     aadhaar_number: str | None = Form(None),
     location: str = Form(...),
     address: str | None = Form(None),
-
     state_id: int | None = Form(None),
     district_id: int | None = Form(None),
     block_id: int | None = Form(None),
-
     # NEW: editable Centre + Batch + Enrollment
     centre_id: int | None = Form(None),
     batch_id: int | None = Form(None),
     enrollment_no: str | None = Form(None),
-
     image: UploadFile | None = File(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -442,26 +464,37 @@ async def update_participant(
         centre_id=centre_id or current_user.centre_id,
     )
 
-    data = {
-        "participant_name": participant_name,
-        "age": age,
-        "gender": gender,
-        "email": email,
-        "mobile_no": mobile_no,
-        "pin": pin,
-        "aadhaar_number": aadhaar_number,
-        "location": location,
-        "address": address,
+    # Validate the complete multipart/form-data payload through the
+    # same Pydantic schema used by the participant update contract.
+    # This prevents invalid whitespace, email, mobile, PIN and Aadhaar
+    # values from bypassing validation.
+    try:
+        data = ParticipantUpdateRequest(
+            participant_name=participant_name,
+            age=age,
+            gender=gender,
+            email=email,
+            mobile_no=mobile_no,
+            pin=pin,
+            aadhaar_number=aadhaar_number,
+            location=location,
+            address=address,
+            state_id=state_id,
+            district_id=district_id,
+            block_id=block_id,
+            centre_id=centre_id,
+            batch_id=batch_id,
+            enrollment_no=enrollment_no,
+        )
+    except ValidationError as exc:
+        errors = exc.errors()
 
-        "state_id": state_id,
-        "district_id": district_id,
-        "block_id": block_id,
+        message = errors[0].get("msg", "Invalid input.") if errors else "Invalid input."
 
-        # NEW
-        "centre_id": centre_id,
-        "batch_id": batch_id,
-        "enrollment_no": enrollment_no,
-    }
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=message,
+        )
 
     return await UserService.update_participant(
         db=db,
@@ -469,6 +502,7 @@ async def update_participant(
         data=data,
         image=image,
     )
+
 
 # ===========================
 # COMBINED ROUTER

@@ -20,11 +20,11 @@ export const exportParticipants = async (params = {}) => {
         ["S. No.", "Trainee Name", "Enrollment Id", "Status"],
         ...(Array.isArray(participants)
             ? participants.map((participant, index) => [
-                  index + 1,
-                  participant.participant_name,
-                  participant.enrollment_no,
-                  participant.status,
-              ])
+                index + 1,
+                participant.participant_name,
+                participant.enrollment_no,
+                participant.status,
+            ])
             : []),
     ];
 
@@ -211,4 +211,31 @@ export const updateParticipant = async (participantId, formData) => {
         headers: { 'Content-Type': 'multipart/form-data' },
     });
     return response.data;
+};
+
+export const changeParticipantPassword = async (
+    participantId,
+    newPassword,
+    confirmPassword
+) => {
+    try {
+        const formData = new FormData();
+        formData.append("new_password", newPassword);
+        formData.append("confirm_password", confirmPassword);
+
+        const response = await API.put(
+            `/participants/${participantId}/change-password`,
+            formData,
+            {
+                headers: {
+                    "Content-Type": "multipart/form-data",
+                },
+            }
+        );
+
+        return response.data;
+    } catch (error) {
+        console.error("Error changing participant password:", error);
+        throw error;
+    }
 };

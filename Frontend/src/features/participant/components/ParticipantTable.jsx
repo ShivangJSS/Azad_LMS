@@ -183,7 +183,7 @@ export default function ParticipantTable({
                                         </button>
                                         <button
                                             onClick={() => onResetPassword?.(p)}
-                                            className="bg-gray-900 hover:bg-black text-white p-1.5 rounded-md"
+                                            className="bg-gray-900 hover:bg-black text-white  rounded-md"
                                         >
                                             <KeyRound className="w-3.5 h-3.5" />
                                         </button>
