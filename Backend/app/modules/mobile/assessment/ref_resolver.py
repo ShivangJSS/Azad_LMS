@@ -20,6 +20,25 @@ from app.modules.mobile.assessment.model import (
 )
 
 
+def _primary_assessment_id(db: Session, module_id: int) -> int | None:
+    """
+    Returns the primary active PostSessionAssessment for the module.
+    This matches Web Admin behavior, which orders by assessment_id ascending
+    and manages the primary container (assessments[0]).
+    """
+    row = (
+        db.query(PostSessionAssessment.assessment_id)
+        .filter(
+            PostSessionAssessment.module_id == module_id,
+            PostSessionAssessment.is_active == ACTIVE,
+            PostSessionAssessment.deleted_at.is_(None),
+        )
+        .order_by(PostSessionAssessment.assessment_id.asc())
+        .first()
+    )
+    return row[0] if row else None
+
+
 def _mapped_refs(
     db: Session,
     module_ids: list[int],
@@ -33,28 +52,28 @@ def _mapped_refs(
     if not module_ids:
         return []
 
+    assessment_ids = []
+    for mid in module_ids:
+        aid = _primary_assessment_id(db, mid)
+        if aid is not None:
+            assessment_ids.append(aid)
+
+    if not assessment_ids:
+        return []
+
     rows = (
         db.query(AssessmentMapping.assessment_ref_id)
-        .select_from(PostSessionAssessment)
-        .join(
-            AssessmentMapping,
-            (
-                AssessmentMapping.assessment_id
-                == PostSessionAssessment.assessment_id
-            )
-            & (AssessmentMapping.assessment_type == assessment_type)
-            & (AssessmentMapping.is_active == ACTIVE),
-        )
         .filter(
-            PostSessionAssessment.module_id.in_(module_ids),
-            PostSessionAssessment.is_active == ACTIVE,
-            PostSessionAssessment.deleted_at.is_(None),
+            AssessmentMapping.assessment_id.in_(assessment_ids),
+            AssessmentMapping.assessment_type == assessment_type,
+            AssessmentMapping.is_active == ACTIVE,
         )
         .distinct()
         .all()
     )
 
     return sorted({row.assessment_ref_id for row in rows if row.assessment_ref_id})
+
 
 
 def _base_module(db: Session, module_id: int) -> int | None:
@@ -101,37 +120,37 @@ def ref_ids(
     """
     Returns (ref_ids, borrowed).
 
-    A module configured with its own assessment is served exactly as before.
-    One that has none reads the group's canonical configuration off the base
-    module, and only if that is empty too does it widen to the remaining
-    translations. `borrowed` marks the ref ids as pointing at another
-    language's questions, so the caller knows to translate them.
+    In the Web LMS architecture, post-session assessment configuration is canonical
+    on the base module (English): every language version of a module shares the primary
+    assessment container of the base module. Questions are assigned to the base module
+    and translated dynamically per language request.
 
-    Preferring the base over the whole group matters: the group holds one
-    assessment per language and they are not always the same length, so
-    pooling them would hand the participant a longer paper than any single
-    language was configured with.
+    If the canonical base module has an active post-session assessment container,
+    its configuration is authoritative across all language variants in the module family.
+    Sibling/translation modules with legacy or stale assessment containers are bypassed so
+    that newly assigned or updated questions on the Web Admin stay 100% in sync across all languages.
     """
-
-    ids = _mapped_refs(db, [module_id], assessment_type)
-
-    if ids:
-        return ids, False
 
     base = _base_module(db, module_id)
 
-    if base is None:
-        return [], False
+    # 1. Authoritative check on the canonical base module:
+    if base is not None:
+        base_assessment_id = _primary_assessment_id(db, base)
+        if base_assessment_id is not None:
+            ids = _mapped_refs(db, [base], assessment_type)
+            return ids, (module_id != base)
 
-    if base != module_id:
-        ids = _mapped_refs(db, [base], assessment_type)
+    # 2. Standalone module without base assessment container: check module itself
+    ids = _mapped_refs(db, [module_id], assessment_type)
+    if ids:
+        return ids, False
 
-        if ids:
-            return ids, True
+    # 3. Fallback to sibling family only if the base module has no assessment container
+    if base is not None:
+        family = _module_family(db, base, module_id)
+        return _mapped_refs(db, family, assessment_type), True
 
-    family = _module_family(db, base, module_id)
-
-    return _mapped_refs(db, family, assessment_type), True
+    return [], False
 
 
 def in_language(db: Session, model, pk, ids: list[int], language_id: int):

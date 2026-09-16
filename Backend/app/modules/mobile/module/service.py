@@ -3,8 +3,11 @@ from typing import Optional
 
 from sqlalchemy.orm import Session
 
+from app.modules.mobile.assessment.answer_repository import AnswerRepository
 from app.modules.mobile.module.constants import (
+    LOCK_STATUS_ACTIVE,
     LOCK_STATUS_COMPLETED,
+    LOCK_STATUS_LOCKED,
     LOCK_STATUS_MAP,
     MODULE_STATUS_LOCKED,
 )
@@ -62,16 +65,84 @@ class MobileModuleService:
             for row in MobileModuleRepository.list_module_types(db=db)
         }
 
+        # Group rows by module_type to handle progression per track
+        from collections import defaultdict
+
+        grouped_by_type = defaultdict(list)
+        for row in rows:
+            grouped_by_type[row.module_type].append(row)
+
+        # Enforce progression rules per track:
+        # 1. The first module of each track is ALWAYS open (ACTIVE or COMPLETED).
+        # 2. A subsequent module is only unlocked if the preceding module is COMPLETED.
+        # 3. Synchronize database state if any lock_status needs self-healing.
+        effective_statuses = {}
+        db_dirty = False
+
+        for m_type, m_rows in grouped_by_type.items():
+            prev_completed = False
+            for idx, row in enumerate(m_rows):
+                if idx == 0:
+                    # First module must ALWAYS be opened
+                    if row.lock_status == LOCK_STATUS_COMPLETED:
+                        eff_status = LOCK_STATUS_COMPLETED
+                        prev_completed = True
+                    else:
+                        eff_status = LOCK_STATUS_ACTIVE
+                        prev_completed = False
+                        if row.lock_status != LOCK_STATUS_ACTIVE:
+                            AnswerRepository.set_lock_status_for_group(
+                                db=db,
+                                participant_id=participant_id,
+                                parent_module_id=row.parent_id,
+                                lock_status=LOCK_STATUS_ACTIVE,
+                            )
+                            db_dirty = True
+                else:
+                    # Subsequent module: only open if immediately preceding module is completed
+                    if prev_completed:
+                        if row.lock_status == LOCK_STATUS_COMPLETED:
+                            eff_status = LOCK_STATUS_COMPLETED
+                            prev_completed = True
+                        else:
+                            eff_status = LOCK_STATUS_ACTIVE
+                            prev_completed = False
+                            if row.lock_status != LOCK_STATUS_ACTIVE:
+                                AnswerRepository.set_lock_status_for_group(
+                                    db=db,
+                                    participant_id=participant_id,
+                                    parent_module_id=row.parent_id,
+                                    lock_status=LOCK_STATUS_ACTIVE,
+                                )
+                                db_dirty = True
+                    else:
+                        eff_status = LOCK_STATUS_LOCKED
+                        prev_completed = False
+                        if row.lock_status != LOCK_STATUS_LOCKED:
+                            AnswerRepository.set_lock_status_for_group(
+                                db=db,
+                                participant_id=participant_id,
+                                parent_module_id=row.parent_id,
+                                lock_status=LOCK_STATUS_LOCKED,
+                            )
+                            db_dirty = True
+
+                effective_statuses[row.module_id] = eff_status
+
+        if db_dirty:
+            db.commit()
+
         modules = []
         completed = 0
 
         for row in rows:
+            eff_lock = effective_statuses.get(row.module_id, row.lock_status)
 
-            if row.lock_status == LOCK_STATUS_COMPLETED:
+            if eff_lock == LOCK_STATUS_COMPLETED:
                 completed += 1
 
             module_status = LOCK_STATUS_MAP.get(
-                row.lock_status,
+                eff_lock,
                 MODULE_STATUS_LOCKED,
             )
 

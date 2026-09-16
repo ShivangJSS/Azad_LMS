@@ -11,7 +11,12 @@ from app.modules.mobile.assessment.schema import (
     SubmitAssessmentRequest,
     SubmitAssessmentResponse,
 )
-from app.modules.mobile.module.constants import LOCK_STATUS_LOCKED
+from app.modules.mobile.assessment.model import ModuleMaster
+from app.modules.mobile.module.constants import (
+    LOCK_STATUS_ACTIVE,
+    LOCK_STATUS_LOCKED,
+)
+from app.modules.mobile.module.topic_repository import TopicRepository
 
 
 class AssessmentService:
@@ -157,6 +162,35 @@ class AssessmentService:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="This module is not assigned to you.",
             )
+
+        # The first module of a track must always be opened. If it is currently
+        # locked, activate it automatically.
+        if participant_module.lock_status == LOCK_STATUS_LOCKED:
+            parent_id = TopicRepository.get_parent_module_id(db, module_id)
+            if parent_id is not None:
+                mod = (
+                    db.query(ModuleMaster.module_type)
+                    .filter(
+                        ModuleMaster.parent_id == parent_id,
+                        ModuleMaster.deleted_at.is_(None),
+                    )
+                    .first()
+                )
+                m_type = str(mod.module_type) if mod and mod.module_type else None
+                groups = AnswerRepository.list_participant_module_groups(
+                    db=db,
+                    participant_id=participant_id,
+                    module_type=m_type,
+                )
+                if groups and groups[0].parent_id == parent_id:
+                    AnswerRepository.set_lock_status_for_group(
+                        db=db,
+                        participant_id=participant_id,
+                        parent_module_id=parent_id,
+                        lock_status=LOCK_STATUS_ACTIVE,
+                    )
+                    db.commit()
+                    participant_module.lock_status = LOCK_STATUS_ACTIVE
 
         if participant_module.lock_status == LOCK_STATUS_LOCKED:
             raise HTTPException(

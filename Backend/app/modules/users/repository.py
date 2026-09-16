@@ -2258,7 +2258,7 @@ class UserRepository:
             .first()
         )
 
-    def create_participant_module(self, participant_id, course_id, module_id):
+    def create_participant_module(self, participant_id, course_id, module_id, lock_status: int = 0):
         # participant_module_id has no DB default, so allocate the next id
         # explicitly and flush so subsequent inserts in the same request see it.
         next_id = (
@@ -2270,7 +2270,7 @@ class UserRepository:
             participant_id=participant_id,
             course_id=course_id,
             module_id=module_id,
-            lock_status=0,
+            lock_status=lock_status,
             status="1",
         )
         self.db.add(participant_module)

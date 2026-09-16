@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import func, text
+from sqlalchemy import String, cast, func, text
 from sqlalchemy.orm import Session
 
 from app.modules.mobile.assessment.constants import ACTIVE
@@ -189,13 +189,17 @@ class AnswerRepository:
         )
 
     @staticmethod
-    def list_participant_module_groups(db: Session, participant_id: int):
+    def list_participant_module_groups(
+        db: Session,
+        participant_id: int,
+        module_type: Optional[str] = None,
+    ):
         """
         One row per module group (parent_id) with its current lock status,
-        ordered the way modules are presented.
+        ordered the way modules are presented within its module track.
         """
 
-        return (
+        query = (
             db.query(
                 ModuleMaster.parent_id.label("parent_id"),
                 func.max(ParticipantModule.lock_status).label("lock_status"),
@@ -209,7 +213,15 @@ class AnswerRepository:
                 ParticipantModule.participant_id == participant_id,
                 ModuleMaster.deleted_at.is_(None),
             )
-            .group_by(ModuleMaster.parent_id)
+        )
+
+        if module_type is not None:
+            query = query.filter(
+                cast(ModuleMaster.module_type, String) == str(module_type)
+            )
+
+        return (
+            query.group_by(ModuleMaster.parent_id)
             .order_by(ModuleMaster.parent_id)
             .all()
         )
