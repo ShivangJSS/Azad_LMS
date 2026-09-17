@@ -15,7 +15,7 @@ export default function TopicForm({
     onSubmit, 
     onCancel, 
     loading = false,
-    currentLanguage = "english" 
+    currentLanguage = "english",
     title = "Create Topic",
     submitText = "Submit",
     showAddMore = true,
