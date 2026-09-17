@@ -89,27 +89,33 @@ export default function ParticipantTable({
                                         {p.image ? (
                                             <img
                                                 src={getParticipantImageUrl(p.image)}
-                                                alt={p.participant_name || 'Trainee'}
+                                                alt={p.participant_name || "Trainee"}
                                                 className="h-8 w-8 flex-shrink-0 rounded-full border border-gray-200 object-cover"
                                                 onError={(e) => {
-                                                    // Fall back to the initials avatar if the
-                                                    // image path is missing/broken.
-                                                    e.currentTarget.style.display = 'none';
-                                                    e.currentTarget.nextSibling?.style.removeProperty(
-                                                        'display'
-                                                    );
+                                                    e.currentTarget.style.display = "none";
+
+                                                    const fallback =
+                                                        e.currentTarget.parentElement?.querySelector(
+                                                            ".participant-image-fallback"
+                                                        );
+
+                                                    if (fallback) {
+                                                        fallback.style.display = "flex";
+                                                    }
                                                 }}
                                             />
                                         ) : null}
+
                                         <span
-                                            className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-[11px] font-semibold text-white"
+                                            className="participant-image-fallback flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-[11px] font-semibold text-white"
                                             style={{
                                                 backgroundColor: BRAND,
-                                                display: p.image ? 'none' : 'flex',
+                                                display: p.image ? "none" : "flex",
                                             }}
                                         >
                                             {initialsOf(p.participant_name)}
                                         </span>
+
                                         <span>{p.participant_name}</span>
                                     </div>
                                 </td>

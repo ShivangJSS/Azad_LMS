@@ -110,7 +110,7 @@ export default function useList() {
             } catch {
                 topicCounts = null;
             }
-        
+
             const modulesWithTopicCounts = languageScopedRows.map((module) => {
                 const baseModuleId =
                     module.parent_id ?? module.module_id;
@@ -174,6 +174,16 @@ export default function useList() {
     const changeLanguage = useCallback(
         (nextLanguageKey) => {
             setLanguage(nextLanguageKey);
+
+            // Clear search when language tab changes
+            setFilters({
+                ...EMPTY_FILTERS,
+            });
+
+            setAppliedFilters({
+                ...EMPTY_FILTERS,
+            });
+
             setCurrentPage(1);
         },
         []

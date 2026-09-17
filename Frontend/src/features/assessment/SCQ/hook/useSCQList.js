@@ -226,6 +226,11 @@ export default function useSCQList() {
 
     };
 
+    const handleLanguageChange = (nextLanguage) => {
+        setLanguage(nextLanguage);
+        setSearch("");
+        setCurrentPage(1);
+    };
 
     /* =====================================================
        LOAD WHEN LANGUAGE CHANGES
@@ -442,7 +447,7 @@ export default function useSCQList() {
         scqs,
 
         language,
-        setLanguage,
+        setLanguage: handleLanguageChange,
 
         search,
         setSearch,

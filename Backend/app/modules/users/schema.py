@@ -1081,7 +1081,7 @@ class ParticipantListResponse(BaseModel):
 
     participant_name: str
     enrollment_no: str
-
+    image: Optional[str] = None
     state_name: Optional[str] = None
     district_name: Optional[str] = None
     centre_name: Optional[str] = None

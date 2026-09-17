@@ -136,6 +136,13 @@ export default function useMCQList() {
 
     };
 
+
+    const handleLanguageChange = (nextLanguage) => {
+        setLanguage(nextLanguage);
+        setSearch("");
+        setCurrentPage(1);
+    };
+
     const handleSearch = () => {
 
         setCurrentPage(1);
@@ -197,7 +204,7 @@ export default function useMCQList() {
         setSearch,
 
         language,
-        setLanguage,
+        setLanguage: handleLanguageChange,
 
         currentPage,
         setCurrentPage,

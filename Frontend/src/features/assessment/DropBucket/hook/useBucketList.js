@@ -293,9 +293,12 @@ export default function useBucketList() {
     const handleLanguageChange =
         useCallback((value) => {
             setLanguage(value);
+
+            // Clear search when language tab changes
+            setSearch("");
+
             setCurrentPage(1);
         }, []);
-
     // ==================================================
     // SEARCH CHANGE
     // ==================================================

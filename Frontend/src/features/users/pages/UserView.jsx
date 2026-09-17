@@ -6,29 +6,61 @@ import Breadcrumbs from "@/shared/components/breadcrumbs/Breadcrumbs";
 import { getUserById } from "@/features/users/services/UserService";
 import { canManageRole } from "@/config/permissions";
 
-/* ============ CLASSES ============ */
+/* ==================== STYLES ==================== */
+const cardClass =
+    "w-full overflow-hidden rounded-[10px] border border-[#D8E2EF] bg-white shadow-[0_2px_10px_rgba(0,0,0,0.03)] hover:!shadow-[0_2px_10px_rgba(0,0,0,0.03)]";
 
-const cardClass = "w-full bg-white p-[20px] rounded-[8px] border border-[#D8E2EF] shadow-sm";
+const isValidValue = (value) => {
+    const text = String(value ?? "").trim();
 
-const gridClass = "grid grid-cols-1 md:grid-cols-2 border border-[#D8E2EF] rounded-[6px]";
+    return (
+        text &&
+        text.toLowerCase() !== "n/a" &&
+        text !== "-"
+    );
+};
 
-const colLeftClass = "p-[10px] md:border-r border-[#D8E2EF]";
+/* ==================== DETAIL ITEM ==================== */
 
-const colRightClass = "p-[10px] border-t md:border-t-0 border-[#D8E2EF]";
+const DetailItem = ({ label, value }) => {
+    if (!isValidValue(value)) return null;
 
-const rowClass = "text-[15px] last:mb-0";
+    return (
+        <div className="min-w-0">
+            <p className="m-0 text-[11px] font-semibold uppercase tracking-[0.06em] text-[#929BAA]">
+                {label}
+            </p>
 
-const labelClass = "font-semibold text-[#344050]";
+            <p className="m-0 mt-[5px] break-words text-[14px] font-medium leading-[20px] text-[#344050]">
+                {String(value).trim()}
+            </p>
+        </div>
+    );
+};
 
-const valueClass = "text-[#5E6E82]";
+/* ==================== ASSIGNMENT ITEM ==================== */
 
-const backBtnClass = "h-[38px] px-[30px] rounded-sm text-[15px] font-medium text-[#344050] bg-white border border-[#050505] cursor-pointer hover:bg-gray-50 !no-underline hover:!no-underline";
+const AssignmentItem = ({ label, value }) => {
+    if (!isValidValue(value)) return null;
 
-const editBtnClass = "inline-flex items-center h-[42px] px-[24px] rounded-sm text-[15px] font-medium !text-white bg-[#732269] border border-[#732269] hover:opacity-90 !no-underline hover:!no-underline focus:!no-underline";
+    return (
+        <div className="flex min-h-[68px] items-center gap-[11px] rounded-[7px] border border-[#E8DDE7] bg-white px-[13px] py-[10px]">
+            <span className="flex h-[30px] w-[30px] flex-shrink-0 items-center justify-center rounded-[6px] bg-[#F4EBF3] text-[12px] font-bold text-[#732269]">
+                {label.charAt(0)}
+            </span>
 
-const Row = ({ label, value }) => (
-    <p className={rowClass}><span className={labelClass}>{label}: </span><span className={valueClass}>{value || "-"}</span></p>
-);
+            <div className="min-w-0">
+                <p className="m-0 text-[10px] font-semibold uppercase tracking-[0.06em] text-[#929BAA]">
+                    {label}
+                </p>
+
+                <p className="m-0 mt-[3px] break-words text-[13px] font-semibold leading-[18px] text-[#344050]">
+                    {String(value).trim()}
+                </p>
+            </div>
+        </div>
+    );
+};
 
 export default function UserView() {
     const { id } = useParams();
@@ -48,35 +80,67 @@ export default function UserView() {
         try {
             setLoading(true);
             setError("");
+
             const response = await getUserById(id);
             setUser(response);
         } catch (err) {
             console.error(err);
-            setError(err.response?.data?.detail || "Unable to load user details");
+
+            setError(
+                err.response?.data?.detail ||
+                "Unable to load user details"
+            );
+
             setUser(null);
         } finally {
             setLoading(false);
         }
     };
 
-    /* ============ LOADING / ERROR ============ */
+    /* ==================== LOADING ==================== */
 
     if (loading) {
         return (
             <AppLayout>
-                <div className={cardClass}>
-                    <p className="text-[15px] text-[#5E6E82] m-0">Loading user details...</p>
+                <div className="px-[12px]">
+                    <div className={`${cardClass} p-[24px]`}>
+                        <div className="flex items-center gap-[12px]">
+                            <span className="h-[42px] w-[42px] animate-pulse rounded-full bg-[#EEF1F5]" />
+
+                            <div>
+                                <span className="block h-[13px] w-[140px] animate-pulse rounded bg-[#EEF1F5]" />
+                                <span className="mt-[8px] block h-[10px] w-[90px] animate-pulse rounded bg-[#F3F5F8]" />
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </AppLayout>
         );
     }
 
+    /* ==================== ERROR ==================== */
+
     if (error || !user) {
         return (
             <AppLayout>
-                <div className={cardClass}>
-                    <p className="text-[15px] text-[#E63757] m-0 mb-[16px]">{error || "User not found"}</p>
-                    <button type="button" onClick={() => navigate("/users/userlist")} className={backBtnClass}>Back</button>
+                <div className="px-[12px]">
+                    <div className={`${cardClass} p-[24px]`}>
+                        <div className="mb-[16px] rounded-[6px] border border-red-200 bg-red-50 px-[14px] py-[11px]">
+                            <p className="m-0 text-[13px] text-[#E63757]">
+                                {error || "User not found"}
+                            </p>
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={() =>
+                                navigate("/users/userlist")
+                            }
+                            className={backBtnClass}
+                        >
+                            Back
+                        </button>
+                    </div>
                 </div>
             </AppLayout>
         );
@@ -88,66 +152,175 @@ export default function UserView() {
         { label: user.name || "User Details" },
     ];
 
-    const canEdit = canManageRole(currentUserRole, user.role);
+    const canEdit = canManageRole(
+        currentUserRole,
+        user.role
+    );
+
+    const hasAssignment =
+        isValidValue(user.state_name) ||
+        isValidValue(user.district_name) ||
+        isValidValue(user.block_name) ||
+        isValidValue(user.centre_name);
 
     return (
         <AppLayout>
+            <div className="px-[12px]">
+                {/* ==================== HEADER ==================== */}
 
-            {/* ============ PAGE HEADER ============ */}
-            <div className="w-full flex items-center justify-between mb-[20px] px-3">
-
-                <div className="text-[20px] font-medium text-[#344050] font-[Poppins]">
-                    {user.name}
-                </div>
-
-                <Breadcrumbs items={breadcrumbItems} />
-
-            </div>
-
-            {/* ============ DETAIL CARD ============ */}
-
-            <div className={cardClass}>
-
-                <div className={gridClass}>
-
-                    <div className={colLeftClass}>
-                        <Row label="Name" value={user.name} />
-                        <Row label="Username" value={user.username} />
-                        <Row label="Email" value={user.email} />
-                        <Row label="Role" value={user.role_name} />
-                        <Row label="Responsibility" value={user.responsibility} />
-
-                        <p className={rowClass}>
-                            <span className={labelClass}>Status: </span>
-                            <span className={`inline-block px-[10px] py-[3px] rounded-[4px] text-[12px] font-bold !text-white ${String(user.status) === "1" ? "bg-[#00864E]" : "bg-[#E63757]"}`}>
-                                {String(user.status) === "1" ? "Active" : "Not Active"}
-                            </span>
+                <div className="mb-[18px] flex flex-col gap-[8px] md:flex-row md:items-center md:justify-between">
+                    <div>
+                        <p className="m-0 text-[20px] font-semibold leading-[26px] text-[#344050]">
+                            User Details
                         </p>
                     </div>
 
-                    <div className={colRightClass}>
-                        <Row label="State" value={user.state_name} />
-                        <Row label="District" value={user.district_name} />
-                        <Row label="Block" value={user.block_name} />
-                        <Row label="Centre" value={user.centre_name} />
+                    <div className="flex-shrink-0">
+                        <Breadcrumbs items={breadcrumbItems} />
                     </div>
-
                 </div>
 
+                {/* ==================== USER CARD ==================== */}
+
+                <div className={cardClass}>
+                    {/* PROFILE TOP */}
+
+                    <div className="flex flex-col gap-[14px] border-b border-[#E8ECF2] px-[20px] py-[18px] sm:flex-row sm:items-center sm:justify-between md:px-[22px]">
+                        <div className="flex min-w-0 items-center gap-[12px]">
+                            <span className="flex h-[46px] w-[46px] flex-shrink-0 items-center justify-center rounded-full bg-[#F2E7F0] text-[17px] font-semibold text-[#732269]">
+                                {(user.name || "U")
+                                    .charAt(0)
+                                    .toUpperCase()}
+                            </span>
+
+                            <div className="min-w-0">
+                                <p className="m-0 truncate text-[16px] font-semibold leading-[22px] text-[#344050]">
+                                    {user.name || "User"}
+                                </p>
+
+                                <p className="m-0 mt-[2px] truncate text-[12px] leading-[17px] text-[#929BAA]">
+                                    {user.email || "No username"}
+                                </p>
+                            </div>
+                        </div>
+
+                        <span className="inline-flex w-fit items-center rounded-full bg-[#F4EBF3] px-[11px] py-[5px] text-[11px] font-semibold text-[#732269]">
+                            {user.role_name || user.role || "User"}
+                        </span>
+                    </div>
+
+                    {/* ==================== INFORMATION ==================== */}
+
+                    <div className="px-[20px] py-[20px] md:px-[22px]">
+                        <div className="mb-[15px] flex items-center gap-[8px]">
+                            <span className="h-[18px] w-[3px] rounded-full bg-[#732269]" />
+
+                            <span className="text-[14px] font-semibold text-[#344050]">
+                                Personal Information
+                            </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-x-[40px] gap-y-[18px] sm:grid-cols-2 lg:grid-cols-3">
+                            <DetailItem
+                                label="Name"
+                                value={user.name}
+                            />
+
+                            <DetailItem
+                                label="Username"
+                                value={user.username}
+                            />
+
+                            <DetailItem
+                                label="Email"
+                                value={user.email}
+                            />
+
+                            <DetailItem
+                                label="Role"
+                                value={user.role_name}
+                            />
+
+                            <DetailItem
+                                label="Responsibility"
+                                value={user.responsibility}
+                            />
+
+                            {/* STATUS */}
+
+                            <div>
+                                <p className="m-0 text-[11px] font-semibold uppercase tracking-[0.06em] text-[#929BAA]">
+                                    Status
+                                </p>
+
+                                <div className="mt-[6px]">
+                                    <span
+                                        className={`inline-flex items-center gap-[6px] rounded-full px-[10px] py-[5px] text-[11px] font-semibold ${String(user.status) === "1"
+                                            ? "bg-[#E8F7F0] text-[#00864E]"
+                                            : "bg-[#FDEBEC] text-[#E63757]"
+                                            }`}
+                                    >
+                                        <span
+                                            className={`h-[6px] w-[6px] rounded-full ${String(user.status) === "1"
+                                                ? "bg-[#00864E]"
+                                                : "bg-[#E63757]"
+                                                }`}
+                                        />
+
+                                        {String(user.status) === "1"
+                                            ? "Active"
+                                            : "Not Active"}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* ==================== ASSIGNMENT ==================== */}
+
+                    {hasAssignment && (
+                        <div className="border-t border-[#E8ECF2] bg-[#FCFBFD] px-[20px] py-[20px] md:px-[22px]">
+                            <div className="mb-[14px] flex items-center justify-between gap-[12px]">
+                                <div className="flex items-center gap-[8px]">
+                                    <span className="h-[18px] w-[3px] rounded-full bg-[#732269]" />
+
+                                    <div>
+                                        <p className="m-0 text-[14px] font-semibold text-[#344050]">
+                                            Assigned Location
+                                        </p>
+
+                                        <p className="m-0 mt-[2px] text-[11px] text-[#929BAA]">
+                                            User's assigned area
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-[10px] sm:grid-cols-2 lg:grid-cols-4">
+                                <AssignmentItem
+                                    label="State"
+                                    value={user.state_name}
+                                />
+
+                                <AssignmentItem
+                                    label="District"
+                                    value={user.district_name}
+                                />
+
+                                <AssignmentItem
+                                    label="Block"
+                                    value={user.block_name}
+                                />
+
+                                <AssignmentItem
+                                    label="Centre"
+                                    value={user.centre_name}
+                                />
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
-
-            {/* ============ BUTTONS ============ */}
-
-            <div className="flex items-center gap-[12px] mt-[20px]">
-
-                <button type="button" onClick={() => navigate("/users/userlist")} className={backBtnClass}>Back</button>
-
-                {canEdit && (
-                    <Link to={`/users/edit/${user.id}`} className={editBtnClass}>Edit User</Link>
-                )}
-
-            </div>
-
         </AppLayout>
     );
 }

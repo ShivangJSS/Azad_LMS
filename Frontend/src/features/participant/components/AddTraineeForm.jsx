@@ -399,6 +399,19 @@ export default function AddTraineeForm({ mode = 'create', initialData = null, pa
     if (form.aadhaar_number && !/^\d{12}$/.test(form.aadhaar_number)) {
       nextErrors.aadhaar_number = 'Aadhaar Number must contain exactly 12 digits.';
     }
+    if (form.password) {
+      if (form.password.length < 8) {
+        nextErrors.password = 'Password must be at least 8 characters long.';
+      } else if (!/[A-Z]/.test(form.password)) {
+        nextErrors.password = 'Password must contain at least one uppercase letter.';
+      } else if (!/[a-z]/.test(form.password)) {
+        nextErrors.password = 'Password must contain at least one lowercase letter.';
+      } else if (!/\d/.test(form.password)) {
+        nextErrors.password = 'Password must contain at least one number.';
+      } else if (!/[^A-Za-z0-9]/.test(form.password)) {
+        nextErrors.password = 'Password must contain at least one special character.';
+      }
+    }
 
     setValidationErrors(nextErrors);
     return nextErrors;
@@ -499,6 +512,7 @@ export default function AddTraineeForm({ mode = 'create', initialData = null, pa
               style={focusStyle}
               value={form.state_id}
               onChange={handleChange('state_id')}
+              disabled={isEdit}
             >
               <option value="">Select State</option>
               {states.map((s) => (
@@ -517,7 +531,8 @@ export default function AddTraineeForm({ mode = 'create', initialData = null, pa
               style={focusStyle}
               value={form.district_id}
               onChange={handleChange('district_id')}
-              disabled={!form.state_id}
+              disabled={isEdit || !form.state_id}
+
             >
               <option value="">Select District</option>
               {districts.map((d) => (
@@ -536,7 +551,7 @@ export default function AddTraineeForm({ mode = 'create', initialData = null, pa
               style={focusStyle}
               value={form.block_id}
               onChange={handleChange('block_id')}
-              disabled={!form.district_id}
+              disabled={isEdit || !form.district_id}
             >
               <option value="">Select Block</option>
               {blocks.map((b) => (
@@ -556,7 +571,7 @@ export default function AddTraineeForm({ mode = 'create', initialData = null, pa
               style={focusStyle}
               value={form.centre_id}
               onChange={handleChange('centre_id')}
-              disabled={!form.block_id}
+              disabled={isEdit || !form.block_id}
             >
               <option value="">Select Centre</option>
               {centres.map((c) => (
@@ -575,7 +590,7 @@ export default function AddTraineeForm({ mode = 'create', initialData = null, pa
               style={focusStyle}
               value={form.batch_id}
               onChange={handleChange('batch_id')}
-              disabled={!form.centre_id}
+              disabled={isEdit || !form.centre_id}
             >
               <option value="">
                 {form.centre_id ? 'Select Batch' : '-- Pick centre first --'}

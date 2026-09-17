@@ -170,6 +170,13 @@ export default function useMatchMakingList() {
         }
     };
 
+
+    const handleLanguageChange = (nextLanguage) => {
+        setLanguage(nextLanguage);
+        setSearch("");
+        setCurrentPage(1);
+    };
+
     // =================================================
     // LOAD DATA WHEN LANGUAGE CHANGES
     // =================================================
@@ -372,7 +379,7 @@ export default function useMatchMakingList() {
         setSearch,
 
         language,
-        setLanguage,
+        setLanguage: handleLanguageChange,
 
         currentPage,
         setCurrentPage,

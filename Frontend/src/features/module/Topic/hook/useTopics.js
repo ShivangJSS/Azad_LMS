@@ -128,12 +128,20 @@ export default function useTopics() {
     const changeLanguage = useCallback((languageKey) => {
         const normalizedLanguage = String(languageKey || "").trim().toLowerCase();
         const selectedLanguage = getLanguageByKey(normalizedLanguage);
+
         if (!selectedLanguage?.id) {
             console.error("Invalid language selected:", languageKey);
             return;
         }
+
         requestVersion.current += 1;
+
         setTopics([]);
+
+        // Clear search when language tab changes
+        setFilters({ ...EMPTY_FILTERS });
+        setAppliedFilters({ ...EMPTY_FILTERS });
+
         setLanguage(normalizedLanguage);
         setCurrentPage(1);
     }, []);
