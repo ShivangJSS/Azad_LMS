@@ -27,6 +27,10 @@ wheels/
 venv/
 env/
 .venv/
+.venv/
+uploads/
+Backend/uploads/
+Backend/app/modules/*.zip
 
 # Environment variables
 .env

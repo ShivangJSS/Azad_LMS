@@ -1,7 +1,7 @@
 from typing import Any
 
 from fastapi import HTTPException, UploadFile, status
-from sqlalchemy import func
+from sqlalchemy import String, cast, func
 from sqlalchemy.orm import Session
 
 from app.utils.file_upload import save_image
@@ -708,6 +708,22 @@ class UserService:
         if not module:
             raise ValueError("Module not found")
 
+        m_type = str(module.module_type) if getattr(module, "module_type", None) else None
+        is_first_module = False
+        if m_type:
+            first_in_track = (
+                self.repository.db.query(ModuleMaster.parent_id)
+                .filter(
+                    cast(ModuleMaster.module_type, String) == m_type,
+                    ModuleMaster.deleted_at.is_(None),
+                )
+                .order_by(ModuleMaster.parent_id)
+                .first()
+            )
+            is_first_module = bool(first_in_track and first_in_track[0] == module.parent_id)
+
+        initial_lock = 1 if is_first_module else 0
+
         for item in self.repository.get_module_group(module):
             existing = self.repository.get_participant_module(
                 participant_id,
@@ -717,12 +733,15 @@ class UserService:
             if existing:
                 if str(existing.status) != "1":
                     existing.status = "1"
+                if is_first_module and existing.lock_status == 0:
+                    existing.lock_status = 1
                 continue
 
             self.repository.create_participant_module(
                 participant_id=participant_id,
                 course_id=item.fk_course_id,
                 module_id=item.module_id,
+                lock_status=initial_lock,
             )
 
         self.repository.commit()
