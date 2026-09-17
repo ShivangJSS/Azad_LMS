@@ -25,7 +25,11 @@ class DashboardService:
             participant_id=participant_id,
         )
 
-        overall_progress = round(completed / total, 4) if total else 0.0
+        overall_progress = (
+            round(completed / total, 4)
+            if total
+            else 0.0
+        )
 
         # -----------------------------
         # Assessment score
@@ -43,7 +47,11 @@ class DashboardService:
         correct = mcq_correct + scq_correct
         attempted = mcq_attempted + scq_attempted
 
-        average_score = round(correct * 100 / attempted, 2) if attempted else 0.0
+        average_score = (
+            round(correct * 100 / attempted, 2)
+            if attempted
+            else 0.0
+        )
 
         # -----------------------------
         # Time invested

@@ -129,19 +129,14 @@ def _render_deck_libreoffice(source: Path, target: Path) -> Optional[int]:
         try:
             subprocess.run(
                 [
-                    soffice,
-                    "--headless",
-                    "--convert-to",
-                    "pdf",
-                    "--outdir",
-                    str(tmp_dir),
-                    str(source),
+                    soffice, "--headless", "--convert-to", "pdf",
+                    "--outdir", str(tmp_dir), str(source),
                 ],
                 check=True,
                 capture_output=True,
                 timeout=180,
             )
-        except subprocess.SubprocessError, OSError:
+        except (subprocess.SubprocessError, OSError):
             return None
 
         pdfs = list(tmp_dir.glob("*.pdf"))
@@ -155,7 +150,9 @@ def _render_deck_libreoffice(source: Path, target: Path) -> Optional[int]:
             matrix = fitz.Matrix(zoom, zoom)
 
             for index, page in enumerate(doc):
-                page.get_pixmap(matrix=matrix).save(str(target / f"{index + 1}.png"))
+                page.get_pixmap(matrix=matrix).save(
+                    str(target / f"{index + 1}.png")
+                )
 
             return doc.page_count
         finally:

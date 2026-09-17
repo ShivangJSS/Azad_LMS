@@ -17,7 +17,9 @@ def create_reset_token(participant_id: int) -> str:
     Short-lived token that authorises exactly one password reset.
     """
 
-    expire = datetime.now(timezone.utc) + timedelta(minutes=RESET_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.now(timezone.utc) + timedelta(
+        minutes=RESET_TOKEN_EXPIRE_MINUTES
+    )
 
     payload = {
         "sub": str(participant_id),

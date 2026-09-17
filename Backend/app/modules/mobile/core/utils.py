@@ -66,14 +66,13 @@ def verify_password(
             _encode(plain_password),
             hashed_password.encode("utf-8"),
         )
-    except ValueError, TypeError:
+    except (ValueError, TypeError):
         return False
 
 
 # ------------------------------------------------------------------
 # Access Token
 # ------------------------------------------------------------------
-
 
 def create_access_token(
     participant_id: int,
@@ -83,16 +82,18 @@ def create_access_token(
     Create JWT access token.
     """
 
-    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.now(timezone.utc) + timedelta(
+        minutes=ACCESS_TOKEN_EXPIRE_MINUTES
+    )
 
     payload = {
-        "sub": str(participant_id),
-        "participant_id": participant_id,
-        "username": username,
-        "token_type": "access",
-        "iss": "azad-mobile",
-        "exp": expire,
-    }
+     "sub": str(participant_id),
+     "participant_id": participant_id,
+     "username": username,
+     "token_type": "access",
+     "iss": "azad-mobile",
+     "exp": expire,
+}
 
     return jwt.encode(
         payload,
@@ -105,7 +106,6 @@ def create_access_token(
 # Refresh Token
 # ------------------------------------------------------------------
 
-
 def create_refresh_token(
     participant_id: int,
     username: str,
@@ -114,16 +114,18 @@ def create_refresh_token(
     Create JWT refresh token.
     """
 
-    expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    expire = datetime.now(timezone.utc) + timedelta(
+        days=REFRESH_TOKEN_EXPIRE_DAYS
+    )
 
     payload = {
-        "sub": str(participant_id),
-        "participant_id": participant_id,
-        "username": username,
-        "token_type": "refresh",
-        "iss": "azad-mobile",
-        "exp": expire,
-    }
+     "sub": str(participant_id),
+     "participant_id": participant_id,
+     "username": username,
+     "token_type": "refresh",
+     "iss": "azad-mobile",
+     "exp": expire,
+}
 
     return jwt.encode(
         payload,
@@ -135,7 +137,6 @@ def create_refresh_token(
 # ------------------------------------------------------------------
 # Decode Token
 # ------------------------------------------------------------------
-
 
 def decode_token(
     token: str,
@@ -161,7 +162,6 @@ def decode_token(
 # Get Participant ID From Token
 # ------------------------------------------------------------------
 
-
 def get_participant_id_from_token(
     token: str,
 ) -> Optional[int]:
@@ -180,7 +180,6 @@ def get_participant_id_from_token(
 # ------------------------------------------------------------------
 # Check Token Type
 # ------------------------------------------------------------------
-
 
 def is_access_token(token: str) -> bool:
     payload = decode_token(token)

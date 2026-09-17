@@ -1,9 +1,8 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import func, or_, text
+from sqlalchemy import String, cast, func, text
 from sqlalchemy.orm import Session
-
 
 from app.modules.mobile.assessment.constants import ACTIVE
 from app.modules.mobile.assessment.model import (
@@ -65,7 +64,8 @@ class AnswerRepository:
 
         now = datetime.now()
 
-        statement = text("""
+        statement = text(
+            """
             INSERT INTO participant_scs (
                 participant_id, module_id, attempt_id,
                 single_choice_id, option_selected, created_date, is_active
@@ -73,7 +73,8 @@ class AnswerRepository:
                 :participant_id, :module_id, :attempt_id,
                 :single_choice_id, :option_selected, :created_date, :is_active
             )
-            """)
+            """
+        )
 
         for scq_id, option_id in answers:
             db.execute(
@@ -113,7 +114,9 @@ class AnswerRepository:
             )
 
     @staticmethod
-    def save_match_making(db, participant_id, module_id, course_id, attempt_id, pairs):
+    def save_match_making(
+        db, participant_id, module_id, course_id, attempt_id, pairs
+    ):
         now = datetime.now()
 
         for question_id, left_id, right_id, is_correct in pairs:
@@ -152,112 +155,6 @@ class AnswerRepository:
         )
 
     @staticmethod
-    def get_module_parent_id(
-        db: Session,
-        module_id: int,
-    ) -> Optional[int]:
-
-        row = (
-            db.query(
-                ModuleMaster.module_id,
-                ModuleMaster.parent_id,
-            )
-            .filter(
-                ModuleMaster.module_id == module_id,
-                ModuleMaster.deleted_at.is_(None),
-            )
-            .first()
-        )
-
-        if row is None:
-            return None
-
-        # Translation -> canonical/base module
-        # Base module -> itself
-        return row.parent_id or row.module_id
-
-    # @staticmethod
-    # def set_lock_status_for_group(
-    #     db: Session,
-    #     participant_id: int,
-    #     parent_module_id: int,
-    #     lock_status: int,
-    # ) -> None:
-    #     """
-    #     Applies to every language variant of the module, so progress is the
-    #     same whichever language the participant is using.
-    #     """
-
-    #     module_ids = [
-    #         row.module_id
-    #         for row in db.query(ModuleMaster.module_id)
-    #         .filter(ModuleMaster.parent_id == parent_module_id)
-    #         .all()
-    #     ]
-
-    #     if not module_ids:
-    #         return
-
-    #     (
-    #         db.query(ParticipantModule)
-    #         .filter(
-    #             ParticipantModule.participant_id == participant_id,
-    #             ParticipantModule.module_id.in_(module_ids),
-    #         )
-    #         .update(
-    #             {ParticipantModule.lock_status: lock_status},
-    #             synchronize_session=False,
-    #         )
-    #     )
-
-    @staticmethod
-    def list_participant_module_groups(
-        db: Session,
-        participant_id: int,
-    ):
-        """
-        Returns one row per logical module group.
-
-        For translated modules:
-            parent_id is the group id.
-
-        For base/root modules:
-            module_id becomes the group id.
-
-        This prevents every module with parent_id=NULL from
-        being incorrectly grouped together.
-        """
-
-        group_id = func.coalesce(
-            ModuleMaster.parent_id,
-            ModuleMaster.module_id,
-        )
-
-        return (
-            db.query(
-                group_id.label("group_id"),
-                func.min(ParticipantModule.lock_status).label("lock_status"),
-                func.min(ModuleMaster.module_name).label("module_name"),
-                func.min(ModuleMaster.module_id).label("first_module_id"),
-            )
-            .join(
-                ParticipantModule,
-                ParticipantModule.module_id == ModuleMaster.module_id,
-            )
-            .filter(
-                ParticipantModule.participant_id == participant_id,
-                ModuleMaster.deleted_at.is_(None),
-            )
-            .group_by(
-                group_id,
-            )
-            .order_by(
-                func.min(ModuleMaster.module_id),
-            )
-            .all()
-        )
-
-    @staticmethod
     def set_lock_status_for_group(
         db: Session,
         participant_id: int,
@@ -265,28 +162,15 @@ class AnswerRepository:
         lock_status: int,
     ) -> None:
         """
-        Applies to every language variant of the module group.
-
-        For a root/base module:
-            module_id == parent_module_id
-
-        For translated modules:
-            parent_id == parent_module_id
+        Applies to every language variant of the module, so progress is the
+        same whichever language the participant is using.
         """
 
         module_ids = [
             row.module_id
-            for row in (
-                db.query(ModuleMaster.module_id)
-                .filter(
-                    or_(
-                        ModuleMaster.parent_id == parent_module_id,
-                        ModuleMaster.module_id == parent_module_id,
-                    ),
-                    ModuleMaster.deleted_at.is_(None),
-                )
-                .all()
-            )
+            for row in db.query(ModuleMaster.module_id)
+            .filter(ModuleMaster.parent_id == parent_module_id)
+            .all()
         ]
 
         if not module_ids:
@@ -302,4 +186,42 @@ class AnswerRepository:
                 {ParticipantModule.lock_status: lock_status},
                 synchronize_session=False,
             )
+        )
+
+    @staticmethod
+    def list_participant_module_groups(
+        db: Session,
+        participant_id: int,
+        module_type: Optional[str] = None,
+    ):
+        """
+        One row per module group (parent_id) with its current lock status,
+        ordered the way modules are presented within its module track.
+        """
+
+        query = (
+            db.query(
+                ModuleMaster.parent_id.label("parent_id"),
+                func.max(ParticipantModule.lock_status).label("lock_status"),
+                func.min(ModuleMaster.module_name).label("module_name"),
+            )
+            .join(
+                ParticipantModule,
+                ParticipantModule.module_id == ModuleMaster.module_id,
+            )
+            .filter(
+                ParticipantModule.participant_id == participant_id,
+                ModuleMaster.deleted_at.is_(None),
+            )
+        )
+
+        if module_type is not None:
+            query = query.filter(
+                cast(ModuleMaster.module_type, String) == str(module_type)
+            )
+
+        return (
+            query.group_by(ModuleMaster.parent_id)
+            .order_by(ModuleMaster.parent_id)
+            .all()
         )

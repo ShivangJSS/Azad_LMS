@@ -15,7 +15,9 @@ load_dotenv()
 # "or" rather than a getenv default so an empty value falls back too.
 DEFAULT_STORAGE_ROOT = Path(__file__).resolve().parents[3] / "storage"
 
-STORAGE_ROOT = Path(os.getenv("MEDIA_STORAGE_ROOT") or DEFAULT_STORAGE_ROOT).resolve()
+STORAGE_ROOT = Path(
+    os.getenv("MEDIA_STORAGE_ROOT") or DEFAULT_STORAGE_ROOT
+).resolve()
 
 # Files uploaded through this API land here instead, so every root is
 # searched before giving up.
@@ -39,11 +41,13 @@ CONTENT_TYPES = {
     ".pdf": "application/pdf",
     ".ppt": "application/vnd.ms-powerpoint",
     ".pptx": (
-        "application/vnd.openxmlformats-officedocument" ".presentationml.presentation"
+        "application/vnd.openxmlformats-officedocument"
+        ".presentationml.presentation"
     ),
     ".doc": "application/msword",
     ".docx": (
-        "application/vnd.openxmlformats-officedocument" ".wordprocessingml.document"
+        "application/vnd.openxmlformats-officedocument"
+        ".wordprocessingml.document"
     ),
     ".png": "image/png",
     ".jpg": "image/jpeg",

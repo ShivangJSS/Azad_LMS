@@ -37,12 +37,15 @@ class DashboardRepository:
 
         row = (
             db.query(
-                func.count(distinct(ModuleMaster.parent_id)).label("total"),
+                func.count(
+                    distinct(ModuleMaster.parent_id)
+                ).label("total"),
                 func.count(
                     distinct(
                         case(
                             (
-                                ParticipantModule.lock_status == LOCK_STATUS_COMPLETED,
+                                ParticipantModule.lock_status
+                                == LOCK_STATUS_COMPLETED,
                                 ModuleMaster.parent_id,
                             ),
                             else_=None,

@@ -42,7 +42,9 @@ def _next_id_table(db: Session, table: str) -> int:
     time_spent_module_log, whose model lives outside this package.
     """
 
-    current = db.execute(text(f"SELECT COALESCE(MAX(id), 0) FROM {table}")).scalar()
+    current = db.execute(
+        text(f"SELECT COALESCE(MAX(id), 0) FROM {table}")
+    ).scalar()
     return int(current or 0) + 1
 
 

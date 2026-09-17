@@ -57,7 +57,9 @@ def score_pairs(
         return 0.0
 
     hits = sum(
-        1 for left_id, right_id in pairs.items() if correct.get(left_id) == right_id
+        1
+        for left_id, right_id in pairs.items()
+        if correct.get(left_id) == right_id
     )
 
     return max(0.0, hits / len(correct))

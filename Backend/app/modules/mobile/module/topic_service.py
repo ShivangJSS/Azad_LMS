@@ -117,7 +117,7 @@ class TopicService:
 
         try:
             module_type_id = int(row.module_type)
-        except TypeError, ValueError:
+        except (TypeError, ValueError):
             module_type_id = None
 
         return ModuleOverview(

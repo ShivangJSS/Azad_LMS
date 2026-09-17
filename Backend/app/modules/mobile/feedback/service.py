@@ -2,7 +2,10 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from .repository import FeedbackRepository
-from .schema import FeedbackCreate, FeedbackResponse
+from .schema import (
+    FeedbackCreate,
+    FeedbackResponse
+)
 
 
 class FeedbackService:
@@ -22,11 +25,12 @@ class FeedbackService:
         feedback = FeedbackRepository.create_feedback(
             db=db,
             participant_id=participant_id,
-            payload=payload,
+            payload=payload,            
         )
 
         return FeedbackResponse(
-            feedback_id=feedback.feedback_id, message="Feedback submitted successfully"
+            feedback_id=feedback.feedback_id,
+            message="Feedback submitted successfully"
         )
 
     @staticmethod
@@ -44,7 +48,9 @@ class FeedbackService:
 
         valid = FeedbackRepository.get_valid_option_ids(
             db=db,
-            question_ids=[answer.question_id for answer in payload.mood_answers],
+            question_ids=[
+                answer.question_id for answer in payload.mood_answers
+            ],
         )
 
         for answer in payload.mood_answers:
@@ -69,9 +75,13 @@ class FeedbackService:
                 )
 
     @staticmethod
-    def get_questions(db: Session, language_id: int):
+    def get_questions(
+        db: Session,
+        language_id: int
+    ):
         questions = FeedbackRepository.get_questions_by_language(
-            db=db, language_id=language_id
+            db=db,
+            language_id=language_id
         )
 
         return questions

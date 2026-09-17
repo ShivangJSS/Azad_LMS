@@ -61,7 +61,7 @@ class MediaService:
         for candidate in candidates:
             try:
                 path = (root / candidate).resolve()
-            except OSError, ValueError:
+            except (OSError, ValueError):
                 continue
 
             if not MediaService._is_inside(path, root):
@@ -98,7 +98,7 @@ class MediaService:
         if not range_header or not range_header.startswith("bytes="):
             return None
 
-        spec = range_header[len("bytes=") :].split(",")[0].strip()
+        spec = range_header[len("bytes="):].split(",")[0].strip()
 
         if "-" not in spec:
             return None

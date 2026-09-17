@@ -10,6 +10,9 @@ from app.modules.mobile.core.utils import decode_token
 security = HTTPBearer()
 
 
+
+
+
 def get_current_participant(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db),

@@ -141,7 +141,9 @@ class MobileAuthService:
         This endpoint exists for API consistency.
         """
 
-        return {"message": "Logged out successfully."}
+        return {
+            "message": "Logged out successfully."
+        }
 
     @staticmethod
     def get_current_participant(

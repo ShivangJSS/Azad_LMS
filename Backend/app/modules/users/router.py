@@ -237,25 +237,39 @@ async def create_participant(
         centre_id=centre_id,
     )
 
-    data = ParticipantCreateRequest(
-        state_id=state_id,
-        district_id=district_id,
-        block_id=block_id,
-        centre_id=centre_id,
-        batch_id=batch_id,
-        participant_name=participant_name,
-        enrollment_no=enrollment_no,
-        username=username,
-        password=password,
-        gender=gender,
-        age=age,
-        email=email,
-        mobile_no=mobile_no,
-        pin=pin,
-        aadhaar_number=aadhaar_number,
-        location=location,
-        address=address,
-    )
+    try:
+        data = ParticipantCreateRequest(
+            state_id=state_id,
+            district_id=district_id,
+            block_id=block_id,
+            centre_id=centre_id,
+            batch_id=batch_id,
+            participant_name=participant_name,
+            enrollment_no=enrollment_no,
+            username=username,
+            password=password,
+            gender=gender,
+            age=age,
+            email=email,
+            mobile_no=mobile_no,
+            pin=pin,
+            aadhaar_number=aadhaar_number,
+            location=location,
+            address=address,
+        )
+    except ValidationError as exc:
+        errors = exc.errors()
+
+        message = (
+            errors[0].get("msg", "Invalid input.")
+            if errors
+            else "Invalid input."
+        )
+
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=message,
+        )
 
     return await UserService.create_participant(
         db=db,

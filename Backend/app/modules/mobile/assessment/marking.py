@@ -24,7 +24,8 @@ def reject_unknown(unknown: set, question_id: int) -> None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=(
-                f"Values {sorted(unknown)} do not belong to " f"question {question_id}."
+                f"Values {sorted(unknown)} do not belong to "
+                f"question {question_id}."
             ),
         )
 
@@ -47,54 +48,28 @@ def mark(
 
     if kind in (TYPE_MCQ, TYPE_SCQ):
         return _mark_choice(
-            db,
-            participant_id,
-            module_id,
-            course_id,
-            attempt_id,
-            question,
-            answer,
-            correct,
-            kind,
+            db, participant_id, module_id, course_id, attempt_id,
+            question, answer, correct, kind,
         )
 
     if kind == TYPE_DROP_BUCKET:
         return _mark_drop_bucket(
-            db,
-            participant_id,
-            module_id,
-            course_id,
-            attempt_id,
-            question,
-            answer,
-            correct,
+            db, participant_id, module_id, course_id, attempt_id,
+            question, answer, correct,
         )
 
     if kind == TYPE_MATCH_MAKING:
         return _mark_match_making(
-            db,
-            participant_id,
-            module_id,
-            course_id,
-            attempt_id,
-            question,
-            answer,
-            correct,
+            db, participant_id, module_id, course_id, attempt_id,
+            question, answer, correct,
         )
 
     return 0.0, []
 
 
 def _mark_choice(
-    db,
-    participant_id,
-    module_id,
-    course_id,
-    attempt_id,
-    question,
-    answer,
-    correct,
-    kind,
+    db, participant_id, module_id, course_id, attempt_id,
+    question, answer, correct, kind,
 ):
     valid = {option.option_id for option in question.options}
 
@@ -115,20 +90,16 @@ def _mark_choice(
             db, participant_id, module_id, course_id, attempt_id, rows
         )
     else:
-        AnswerRepository.save_scq(db, participant_id, module_id, attempt_id, rows)
+        AnswerRepository.save_scq(
+            db, participant_id, module_id, attempt_id, rows
+        )
 
     return score, sorted(correct or set())
 
 
 def _mark_drop_bucket(
-    db,
-    participant_id,
-    module_id,
-    course_id,
-    attempt_id,
-    question,
-    answer,
-    correct,
+    db, participant_id, module_id, course_id, attempt_id,
+    question, answer, correct,
 ):
     valid_items = {item.item_id for item in question.items}
     valid_buckets = {bucket.bucket_id for bucket in question.buckets}
@@ -136,8 +107,12 @@ def _mark_drop_bucket(
     placements = {}
 
     for placement in (answer.placements if answer else []):
-        reject_unknown({placement.item_id} - valid_items, question.question_id)
-        reject_unknown({placement.bucket_id} - valid_buckets, question.question_id)
+        reject_unknown(
+            {placement.item_id} - valid_items, question.question_id
+        )
+        reject_unknown(
+            {placement.bucket_id} - valid_buckets, question.question_id
+        )
 
         placements[placement.item_id] = placement.bucket_id
 
@@ -156,14 +131,8 @@ def _mark_drop_bucket(
 
 
 def _mark_match_making(
-    db,
-    participant_id,
-    module_id,
-    course_id,
-    attempt_id,
-    question,
-    answer,
-    correct,
+    db, participant_id, module_id, course_id, attempt_id,
+    question, answer, correct,
 ):
     valid_left = {item.item_id for item in question.left_items}
     valid_right = {item.item_id for item in question.right_items}

@@ -75,7 +75,9 @@ class MoodQuestionResponse(BaseModel):
     question_type: str
     language_id: int
 
-    options: List[QuestionOptionResponse] = Field(default_factory=list)
+    options: List[QuestionOptionResponse] = Field(
+        default_factory=list
+    )
 
     model_config = ConfigDict(from_attributes=True)
 

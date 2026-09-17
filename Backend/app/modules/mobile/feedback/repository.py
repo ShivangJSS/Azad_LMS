@@ -27,7 +27,9 @@ class FeedbackRepository:
             participant_id=participant_id,
             lms_experience=payload.lms_experience,
             lms_ease=payload.lms_ease,
-            useful_modules=json.dumps(payload.useful_modules),
+            useful_modules=json.dumps(
+                payload.useful_modules
+            ),
             created_at=now,
             updated_at=now,
         )
@@ -67,15 +69,24 @@ class FeedbackRepository:
         return feedback
 
     @staticmethod
-    def get_questions_by_language(db: Session, language_id: int):
+    def get_questions_by_language(
+        db: Session,
+        language_id: int
+    ):
         return (
             db.query(MoodQuestionMaster)
-            .options(joinedload(MoodQuestionMaster.options))
+            .options(
+                joinedload(
+                    MoodQuestionMaster.options
+                )
+            )
             .filter(
                 MoodQuestionMaster.language_id == language_id,
-                MoodQuestionMaster.is_active == 1,
+                MoodQuestionMaster.is_active == 1
             )
-            .order_by(MoodQuestionMaster.question_id)
+            .order_by(
+                MoodQuestionMaster.question_id
+            )
             .all()
         )
 
@@ -100,6 +111,8 @@ class FeedbackRepository:
         )
 
         return {
-            question.question_id: {option.option_id for option in question.options}
+            question.question_id: {
+                option.option_id for option in question.options
+            }
             for question in questions
         }

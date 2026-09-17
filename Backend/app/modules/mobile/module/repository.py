@@ -71,8 +71,7 @@ class MobileModuleRepository:
                 cast(
                     ModuleMaster.module_type,
                     String,
-                )
-                == str(module_type)
+                ) == str(module_type)
             )
 
         return query.order_by(ModuleMaster.module_id).all()

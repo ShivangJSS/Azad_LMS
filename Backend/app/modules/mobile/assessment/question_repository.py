@@ -32,7 +32,7 @@ class QuestionRepository:
         if not ids:
             return []
 
-        if borrowed:
+        if borrowed or language_id != 1:
             return in_language(db, McqMaster, McqMaster.mcq_id, ids, language_id)
 
         return (
@@ -74,7 +74,7 @@ class QuestionRepository:
         if not ids:
             return []
 
-        if borrowed:
+        if borrowed or language_id != 1:
             return in_language(db, ScqMaster, ScqMaster.scq_id, ids, language_id)
 
         return (
@@ -116,7 +116,7 @@ class QuestionRepository:
         if not ids:
             return []
 
-        if borrowed:
+        if borrowed or language_id != 1:
             return in_language(
                 db,
                 DropBucketMaster,
@@ -189,7 +189,7 @@ class QuestionRepository:
         if not ids:
             return []
 
-        if borrowed:
+        if borrowed or language_id != 1:
             return in_language(
                 db,
                 MatchMakingMaster,

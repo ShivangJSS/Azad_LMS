@@ -60,7 +60,9 @@ class ProfileService:
 
         (folder / name).write_bytes(content)
 
-        stored = f"{RELATIVE_PREFIX}/{datetime.now().strftime('%Y/%m')}/{name}"
+        stored = (
+            f"{RELATIVE_PREFIX}/{datetime.now().strftime('%Y/%m')}/{name}"
+        )
 
         MobileAuthRepository.update_photo(
             db=db,
